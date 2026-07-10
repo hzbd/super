@@ -1,0 +1,103 @@
+<section class="home-section home-section--premium">
+  <div class="home-premium-header">
+    <h2 class="home-section-title">
+      官方插件
+      <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> 商业版</span>
+    </h2>
+    <p class="home-section-lead">所有人使用同一个 <code>superd</code> 二进制。商业能力以签名<strong>插件</strong>形式交付 — 将授权的 <code>plugins/*.so</code> 放入 <code>$SUPER_ROOT</code>，并在 <code>conf/super.toml</code> 配置有效的 <code>[license].key</code>。运行时仅加载 license 中列出的插件。</p>
+  </div>
+  <div class="home-prerelease-notice">
+    <strong>预发布状态：</strong>插件 + 订阅模型仍在开发中，<strong>暂不对客户交付</strong>。下文描述目标架构。
+  </div>
+  <div class="home-plugin-flow" aria-label="商业版部署三步">
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">1</span>
+      <div>
+        <strong>配置 License</strong>
+        <div class="home-plugin-flow-desc">将供应商提供的密钥写入 <code>conf/super.toml</code> 的 <code>[license]</code> 段 — 决定启用哪些插件及到期时间</div>
+      </div>
+    </div>
+    <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">2</span>
+      <div>
+        <strong>部署插件文件</strong>
+        <div class="home-plugin-flow-desc">把收到的插件文件复制到 <code>$SUPER_ROOT/plugins/</code>（如 <code>security.so</code>、<code>ui.so</code>）</div>
+      </div>
+    </div>
+    <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">3</span>
+      <div>
+        <strong>重启 superd</strong>
+        <div class="home-plugin-flow-desc">服务启动时自动校验 license 并启用对应功能 — 无需更换核心程序</div>
+      </div>
+    </div>
+  </div>
+  <div class="home-plugin-grid">
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">security</code>
+        <span class="home-plugin-file">plugins/security.so</span>
+      </div>
+      <h3>安全与治理</h3>
+      <ul class="home-plugin-caps">
+        <li>API 路由 Bearer 令牌认证</li>
+        <li>RBAC 角色 — admin、operator、viewer</li>
+        <li>不可篡改的操作审计日志</li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/authentication">认证</a>
+        <a href="/docs/05-advanced-management/access-control">访问控制</a>
+        <a href="/docs/05-advanced-management/operation-audit">审计</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">notify</code>
+        <span class="home-plugin-file">plugins/notify.so</span>
+      </div>
+      <h3>事件通知</h3>
+      <ul class="home-plugin-caps">
+        <li>Webhook 通道 — Slack、钉钉、飞书、自定义 URL</li>
+        <li><code>process_fatal</code> 等系统事件推送</li>
+        <li>通过 <code>conf/notify.toml</code> 热更新</li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/event-notifications">事件通知</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">isolation</code>
+        <span class="home-plugin-file">plugins/isolation.so</span>
+      </div>
+      <h3>资源隔离</h3>
+      <ul class="home-plugin-caps">
+        <li>cgroups v2 按程序限制 CPU / 内存</li>
+        <li>热更新限额，无需重启进程</li>
+        <li>CLI <code>--cpu</code> / <code>--memory</code> 强制生效</li>
+      </ul>
+      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>仅适用于 Linux</strong> — cgroup 隔离不支持 macOS、Windows 或 FreeBSD，无 <code>isolation.dylib</code> 制品。</p>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/resource-isolation">资源隔离</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">ui</code>
+        <span class="home-plugin-file">plugins/ui.so</span>
+      </div>
+      <h3>Web 控制台</h3>
+      <ul class="home-plugin-caps">
+        <li>Vue SPA 内嵌于插件</li>
+        <li>进程概览、实时日志、启停控制</li>
+        <li>配合其他插件显示 License 与系统指标</li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/02-essentials/web-ui">Web UI</a>
+      </div>
+    </div>
+  </div>
+  <p class="home-premium-footnote">按 license 按需组合插件 — 只订阅需要的部分。OSS 与商业能力对比见 <a href="/docs/07-editions/feature-matrix">功能矩阵</a>。</p>
+</section>

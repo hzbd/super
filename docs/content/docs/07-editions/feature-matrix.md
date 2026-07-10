@@ -10,14 +10,14 @@ description: "OSS core vs optional licensed plugins."
 | **Dependency Orchestration** | ✅ | ✅ |
 | **Atomic OTA Updates** | ✅ | ✅ |
 | **Health Checks (TCP/HTTP)** | ✅ | ✅ |
-| **Web UI (Dashboard)** | ✅ <br>(no auth) | ✅<br> (auth with `security`) |
+| **Web UI (Dashboard)** | ❌ | ✅ (`ui` plugin) |
 | **Log Rotation & Streaming** | ✅ | ✅ |
 | **Prometheus Metrics** | ✅ <br>(basic) | ✅ <br>(+ plugin metrics) |
 | **Historical Logs API** | ✅ | ✅ |
 | **System Stats API** | ✅ | ✅ |
 | **Event Hooks** (`[[event_hooks]]`) | ✅ | ✅ |
 | **Cron Scheduled Tasks** | ✅ | ✅ |
-| **Linux Cgroups Isolation** | ❌ | ✅ (`isolation` plugin) |
+| **Linux Cgroups Isolation** | ❌ | ✅ (`isolation` plugin, **Linux only**) |
 | **RBAC (User Roles)** | ❌ | ✅ (`security` plugin) |
 | **Audit Logging** | ❌ | ✅ (`security` plugin) |
 | **Webhook Notifications** | ❌ | ✅ (`notify` plugin) |
@@ -33,7 +33,7 @@ Same **`superd`** and **`super`** binaries for both columns — drop `plugins/*.
 *   No strict per-process CPU/memory enforcement.
 
 ### Licensed plugins
-*   **PaaS** or shared hosting with cgroup isolation (`isolation`).
+*   **PaaS** or shared hosting with cgroup isolation (`isolation`, **Linux hosts only**).
 *   **Webhook notifications** for on-call (`notify`).
 *   Regulated environments needing **audit logs** (`security`).
 *   Exposing API/Dashboard beyond localhost with **token authentication** (`security`).

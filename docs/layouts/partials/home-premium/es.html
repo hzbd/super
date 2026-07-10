@@ -1,0 +1,103 @@
+<section class="home-section home-section--premium">
+  <div class="home-premium-header">
+    <h2 class="home-section-title">
+      Plugins oficiales
+      <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> Comercial</span>
+    </h2>
+    <p class="home-section-lead">Un solo binario <code>superd</code> para todos. Las capacidades comerciales son <strong>plugins</strong> firmados — coloque <code>plugins/*.so</code> autorizados en <code>$SUPER_ROOT</code> y añada un <code>[license].key</code> válido en <code>conf/super.toml</code>. Solo se cargan los plugins listados en la licencia.</p>
+  </div>
+  <div class="home-prerelease-notice">
+    <strong>Pre-lanzamiento:</strong> El modelo de suscripción por plugins está en desarrollo y <strong>aún no se ofrece a clientes</strong>.
+  </div>
+  <div class="home-plugin-flow" aria-label="Despliegue comercial en tres pasos">
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">1</span>
+      <div>
+        <strong>Configurar licencia</strong>
+        <div class="home-plugin-flow-desc">Pegue la clave del proveedor en <code>[license]</code> de <code>conf/super.toml</code> — define qué plugins están activos y cuándo caducan</div>
+      </div>
+    </div>
+    <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">2</span>
+      <div>
+        <strong>Desplegar plugins</strong>
+        <div class="home-plugin-flow-desc">Copie los archivos de plugin recibidos en <code>$SUPER_ROOT/plugins/</code> (p. ej. <code>security.so</code>, <code>ui.so</code>)</div>
+      </div>
+    </div>
+    <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">3</span>
+      <div>
+        <strong>Reiniciar superd</strong>
+        <div class="home-plugin-flow-desc">Al arrancar, el servicio valida la licencia y activa las funciones correspondientes — no hace falta cambiar el binario principal</div>
+      </div>
+    </div>
+  </div>
+  <div class="home-plugin-grid">
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">security</code>
+        <span class="home-plugin-file">plugins/security.so</span>
+      </div>
+      <h3>Seguridad y gobernanza</h3>
+      <ul class="home-plugin-caps">
+        <li>Autenticación Bearer en rutas API</li>
+        <li>RBAC — admin, operator, viewer</li>
+        <li>Registro de auditoría inmutable</li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/authentication">Autenticación</a>
+        <a href="/docs/05-advanced-management/access-control">Control de acceso</a>
+        <a href="/docs/05-advanced-management/operation-audit">Auditoría</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">notify</code>
+        <span class="home-plugin-file">plugins/notify.so</span>
+      </div>
+      <h3>Notificaciones de eventos</h3>
+      <ul class="home-plugin-caps">
+        <li>Webhooks — Slack, DingTalk, Feishu, URLs custom</li>
+        <li>Push en <code>process_fatal</code> y otros eventos</li>
+        <li>Hot-reload vía <code>conf/notify.toml</code></li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/event-notifications">Notificaciones</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">isolation</code>
+        <span class="home-plugin-file">plugins/isolation.so</span>
+      </div>
+      <h3>Aislamiento de recursos</h3>
+      <ul class="home-plugin-caps">
+        <li>Límites CPU/memoria con cgroups v2</li>
+        <li>Hot-update sin reiniciar el proceso</li>
+        <li>CLI <code>--cpu</code> / <code>--memory</code></li>
+      </ul>
+      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Solo Linux</strong> — no disponible en macOS, Windows ni FreeBSD. No existe <code>isolation.dylib</code>.</p>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/resource-isolation">Aislamiento</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">ui</code>
+        <span class="home-plugin-file">plugins/ui.so</span>
+      </div>
+      <h3>Panel web</h3>
+      <ul class="home-plugin-caps">
+        <li>Vue SPA embebido en el plugin</li>
+        <li>Resumen de procesos, logs en vivo, controles start/stop</li>
+        <li>License y métricas con otros plugins activos</li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/02-essentials/web-ui">Web UI</a>
+      </div>
+    </div>
+  </div>
+  <p class="home-premium-footnote">Combine plugins según la licencia. Ver la <a href="/docs/07-editions/feature-matrix">matriz de funciones</a>.</p>
+</section>

@@ -24,8 +24,8 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  build       Build all OSS binaries (Frontend + Backend)"
-	@echo "  frontend    Build only the Frontend (Vue/Vite)"
+	@echo "  build       Build OSS binaries (superd + super CLI; no embedded dashboard)"
+	@echo "  frontend    [deprecated] Build legacy OSS dashboard (unused; UI is ui.so plugin)"
 	@echo "  backend     Build only the Rust Backend (assumes frontend is ready)"
 	@echo "  clean       Clean up build artifacts (dist and target)"
 	@echo "  check       Run cargo check"
@@ -54,9 +54,9 @@ backend:
 	@cargo build --release $(BINARIES)
 	@echo "$(GREEN)✅ Backend build complete.$(NC)"
 
-# 3. Full Build Workflow
+# 3. Full Build Workflow (OSS: Rust only; UI is commercial ui.so plugin)
 .PHONY: build
-build: frontend backend
+build: backend
 	@echo "$(GREEN)🎉 All OSS binaries built successfully!$(NC)"
 	@echo "📂 Locations:"
 	@echo "   - Server: $(TARGET_DIR)/superd"

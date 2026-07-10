@@ -76,9 +76,13 @@ curl http://127.0.0.1:8080
 # Directory listing HTML from the managed Python server
 ```
 
-## 5. Web Dashboard
+## 5. Web UI
 
-Open **[http://127.0.0.1:9002](http://127.0.0.1:9002)** — you should see `demo-web`, live logs, and start/stop controls.
+Open **[http://127.0.0.1:9002](http://127.0.0.1:9002)**.
+
+**OSS only:** You will see a short HTML notice — there is **no built-in dashboard**. Manage processes with the `super` CLI or `/api/*` (see [Web UI](/docs/02-essentials/web-ui)).
+
+**With the `ui` plugin:** The full dashboard (process list, logs, controls) is served from `plugins/ui.{so,dylib}`.
 
 ---
 
@@ -100,15 +104,22 @@ Commercial features use the **same OSS `superd` and `super` binaries** — drop 
 $SUPER_ROOT/
   conf/super.toml           # [license].key + auth_secret (security plugin)
   plugins/security.dylib    # API auth + RBAC + audit
+  plugins/ui.dylib          # Dashboard (optional; build from super-plugins)
 ```
 
-**Build & run** (OSS repo only — no super-plugins build required for the daemon):
+**Build & run:**
 
 ```bash
+# OSS daemon (from super repo)
 cd super
-cargo build --release -p superd --features web-ui -p super-cli
+cargo build --release -p superd -p super-cli
 export SUPER_ROOT=/path/to/instance
 ./target/release/superd
+
+# Commercial plugins + dashboard (from super-plugins repo)
+cd super-plugins
+make build-all
+cp dist/plugins/* "$SUPER_ROOT/plugins/"
 ```
 
 **API authentication** (requires `security` plugin + `auth_secret`):

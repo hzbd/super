@@ -1,0 +1,7 @@
+{{- $lang := .Page.Language.Lang -}}
+{{- $partial := printf "home-premium/%s.html" $lang -}}
+{{- if templates.Exists (printf "partials/%s" $partial) -}}
+  {{ partial $partial . }}
+{{- else -}}
+  {{ partial "home-premium/en.html" . }}
+{{- end -}}

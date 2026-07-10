@@ -2,11 +2,9 @@
 title: ""
 description: "Project Super とは何か、インストールと運用方法。"
 ---
-<link rel="stylesheet" href="/css/docs-home.css">
 
-<div class="docs-home">
 
-  <section class="home-hero">
+<section class="home-hero">
     <h1>Project Super</h1>
     <p class="hero-lead">エッジデバイスとサーバー向けの軽量プロセスオーケストレーター — Supervisor や PM2 に代わる API ファーストの現代的な選択肢。</p>
     <p>Rust 製プロセスマネージャ <code>superd</code> — デプロイは 1 バイナリ。TOML または REST API でプログラムを定義。自動再起動、依存順起動、ヘルスチェック。CLI、ブラウザ、HTTP API で操作。</p>
@@ -62,69 +60,7 @@ description: "Project Super とは何か、インストールと運用方法。"
     </div>
   </section>
 
-  <section class="home-section home-section--premium">
-    <h2 class="home-section-title">
-      ライセンスプラグイン
-      <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> 商用</span>
-    </h2>
-    <p class="home-section-lead">同一の <code>superd</code> バイナリ — <code>plugins/*.so</code> と <code>conf/super.toml</code> の有効な <code>[license].key</code> で有効化。</p>
-    <div class="home-grid home-grid--3">
-      <article class="home-feature home-feature--premium">
-        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> プラグイン</span>
-        <h3>API 認証</h3>
-        <p>全エンドポイントで Bearer トークン。ダッシュボードと API はログイン必須。</p>
-        <a href="/docs/05-advanced-management/authentication">認証 →</a>
-      </article>
-      <article class="home-feature home-feature--premium">
-        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> プラグイン</span>
-        <h3>RBAC</h3>
-        <p>オペレーターとテナント向けロールベースアクセス制御。</p>
-        <a href="/docs/05-advanced-management/access-control">アクセス制御 →</a>
-      </article>
-      <article class="home-feature home-feature--premium">
-        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> プラグイン</span>
-        <h3>Cgroup 分離</h3>
-        <p>Linux cgroups v2 による CPU/メモリ上限。</p>
-        <a href="/docs/05-advanced-management/resource-isolation">リソース分離 →</a>
-      </article>
-      <article class="home-feature home-feature--premium">
-        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> プラグイン</span>
-        <h3>Webhook 通知</h3>
-        <p>Slack、钉钉、飞书などへ <code>process_fatal</code> 等をプッシュ。</p>
-        <a href="/docs/05-advanced-management/event-notifications">イベント通知 →</a>
-      </article>
-      <article class="home-feature home-feature--premium">
-        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> プラグイン</span>
-        <h3>監査ログ</h3>
-        <p>誰が何を変更したかの不変記録 — コンプライアンス向け。</p>
-        <a href="/docs/05-advanced-management/operation-audit">操作監査 →</a>
-      </article>
-    </div>
-  </section>
-
-  <section class="home-section">
-    <h2 class="home-section-title">組み込みダッシュボード</h2>
-    <div class="home-grid home-grid--2">
-      <article class="home-card">
-        <div class="home-card-media">
-          <img src="/images/oss_dash.01.png" alt="プロセス一覧とホストメトリクス">
-        </div>
-        <div class="home-card-body">
-          <h3>概要</h3>
-          <p>プロセス状態、CPU/RAM、起動/停止 — <code>superd</code> が提供。</p>
-        </div>
-      </article>
-      <article class="home-card">
-        <div class="home-card-media">
-          <img src="/images/oss_dash.02.png" alt="プログラム詳細とライブログ">
-        </div>
-        <div class="home-card-body">
-          <h3>ログと詳細</h3>
-          <p>stdout/stderr、フック、ヘルスチェックを一画面で。</p>
-        </div>
-      </article>
-    </div>
-  </section>
+  {{< home-premium >}}
 
   <section class="home-section">
     <h2 class="home-section-title">API ファースト</h2>
@@ -146,5 +82,3 @@ description: "Project Super とは何か、インストールと運用方法。"
       </div>
     </div>
   </section>
-
-</div>

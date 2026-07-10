@@ -1,14 +1,21 @@
 ---
 title: "Web UI"
 weight: 5
-description: "Using the built-in dashboard for monitoring and control."
+description: "Dashboard via the commercial ui plugin; OSS is API and CLI only."
 ---
 
-Super includes a lightweight, single-page application (SPA) dashboard embedded directly in the `superd` binary. No external web server (like Nginx) is required.
+## OSS vs commercial
 
-## Accessing the Dashboard
+| Edition | Web UI at `/` |
+| :--- | :--- |
+| **OSS** (no plugins) | Static notice — **no dashboard**. Use `super` CLI or `/api/*`. |
+| **Licensed** (`ui` plugin) | Full SPA dashboard embedded in `plugins/ui.{so,dylib}`. |
 
-By default, the dashboard is available at:
+OSS `superd` does **not** embed a dashboard binary. The commercial **`ui`** plugin ships the Vue dashboard (`super-plugins/dashboard`) via `super_plugin_ui_v1`.
+
+## Accessing the dashboard (licensed)
+
+With the `ui` plugin loaded and authorized in `[license].key`:
 
 **http://localhost:9002**
 
@@ -16,22 +23,35 @@ By default, the dashboard is available at:
   Assuming `port = 9002` in your config
 {{< /callout >}}
 
-![OSS Dashboard](/images/oss_dash.01.png "OSS Dashboard")
-![Program Detail](/images/oss_dash.02.png "Program Detail")
+![Dashboard overview](/images/oss_dash.01.png "Dashboard overview")
+![Program detail](/images/oss_dash.02.png "Program detail")
 
-## Features
+### Build & deploy the ui plugin
 
-1.  **Overview**: See status (Running, Stopped, Fatal) of all processes at a glance.
-2.  **System metrics**: Host CPU and memory sparklines at the top of the dashboard (refreshed every ~3s).
-3.  **Process details**: Configuration, hooks, health checks, and environment in the detail drawer.
-4.  **Log console**: Live stdout/stderr streaming for the selected process.
-5.  **Actions**: Start, stop, or restart processes with one click.
+Dashboard assets are built in the private **`super-plugins`** repo:
+
+```bash
+cd super-plugins
+make frontend    # dashboard/dist
+make plugins     # → dist/plugins/ui.dylib (or .so)
+cp dist/plugins/ui.* "$SUPER_ROOT/plugins/"
+```
+
+Restart `superd` after updating plugins.
+
+## Features (ui plugin)
+
+1.  **Overview**: Process status (Running, Stopped, Fatal) at a glance.
+2.  **System metrics**: Host CPU and memory sparklines (~3s refresh).
+3.  **Process details**: Configuration, hooks, health checks, environment.
+4.  **Log console**: Live stdout/stderr streaming.
+5.  **Actions**: Start, stop, or restart processes.
+6.  **License page**: Subscription info when `[license].key` is configured (`GET /api/system/license`).
 
 ## Security
 
-The OSS version of the Web UI allows unrestricted access to anyone who can reach the port.
+**OSS (no `security` plugin):** The API and any static page at `/` are reachable without authentication — restrict network access.
 
-> **Security Tip**: If you are exposing the dashboard to a public network, you should:
->
-> 1.  Use a reverse proxy (like Nginx) with Basic Auth.
-> 2.  Or load the **`security`** licensed plugin, which enables built-in **token authentication** and **RBAC** for the API and dashboard.
+**With `security` plugin:** Token authentication and RBAC apply to the API and dashboard. Log in via `super login <auth_secret>` or create API tokens.
+
+> **Security tip:** When exposing beyond localhost, load the **`security`** plugin and set a strong `auth_secret` in `conf/super.toml`.

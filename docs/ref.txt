@@ -48,5 +48,6 @@ Homepage-only multilingual setup (docs stay English):
 
 - Config: `hugo.yaml` → `languages` (en, zh-cn, ja, es, ru) + navbar **Language** switch.
 - Content: `_index.md` plus `_index.zh-cn.md`, `_index.ja.md`, `_index.es.md`, `_index.ru.md`.
-- Shared styles: `static/css/docs-home.css`.
+- Shared styles: `assets/css/custom.css` (Hextra bundles into `<head>`; `static/css/docs-home.css` kept in sync).
+- Homepage plugin block: `layouts/partials/home-premium/*.html` + `{{< home-premium >}}` shortcode (avoid raw HTML in Markdown).
 - Doc links on translated homepages and in the navbar point to `/docs/...` (English documentation only).

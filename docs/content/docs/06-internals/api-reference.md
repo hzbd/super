@@ -267,10 +267,42 @@ Manage access tokens for API authorization.
 
 ## System Configuration (licensed plugins 💎)
 
-> **Without the relevant plugin**: Routes below return **404 Not Found**.
+> **License route** is served by **OSS core** when a valid `[license].key` is configured at startup.  
+> **Notify routes** require the `notify` plugin; without it they return **404 Not Found**.
+
+> **Authentication:** When the `security` plugin is loaded, protected routes (including license) require a valid Bearer token — same as other authenticated API calls.
 
 ### Get License Info
 *   **GET** `/api/system/license`
+
+Returns verified subscription metadata plus runtime plugin versions (versions are **not** part of the signed license claims).
+
+**Auth:** Required when `security` plugin is active (`Authorization: Bearer <token>`).
+
+**Response `200`:**
+```json
+{
+  "issued_to": "Customer Name",
+  "issued_at": 1710000000,
+  "major_version": 1,
+  "plugins": ["security", "notify", "ui"],
+  "expires_at": 1741536000,
+  "license_id": "550e8400-e29b-41d4-a716-446655440000",
+  "features": ["auth", "notify", "dashboard"],
+  "plugin_versions": {
+    "security": "0.1.0",
+    "ui": "0.1.0"
+  }
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `expires_at` | Omitted when license is perpetual (no expiry in claims) |
+| `features` | UI feature codes derived from authorized `plugins[]` |
+| `plugin_versions` | Loaded plugin crate versions at runtime |
+
+**Errors:** `404` if no license configured; `401` if auth required and missing/invalid token.
 
 ### Manage Notifications
 View or hot-reload webhook channels.

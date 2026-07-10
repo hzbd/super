@@ -1,75 +1,110 @@
 use axum::{
     Router,
     http::{HeaderValue, StatusCode, Uri, header},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
-use rust_embed::RustEmbed;
+use common::license::LicenseInfo;
 use super_core::{
     ManagerHandle, api, bootstrap,
-    plugin::{PluginHost, attach_http_plugins},
+    plugin::{PluginHost, attach_http_plugins, load_ui_plugin, normalize_ui_path},
     resolve_root,
 };
 use tokio::signal;
 
-#[derive(RustEmbed)]
-#[folder = "../dashboard/dist"]
-struct OssAssets;
-
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-async fn static_handler_with_auth(uri: Uri, auth_required: bool) -> impl IntoResponse {
-    static_handler(uri, auth_required).await
-}
+const OSS_UI_MESSAGE: &str = r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Super Process Manager</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.5; }
+    code { background: #f4f4f5; padding: 0.1rem 0.35rem; border-radius: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Super Process Manager</h1>
+  <p>OSS edition exposes the HTTP API and CLI only. There is no built-in web dashboard.</p>
+  <p>Use <code>super</code> CLI or <code>/api/*</code> endpoints. Licensed subscriptions include the official <code>ui</code> plugin.</p>
+  <p>Version: VERSION_PLACEHOLDER</p>
+</body>
+</html>
+"#;
 
-async fn static_handler(uri: Uri, auth_required: bool) -> impl IntoResponse {
-    let path = uri.path().trim_start_matches('/').to_string();
-
-    if path.starts_with("api/") {
+async fn ui_fallback_handler(
+    uri: Uri,
+    ui: Option<std::sync::Arc<super_core::plugin::UiPluginHandle>>,
+    auth_required: bool,
+    is_licensed: bool,
+) -> Response {
+    let path = uri.path();
+    if path.starts_with("/api/") || path == "/metrics" || path.starts_with("/ws") {
         return StatusCode::NOT_FOUND.into_response();
     }
 
-    let file_path = if path.is_empty() { "index.html" } else { &path };
-
-    let get_index_html = || -> Option<String> {
-        OssAssets::get("index.html").and_then(|content| {
-            std::str::from_utf8(content.data.as_ref()).ok().map(|html_str| {
-                let config_js = format!(
-                    "window.__SUPER_CONFIG__ = {{ edition: 'oss', auth_required: {}, version: '{}' }};",
-                    auth_required, VERSION
-                );
-                html_str.replace("// __INJECT_CONFIG__", &config_js)
-            })
-        })
+    let Some(ui) = ui else {
+        let html = OSS_UI_MESSAGE.replace("VERSION_PLACEHOLDER", VERSION);
+        return html_response(&html);
     };
 
-    match OssAssets::get(file_path) {
-        Some(content) => {
-            if file_path == "index.html"
-                && let Some(injected) = get_index_html()
-            {
-                let mut headers = axum::http::HeaderMap::new();
-                headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
-                return (headers, injected).into_response();
-            }
+    serve_ui_asset(&ui, &normalize_ui_path(path), auth_required, is_licensed, false)
+        .unwrap_or_else(|| spa_fallback(&ui, auth_required, is_licensed))
+}
 
-            let mime = mime_guess::from_path(file_path).first_or_octet_stream();
-            let content_type = HeaderValue::from_str(mime.as_ref())
-                .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream"));
+fn spa_fallback(
+    ui: &super_core::plugin::UiPluginHandle,
+    auth_required: bool,
+    is_licensed: bool,
+) -> Response {
+    serve_ui_asset(ui, "index.html", auth_required, is_licensed, true)
+        .unwrap_or(StatusCode::NOT_FOUND.into_response())
+}
 
-            let mut headers = axum::http::HeaderMap::new();
-            headers.insert(header::CONTENT_TYPE, content_type);
+fn serve_ui_asset(
+    ui: &super_core::plugin::UiPluginHandle,
+    file_path: &str,
+    auth_required: bool,
+    is_licensed: bool,
+    inject_config: bool,
+) -> Option<Response> {
+    let asset = ui.resolve(file_path)?;
+    let body = if inject_config || file_path == "index.html" {
+        inject_ui_config(asset.data, auth_required, is_licensed)
+    } else {
+        bytes::Bytes::copy_from_slice(asset.data)
+    };
 
-            (headers, content.data).into_response()
-        }
-        None => {
-            if let Some(injected) = get_index_html() {
-                let mut headers = axum::http::HeaderMap::new();
-                headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
-                return (headers, injected).into_response();
-            }
-            StatusCode::NOT_FOUND.into_response()
-        }
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_str(asset.mime).unwrap_or_else(|_| {
+            HeaderValue::from_static("application/octet-stream")
+        }),
+    );
+
+    Some((headers, body).into_response())
+}
+
+fn inject_ui_config(raw_html: &[u8], auth_required: bool, is_licensed: bool) -> bytes::Bytes {
+    let html_str = String::from_utf8_lossy(raw_html);
+    let edition = if is_licensed { "premium" } else { "oss" };
+    let config_js = format!(
+        "window.__SUPER_CONFIG__ = {{ edition: '{edition}', auth_required: {auth_required}, version: '{VERSION}' }};",
+        auth_required = auth_required,
+    );
+    let mut injected =
+        html_str.replace("window.__SUPER_CONFIG__ = defaultConfig;", &config_js);
+    if injected == html_str {
+        injected = html_str.replace("// __INJECT_CONFIG__", &config_js);
     }
+    bytes::Bytes::from(injected.into_bytes())
+}
+
+fn html_response(html: &str) -> Response {
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
+    (headers, html.to_string()).into_response()
 }
 
 async fn shutdown_signal(mut rx: tokio::sync::broadcast::Receiver<()>, manager: ManagerHandle) {
@@ -120,6 +155,7 @@ async fn main() -> anyhow::Result<()> {
     let mut plugin_runtime = plugin_host.runtime;
     let auth_expected = plugin_runtime.loaded_ids.iter().any(|id| id == "security");
     let extension = plugin_runtime.take_extension();
+    let ui_plugin = load_ui_plugin(&plugin_runtime);
 
     let core = bootstrap(extension).await?;
 
@@ -131,12 +167,28 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
+    if ui_plugin.is_some() {
+        tracing::info!("Licensed UI plugin active");
+    }
+
+    let license_info = plugin_host.claims.as_ref().map(|claims| {
+        let mut info = LicenseInfo::from(claims);
+        info.plugin_versions = plugin_runtime.plugin_versions.clone();
+        info
+    });
+    if license_info.is_some() {
+        tracing::info!("License API enabled at GET /api/system/license");
+    } else {
+        tracing::warn!("No license in AppState; GET /api/system/license will return 404");
+    }
+
     let base_router = api::make_api_router(
         core.manager_handle.clone(),
         core.log_tx,
         core.shutdown_tx,
         core.config.clone(),
         !auth_expected,
+        license_info,
     );
 
     let (api_router, auth_required) =
@@ -147,9 +199,14 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let auth_flag = auth_required;
-    let app = Router::new()
-        .merge(api_router)
-        .fallback(move |uri: Uri| async move { static_handler_with_auth(uri, auth_flag).await });
+    let licensed_flag = is_licensed;
+    let ui_handle = ui_plugin.clone();
+    let app = Router::new().merge(api_router).fallback(move |uri: Uri| {
+        let ui = ui_handle.clone();
+        async move {
+            ui_fallback_handler(uri, ui, auth_flag, licensed_flag).await
+        }
+    });
 
     let addr = format!("{}:{}", core.config.server.host, core.config.server.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;

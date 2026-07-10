@@ -125,7 +125,20 @@ pub fn attach_http_plugins(
     runtime: &PluginRuntime,
     paths: &SystemPaths,
 ) -> anyhow::Result<(Router, bool)> {
-    let init_json = serde_json::json!({ "super_root": paths.root });
+    let loaded_plugins: Vec<_> = runtime
+        .plugin_versions
+        .iter()
+        .map(|(id, version)| {
+            serde_json::json!({
+                "id": id,
+                "version": version,
+            })
+        })
+        .collect();
+    let init_json = serde_json::json!({
+        "super_root": paths.root,
+        "loaded_plugins": loaded_plugins,
+    });
     let init_payload = init_json.to_string();
 
     let mut plugin_routes: Vec<(RouteSpec, Arc<HttpPluginHandle>)> = Vec::new();
@@ -184,7 +197,9 @@ pub fn attach_http_plugins(
         plugin_router = plugin_router.route(&path, method_router.with_state(handle));
     }
 
-    let mut router = router.merge(plugin_router);
+    // Core OSS routes take precedence over plugin-registered paths (e.g. legacy
+    // `/api/system/license` on security.so must not override the native handler).
+    let mut router = plugin_router.merge(router);
 
     if let Some(handle) = auth_plugin.clone() {
         router = router

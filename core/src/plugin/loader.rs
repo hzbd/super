@@ -1,12 +1,14 @@
 use crate::extension::{Extension, ExtensionStack, NoOpExtension};
 use crate::plugin::adapter::PluginExtensionAdapter;
-use common::plugin_abi::{PLUGIN_SYMBOL, SuperPluginV1};
+use common::plugin_abi::{PLUGIN_SYMBOL, SuperPluginV1, read_plugin_version};
 use libloading::Library;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{error, info};
 
 pub struct PluginRuntime {
     pub loaded_ids: Vec<String>,
+    pub plugin_versions: HashMap<String, String>,
     pub extension: Box<dyn Extension>,
     libraries: Vec<(String, Library)>,
 }
@@ -15,6 +17,7 @@ impl PluginRuntime {
     pub fn empty() -> Self {
         Self {
             loaded_ids: Vec::new(),
+            plugin_versions: HashMap::new(),
             extension: Box::new(NoOpExtension),
             libraries: Vec::new(),
         }
@@ -38,6 +41,7 @@ pub fn load_authorized_plugins(plugins_dir: &Path, authorized_ids: &[String]) ->
     let mut stack = ExtensionStack::new();
     let mut libraries = Vec::new();
     let mut loaded_ids = Vec::new();
+    let mut plugin_versions = HashMap::new();
 
     for id in authorized_ids {
         let Some(lib_path) = resolve_plugin_path(plugins_dir, id) else {
@@ -45,8 +49,16 @@ pub fn load_authorized_plugins(plugins_dir: &Path, authorized_ids: &[String]) ->
         };
 
         match try_load_plugin(&lib_path, id) {
-            Ok((library, adapter)) => {
-                info!("Plugin '{}' loaded from {:?}", id, lib_path);
+            Ok((library, adapter, version)) => {
+                if let Some(version) = version {
+                    info!(
+                        "Plugin '{}' v{} loaded from {:?}",
+                        id, version, lib_path
+                    );
+                    plugin_versions.insert(id.clone(), version);
+                } else {
+                    info!("Plugin '{}' loaded from {:?}", id, lib_path);
+                }
                 stack.push(Box::new(adapter));
                 libraries.push((id.clone(), library));
                 loaded_ids.push(id.clone());
@@ -65,6 +77,7 @@ pub fn load_authorized_plugins(plugins_dir: &Path, authorized_ids: &[String]) ->
 
     PluginRuntime {
         loaded_ids,
+        plugin_versions,
         extension,
         libraries,
     }
@@ -73,7 +86,7 @@ pub fn load_authorized_plugins(plugins_dir: &Path, authorized_ids: &[String]) ->
 fn try_load_plugin(
     lib_path: &Path,
     expected_id: &str,
-) -> anyhow::Result<(Library, PluginExtensionAdapter)> {
+) -> anyhow::Result<(Library, PluginExtensionAdapter, Option<String>)> {
     // SAFETY: plugin must export `super_plugin_v1` with stable C ABI.
     let library = unsafe { Library::new(lib_path) }?;
     let vtable = unsafe {
@@ -81,9 +94,10 @@ fn try_load_plugin(
             library.get(PLUGIN_SYMBOL)?;
         symbol()
     };
+    let version = read_plugin_version(&vtable);
 
     let adapter = PluginExtensionAdapter::new(expected_id, vtable)?;
-    Ok((library, adapter))
+    Ok((library, adapter, version))
 }
 
 /// Resolve `plugins/{id}.so` (Linux) or `plugins/{id}.dylib` (macOS).

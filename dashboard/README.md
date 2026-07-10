@@ -1,5 +1,8 @@
-# Vue 3 + TypeScript + Vite
+# Dashboard (archived OSS embed)
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+The OSS embedded dashboard is **removed**. Web UI is delivered only via the commercial **`ui` plugin** (`ui.so` with embedded `dashboard/dist`).
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+- **OSS:** `superd` + CLI + HTTP API only.
+- **Subscription:** build `super-plugins/dashboard`, then `scripts/build-plugin-ui.sh` → `plugins/ui.so`.
+
+Dashboard source of truth: `super-plugins/dashboard`.

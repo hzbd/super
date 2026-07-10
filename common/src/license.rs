@@ -2,10 +2,24 @@ use anyhow::Context;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use utoipa::ToSchema;
 
 pub const PUBLIC_KEY_BYTES: &[u8] = include_bytes!("../keys/public.key");
+
+/// Official commercial plugin IDs allowed in signed licenses.
+pub const LICENSED_PLUGIN_IDS: &[&str] = &["security", "isolation", "notify", "ui"];
+
+/// Reject unknown plugin IDs before signing a license.
+pub fn validate_licensed_plugins(plugins: &[String]) -> anyhow::Result<()> {
+    for id in plugins {
+        if !LICENSED_PLUGIN_IDS.contains(&id.as_str()) {
+            anyhow::bail!("Unknown plugin ID '{id}'. Allowed: {LICENSED_PLUGIN_IDS:?}");
+        }
+    }
+    Ok(())
+}
 
 /// Signed license claims. The entire struct is covered by Ed25519 signature.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
@@ -36,6 +50,9 @@ pub struct LicenseInfo {
     pub license_id: Option<String>,
     /// UI feature codes mapped from authorized plugins.
     pub features: Vec<String>,
+    /// Loaded plugin release versions (runtime; not part of signed claims).
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub plugin_versions: HashMap<String, String>,
 }
 
 impl From<&LicenseClaims> for LicenseInfo {
@@ -48,6 +65,7 @@ impl From<&LicenseClaims> for LicenseInfo {
             expires_at: claims.expires_at,
             license_id: claims.license_id.clone(),
             features: plugins_to_features(&claims.plugins),
+            plugin_versions: HashMap::new(),
         }
     }
 }
@@ -63,6 +81,7 @@ pub fn plugins_to_features(plugins: &[String]) -> Vec<String> {
             }
             "notify" => features.push("notify".into()),
             "isolation" => features.push("cgroups".into()),
+            "ui" => features.push("dashboard".into()),
             other => features.push(other.to_string()),
         }
     }
@@ -172,6 +191,11 @@ mod tests {
         assert!(features.contains(&"audit".to_string()));
         assert!(features.contains(&"cgroups".to_string()));
         assert!(features.contains(&"notify".to_string()));
+    }
+
+    #[test]
+    fn validate_licensed_plugins_accepts_ui() {
+        validate_licensed_plugins(&["ui".into()]).unwrap();
     }
 
     #[test]

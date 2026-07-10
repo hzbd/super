@@ -14,9 +14,9 @@ use axum::{
 
 use common::{
     ArtifactConfig, BatchAction, BatchProgramRequest, BatchProgramResponse, CreateProgramRequest,
-    HealthCheck, HealthResponse, ProcessStatus, ProgramConfig, ProgramHooks, ProgramInfo,
-    ProgramLogFile, ProgramLogsResponse, ProgramSummary, SignalProgramRequest, StackApplyRequest,
-    SystemStats, UpdateProgramRequest, WsMessage,
+    HealthCheck, HealthResponse, LicenseInfo, ProcessStatus, ProgramConfig, ProgramHooks,
+    ProgramInfo, ProgramLogFile, ProgramLogsResponse, ProgramSummary, SignalProgramRequest,
+    StackApplyRequest, SystemStats, UpdateProgramRequest, WsMessage,
 };
 
 use crate::logger::{self, LogSource};
@@ -37,6 +37,8 @@ pub struct AppState {
     // Channel to notify main thread of shutdown
     pub shutdown_tx: broadcast::Sender<()>,
     pub config: ServerConfig,
+    /// Verified license + loaded plugin versions (None in OSS mode).
+    pub license: Option<LicenseInfo>,
 }
 
 pub struct AppError(pub StatusCode, pub anyhow::Error);
@@ -89,6 +91,7 @@ struct LogQueryParams {
         system_reload,
         system_shutdown,
         system_stats,
+        system_license,
         metrics_handler
     ),
     components(
@@ -111,6 +114,7 @@ struct LogQueryParams {
             ProgramLogsResponse,
             ProgramLogFile,
             SystemStats,
+            LicenseInfo,
             common::AutorestartPolicy,
         )
     ),
@@ -135,12 +139,14 @@ pub fn make_api_router(
     shutdown_tx: broadcast::Sender<()>,
     config: ServerConfig,
     mount_docs: bool,
+    license: Option<LicenseInfo>,
 ) -> Router {
     let state = AppState {
         manager,
         log_tx,
         shutdown_tx,
         config: config.clone(),
+        license,
     };
 
     // 1. Business API routes (require AppState)
@@ -167,6 +173,7 @@ pub fn make_api_router(
         .route("/api/system/shutdown", post(system_shutdown))
         .route("/api/system/reload", post(system_reload))
         .route("/api/system/stats", get(system_stats))
+        .route("/api/system/license", get(system_license))
         .route("/ws", get(ws_handler))
         .route("/metrics", get(metrics_handler))
         .with_state(state);
@@ -640,6 +647,24 @@ async fn system_stats(State(state): State<AppState>) -> Result<Json<SystemStats>
         .await
         .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(Json(stats))
+}
+
+/// Verified subscription license (requires auth when security plugin is loaded).
+#[utoipa::path(
+    get,
+    path = "/api/system/license",
+    tag = "system",
+    responses(
+        (status = 200, description = "License info", body = LicenseInfo),
+        (status = 404, description = "No license configured"),
+    )
+)]
+async fn system_license(State(state): State<AppState>) -> Result<Json<LicenseInfo>, AppError> {
+    state
+        .license
+        .clone()
+        .ok_or_else(|| AppError(StatusCode::NOT_FOUND, anyhow::anyhow!("No license configured")))
+        .map(Json)
 }
 
 /// System Health Check

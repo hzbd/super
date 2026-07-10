@@ -1,0 +1,103 @@
+<section class="home-section home-section--premium">
+  <div class="home-premium-header">
+    <h2 class="home-section-title">
+      Официальные плагины
+      <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> Коммерческая</span>
+    </h2>
+    <p class="home-section-lead">Один бинарник <code>superd</code> для всех. Коммерческие возможности — подписанные <strong>плагины</strong>: положите авторизованные <code>plugins/*.so</code> в <code>$SUPER_ROOT</code> и добавьте действующий <code>[license].key</code> в <code>conf/super.toml</code>. Загружаются только плагины из лицензии.</p>
+  </div>
+  <div class="home-prerelease-notice">
+    <strong>Предрелиз:</strong> Модель подписки на плагины в разработке — <strong>пока не продаётся клиентам</strong>.
+  </div>
+  <div class="home-plugin-flow" aria-label="Развёртывание коммерческой версии в три шага">
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">1</span>
+      <div>
+        <strong>Настроить лицензию</strong>
+        <div class="home-plugin-flow-desc">Вставьте ключ от поставщика в секцию <code>[license]</code> файла <code>conf/super.toml</code> — определяет активные плагины и срок действия</div>
+      </div>
+    </div>
+    <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">2</span>
+      <div>
+        <strong>Разместить файлы плагинов</strong>
+        <div class="home-plugin-flow-desc">Скопируйте полученные файлы в <code>$SUPER_ROOT/plugins/</code> (например, <code>security.so</code>, <code>ui.so</code>)</div>
+      </div>
+    </div>
+    <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
+    <div class="home-plugin-flow-step">
+      <span class="home-plugin-flow-num">3</span>
+      <div>
+        <strong>Перезапустить superd</strong>
+        <div class="home-plugin-flow-desc">При запуске служба проверяет лицензию и включает соответствующие функции — менять основной бинарник не нужно</div>
+      </div>
+    </div>
+  </div>
+  <div class="home-plugin-grid">
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">security</code>
+        <span class="home-plugin-file">plugins/security.so</span>
+      </div>
+      <h3>Безопасность и governance</h3>
+      <ul class="home-plugin-caps">
+        <li>Bearer-аутентификация на API-маршрутах</li>
+        <li>RBAC — admin, operator, viewer</li>
+        <li>Неизменяемый журнал аудита операций</li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/authentication">Аутентификация</a>
+        <a href="/docs/05-advanced-management/access-control">Контроль доступа</a>
+        <a href="/docs/05-advanced-management/operation-audit">Аудит</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">notify</code>
+        <span class="home-plugin-file">plugins/notify.so</span>
+      </div>
+      <h3>Уведомления о событиях</h3>
+      <ul class="home-plugin-caps">
+        <li>Webhook — Slack, DingTalk, Feishu, custom URL</li>
+        <li>Push при <code>process_fatal</code> и других событиях</li>
+        <li>Hot-reload через <code>conf/notify.toml</code></li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/event-notifications">Уведомления</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">isolation</code>
+        <span class="home-plugin-file">plugins/isolation.so</span>
+      </div>
+      <h3>Изоляция ресурсов</h3>
+      <ul class="home-plugin-caps">
+        <li>Лимиты CPU/памяти через cgroups v2</li>
+        <li>Hot-update лимитов без перезапуска процесса</li>
+        <li>CLI <code>--cpu</code> / <code>--memory</code></li>
+      </ul>
+      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Только Linux</strong> — недоступен на macOS, Windows и FreeBSD. Нет <code>isolation.dylib</code>.</p>
+      <div class="home-plugin-links">
+        <a href="/docs/05-advanced-management/resource-isolation">Изоляция</a>
+      </div>
+    </div>
+    <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
+        <code class="home-plugin-id">ui</code>
+        <span class="home-plugin-file">plugins/ui.so</span>
+      </div>
+      <h3>Web-панель</h3>
+      <ul class="home-plugin-caps">
+        <li>Vue SPA в плагине</li>
+        <li>Обзор процессов, live-логи, start/stop</li>
+        <li>License и метрики при активных других плагинах</li>
+      </ul>
+      <div class="home-plugin-links">
+        <a href="/docs/02-essentials/web-ui">Web UI</a>
+      </div>
+    </div>
+  </div>
+  <p class="home-premium-footnote">Комбинируйте плагины по лицензии. См. <a href="/docs/07-editions/feature-matrix">матрицу функций</a>.</p>
+</section>
