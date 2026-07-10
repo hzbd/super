@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 /// Linux cgroup resource limits (CPU / memory). Enforced when the isolation plugin is loaded.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, ToSchema)]
 pub struct ResourceLimits {
     /// CPU quota percent (50.0 = half a core, 200.0 = two cores).
     #[schema(example = 50.0)]

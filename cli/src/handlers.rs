@@ -27,6 +27,37 @@ fn parse_autorestart(s: &str) -> anyhow::Result<AutorestartPolicy> {
     }
 }
 
+fn update_requires_restart(payload: &UpdateProgramRequest, ota_triggered: bool) -> bool {
+    if ota_triggered {
+        return true;
+    }
+    payload.name.is_some()
+        || payload.command.is_some()
+        || payload.args.is_some()
+        || payload.env.is_some()
+        || payload.env_file.is_some()
+        || payload.cwd.is_some()
+        || payload.user.is_some()
+        || payload.autostart.is_some()
+        || payload.retry_limit.is_some()
+        || payload.autorestart.is_some()
+        || payload.exitcodes.is_some()
+        || payload.startsecs.is_some()
+        || payload.stopsecs.is_some()
+        || payload.priority.is_some()
+        || payload.stdout_logfile.is_some()
+        || payload.stderr_logfile.is_some()
+        || payload.group.is_some()
+        || payload.depends_on.is_some()
+        || payload.health_check.is_some()
+        || payload.hooks.is_some()
+        || payload.cron.is_some()
+}
+
+fn is_live_resource_limits_update(payload: &UpdateProgramRequest, ota_triggered: bool) -> bool {
+    payload.resource_limits.is_some() && !update_requires_restart(payload, ota_triggered)
+}
+
 pub async fn check_resp(resp: reqwest::Response) -> anyhow::Result<()> {
     let status = resp.status();
     if status.is_success() {
@@ -521,6 +552,11 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
         if resp.status().is_success() {
             if ota_triggered {
                 println!("OTA update triggered for '{}'.", target);
+            } else if is_live_resource_limits_update(&payload, ota_triggered) {
+                println!(
+                    "Resource limits updated for '{}' (live; no restart required).",
+                    target
+                );
             } else {
                 println!("Configuration updated for '{}'. Restart required.", target);
             }

@@ -10,13 +10,16 @@ pub mod license;
 pub mod paths;
 pub mod plugin_abi;
 pub mod plugin_async;
+pub mod plugin_error;
 pub mod plugin_http_abi;
 pub mod resources;
 
 pub use paths::resolve_super_root;
 
 pub use auth::{AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole};
+pub use license::{LicenseClaims, LicenseInfo, plugins_to_features, verify_license};
 pub use plugin_abi::{PLUGIN_API_VERSION, PLUGIN_SYMBOL, SuperPluginV1};
+pub use plugin_error::{set_last_plugin_error, take_last_plugin_error};
 pub use plugin_http_abi::{HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL, SuperPluginHttpV1};
 pub use resources::ResourceLimits;
 

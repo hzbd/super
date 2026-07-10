@@ -1,6 +1,6 @@
 use crate::extension::Extension;
 use common::plugin_abi::SuperPluginV1;
-use common::{ProgramConfig, SystemEvent};
+use common::{ProgramConfig, SystemEvent, take_last_plugin_error};
 use std::ffi::CStr;
 use uuid::Uuid;
 
@@ -16,6 +16,11 @@ type OnUpdateFn = unsafe extern "C" fn(
 type CollectMetricsFn = unsafe extern "C" fn(*mut std::ffi::c_char, usize) -> usize;
 type OnEventFn = unsafe extern "C" fn(*const std::ffi::c_char) -> i32;
 type OnReloadFn = unsafe extern "C" fn() -> i32;
+
+fn plugin_hook_error(plugin: &str, hook: &str, code: i32) -> anyhow::Error {
+    let detail = take_last_plugin_error().unwrap_or_else(|| format!("exit code {code}"));
+    anyhow::anyhow!("plugin '{plugin}' {hook} failed: {detail}")
+}
 
 /// Adapts a loaded plugin vtable into the in-process `Extension` trait.
 pub struct PluginExtensionAdapter {
@@ -59,7 +64,7 @@ impl PluginExtensionAdapter {
         if let Some(init) = vtable.init {
             let code = unsafe { init() };
             if code != 0 {
-                anyhow::bail!("plugin '{}' init failed with code {}", plugin_id, code);
+                return Err(plugin_hook_error(&plugin_id, "init", code));
             }
         }
 
@@ -86,7 +91,7 @@ impl Extension for PluginExtensionAdapter {
         let cfg_ptr = std::ffi::CString::new(config_json)?;
         let code = unsafe { hook(id_ptr.as_ptr(), pid, cfg_ptr.as_ptr()) };
         if code != 0 {
-            anyhow::bail!("plugin '{}' after_start failed ({})", self.name, code);
+            return Err(plugin_hook_error(&self.name, "after_start", code));
         }
         Ok(())
     }
@@ -101,7 +106,7 @@ impl Extension for PluginExtensionAdapter {
         let cfg_ptr = std::ffi::CString::new(config_json)?;
         let code = unsafe { hook(id_ptr.as_ptr(), cfg_ptr.as_ptr()) };
         if code != 0 {
-            anyhow::bail!("plugin '{}' after_stop failed ({})", self.name, code);
+            return Err(plugin_hook_error(&self.name, "after_stop", code));
         }
         Ok(())
     }
@@ -125,7 +130,7 @@ impl Extension for PluginExtensionAdapter {
         let new_ptr = std::ffi::CString::new(new_json)?;
         let code = unsafe { hook(id_ptr.as_ptr(), pid_val, old_ptr.as_ptr(), new_ptr.as_ptr()) };
         if code != 0 {
-            anyhow::bail!("plugin '{}' on_update failed ({})", self.name, code);
+            return Err(plugin_hook_error(&self.name, "on_update", code));
         }
         Ok(())
     }
@@ -145,7 +150,7 @@ impl Extension for PluginExtensionAdapter {
         if let Some(hook) = self.on_reload {
             let code = unsafe { hook() };
             if code != 0 {
-                anyhow::bail!("plugin '{}' on_reload failed ({})", self.name, code);
+                return Err(plugin_hook_error(&self.name, "on_reload", code));
             }
         }
         Ok(())
@@ -165,6 +170,6 @@ impl Extension for PluginExtensionAdapter {
     }
 
     fn supports_resource_limits(&self) -> bool {
-        self.name == "isolation"
+        self.after_start.is_some() && self.on_update.is_some()
     }
 }

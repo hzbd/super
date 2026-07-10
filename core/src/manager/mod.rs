@@ -535,10 +535,15 @@ impl Manager {
 
         let pid = self.registry.get_running(&id).map(|s| s.pid);
 
+        let old_config = self
+            .registry
+            .get_config(&id)
+            .ok_or_else(|| anyhow::anyhow!("Program not found"))?
+            .clone();
+
         let mut trigger_ota = false;
         let mut artifact_cfg = None;
         let mut _task_name = String::new();
-        let mut _updated_config_clone = None;
 
         {
             let config = self
@@ -647,15 +652,21 @@ impl Manager {
                 } else {
                     config.resource_limits = Some(new_limits);
                 }
-                _updated_config_clone = Some(config.clone());
             }
 
             config.updated_at = chrono::Utc::now().timestamp() as u64;
             _task_name = config.name.clone();
         }
 
-        if let Some(cfg_clone) = _updated_config_clone {
-            let _ = self.extension.on_update(id, pid, &cfg_clone, &cfg_clone);
+        let new_config = self
+            .registry
+            .get_config(&id)
+            .ok_or_else(|| anyhow::anyhow!("Program not found"))?
+            .clone();
+
+        if old_config.resource_limits != new_config.resource_limits {
+            self.extension
+                .on_update(id, pid, &old_config, &new_config)?;
         }
 
         self.registry.mark_dirty();
