@@ -14,8 +14,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Docker Hub image CI publishes **`linux/amd64` only** (removed arm64 manifest from workflow to speed up builds).
-- **Cron scheduled tasks** are available in the open-source `superd` (no longer Premium-only).
 - Open-source edition license changed from **GPL-3.0** to **MIT**.
+
+---
+
+## [1.2.0] - 2026-07-10 — **Pre-release (not for production or customer delivery)**
+
+> **Status:** Runtime plugin architecture is merged and testable in development monorepos.  
+> **Licensed plugins are not offered for subscription delivery yet** — readiness gates are tracked in the private `super-plugins` repo (`docs/todo.md`).
+
+### Added
+- **Runtime plugin host** — `superd` discovers `plugins/*.{so,dylib}`, verifies Ed25519 license, and dlopens authorized plugins.
+- **HTTP plugin ABI** — generic `attach_http_plugins()` in OSS core; plugins register routes and auth middleware without linking `super-core`.
+- **Lifecycle plugin ABI** — `on_event`, `after_stop`, metrics, and manager hooks via `ExtensionStack`.
+- **`[license].key` in `conf/super.toml`** — replaces legacy `license.key` file; `SUPER_LICENSE` env override supported.
+- **`auth_secret`** in `ServerConfig` (typed in OSS config; enforced when `security` plugin is loaded).
+- **Unified CLI** — `login` / `token` subcommands in OSS `super` when `security` plugin is active.
+- **`common::plugin_async`** — shared worker for cdylib async boundaries.
+
+### Changed
+- Commercial capabilities ship as **plugins + license**, not a separate `superd-premium` binary.
+- **Cron scheduled tasks** remain in OSS `superd` (not plugin-gated).
+
+### Notes
+- Plugin crates (`security`, `notify`, `isolation`) live in the **`super-plugins`** repository.
+- Linux **cgroup isolation** QA (`qa-cgroups.sh`) is still required before isolation is production-ready.
+- Dashboard unification and `license-server` remain deferred.
 
 ---
 

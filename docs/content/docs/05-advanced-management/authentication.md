@@ -6,6 +6,8 @@ description: "Securing the Daemon with Access Tokens."
 
 The **default OSS deployment has no API authentication** — bind to `127.0.0.1` or firewall the API port. Loading the optional **`security` plugin** adds token-based auth for shared or public-facing deployments.
 
+> **Pre-release:** Licensed plugins are **not ready for production or customer delivery**. The steps below are for development and integration testing only.
+
 Without the `security` plugin loaded, `superd` behaves like OSS-only (no API auth, localhost warning when bound publicly).
 
 ## Enabling Authentication (Commercial)

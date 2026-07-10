@@ -11,6 +11,8 @@ description: "Complete schema for super.toml."
 | **💎 Commercial** | Requires valid `[license].key` in `conf/super.toml` and matching plugins (e.g. `security`, `isolation`). OSS ignores unknown commercial fields. |
 | *(no mark)* | Available in OSS (with or without plugins). |
 
+> **Pre-release:** Licensed plugins are documented for the target architecture. **Subscription delivery is not open yet** — do not treat 💎 fields as production-supported for paying customers until maintainers announce GA.
+
 **Licensed-plugin fields in this reference** (quick index):
 
 | Location | Keys / file |

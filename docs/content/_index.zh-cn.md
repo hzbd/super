@@ -68,6 +68,7 @@ description: "Project Super 是什么，以及如何安装与使用。"
       <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> 商业版</span>
     </h2>
     <p class="home-section-lead">同一 <code>superd</code> 二进制 — 放置 <code>plugins/*.so</code> 并在 <code>conf/super.toml</code> 中配置有效的 <code>[license].key</code> 即可启用。</p>
+    <p><strong>预发布状态：</strong>插件 + 订阅模型仍在开发中，<strong>暂不对客户交付</strong>。下文文档描述的是目标架构。</p>
     <div class="home-grid home-grid--3">
       <article class="home-feature home-feature--premium">
         <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> 插件</span>

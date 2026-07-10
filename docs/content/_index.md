@@ -69,6 +69,7 @@ description: "What Project Super is, and how to install and operate it."
       <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> Commercial</span>
     </h2>
     <p class="home-section-lead">Same <code>superd</code> binary — load optional <code>plugins/*.so</code> with a valid <code>[license].key</code> in <code>conf/super.toml</code>.</p>
+    <p><strong>Pre-release:</strong> The plugin + subscription model is under active development and <strong>not offered for customer delivery</strong> yet. Documentation below describes the target architecture.</p>
     <div class="home-grid home-grid--3">
       <article class="home-feature home-feature--premium">
         <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> Licensed</span>

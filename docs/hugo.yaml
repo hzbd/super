@@ -55,9 +55,9 @@ enableInlineShortcodes: true
 
 params:
   banner:
-    key: 'announcement-v1.1.9'
+    key: 'announcement-v1.2.0-prerelease'
     message: |
-      Super **v1.1.9** is here! 🎉 See the [changelog](/docs/08-changelog/)
+      **v1.2.0 (pre-release):** runtime plugin host is in development — licensed plugins are **not ready for customer delivery**. See the [changelog](/docs/08-changelog/).
   description: "Next-gen, High-performance Process Manager"
   externalLinkDecoration: true
   theme:
