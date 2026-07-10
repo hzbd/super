@@ -47,7 +47,7 @@ pub async fn load_with_recovery(path: &Path) -> anyhow::Result<HashMap<Uuid, Pro
         Ok(data) => return Ok(data),
         Err(e) => {
             if !path.exists() {
-                tracing::info!("No snapshot at {:?}; starting with empty state", path);
+                tracing::warn!("No snapshot at {:?}; starting with empty state", path);
                 return Ok(HashMap::new());
             }
             tracing::error!(
