@@ -1,0 +1,7 @@
+target/
+.git/
+dashboard/node_modules/
+docs/public/
+**/.DS_Store
+example/logs/
+example/data/

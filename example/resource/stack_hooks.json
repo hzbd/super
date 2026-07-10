@@ -1,0 +1,27 @@
+{
+  "prune": false,
+  "services": [
+    {
+      "name": "data-processor",
+      "command": "/bin/java",
+      "args": ["-jar", "processor.jar"],
+      "user": "nodody",
+      "retry_limit": 5,
+
+      "hooks": {
+        "pre_start": "rm -rf /tmp/processor/*.lock && echo 'Cleaned locks'",
+
+        "post_start": "curl -X PUT http://consul:8500/v1/agent/service/register -d '{\"ID\": \"'$SUPER_NAME'\"}'",
+
+        "pre_stop": "curl -X PUT http://consul:8500/v1/agent/service/deregister/$SUPER_NAME",
+
+        "post_stop": "if [ \"$SUPER_EXIT_CODE\" != \"0\" ]; then aws s3 cp error.log s3://logs/; fi"
+      },
+
+      "health_check": {
+        "type": "exec",
+        "command": "grep 'Ready' /app/status.txt"
+      }
+    }
+  ]
+}

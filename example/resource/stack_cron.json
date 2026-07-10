@@ -1,0 +1,28 @@
+{
+  "prune": false,
+  "services": [
+    {
+      "name": "daily-backup",
+      "group": "maintenance",
+
+      "cron": "0 0 3 * * *",
+
+      "command": "/bin/bash",
+      "args": ["/scripts/backup_db.sh"],
+
+      "retry_limit": 0, 
+      "user": "root",
+
+      "hooks": {
+        "post_stop": "echo 'Backup job finished at $(date)'"
+      }
+    },
+    {
+      "name": "log-rotate",
+      "group": "maintenance",
+      "cron": "0 0 * * * *",
+      "command": "/usr/sbin/logrotate",
+      "args": ["/etc/logrotate.conf"]
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+---
+title: ""
+description: "Что такое Project Super и как его установить и использовать."
+---
+<link rel="stylesheet" href="/css/docs-home.css">
+
+<div class="docs-home">
+
+  <section class="home-hero">
+    <h1>Project Super</h1>
+    <p class="hero-lead">Лёгкий оркестратор процессов для edge и серверов — современная API-first альтернатива Supervisor и PM2.</p>
+    <p>Менеджер процессов на Rust — один бинарник <code>superd</code>. Программы в TOML или REST API: автоперезапуск, порядок зависимостей, health checks. CLI, браузер или HTTP API.</p>
+  </section>
+
+  <nav class="home-nav">
+    <a href="/docs/">Документация</a>
+    <a href="/docs/01-getting-started/">Getting Started</a>
+    <a href="/docs/02-essentials/">Core Essentials</a>
+    <a href="/docs/03-orchestration/">Orchestration</a>
+    <a href="/docs/05-advanced-management/">Advanced Management</a>
+    <a href="/docs/06-internals/api-reference/">API Reference</a>
+  </nav>
+
+  <section class="home-section">
+    <h2 class="home-section-title">Ключевые возможности</h2>
+    <div class="home-grid home-grid--3">
+      <article class="home-feature">
+        <h3>Оркестрация зависимостей</h3>
+        <p>Объявите <code>depends_on</code> и порядок запуска — Super ждёт готовности upstream.</p>
+        <a href="/docs/03-orchestration/dependencies">Зависимости →</a>
+      </article>
+      <article class="home-feature">
+        <h3>Атомарные OTA-обновления</h3>
+        <p>Загрузка, проверка checksum, замена артефактов и перезапуск; откат при сбое health checks.</p>
+        <a href="/docs/03-orchestration/ota-updates">OTA →</a>
+      </article>
+      <article class="home-feature">
+        <h3>Health checks</h3>
+        <p>TCP/HTTP-пробы по расписанию; при сбое процесс unhealthy, зависимости ждут успешной проверки.</p>
+        <a href="/docs/03-orchestration/health-checks">Health checks →</a>
+      </article>
+      <article class="home-feature">
+        <h3>Хуки жизненного цикла</h3>
+        <p>Скрипты на <code>pre_start</code>, <code>post_start</code>, <code>post_stop</code>.</p>
+        <a href="/docs/03-orchestration/lifecycle-hooks">Хуки жизненного цикла →</a>
+      </article>
+      <article class="home-feature">
+        <h3>Хуки событий</h3>
+        <p>Реакция на <code>process_fatal</code>, <code>process_started</code> и др. локальными скриптами.</p>
+        <a href="/docs/03-orchestration/event-hooks">Хуки событий →</a>
+      </article>
+      <article class="home-feature">
+        <h3>Автовосстановление</h3>
+        <p>Совместимость с Supervisor: <code>autorestart</code>, <code>exitcodes</code>, <code>startsecs</code>.</p>
+        <a href="/docs/04-production-scenarios/migrations/vs-supervisor">vs Supervisor →</a>
+      </article>
+      <article class="home-feature">
+        <h3>Cron-планирование</h3>
+        <p>Запуск по cron-выражениям без внешнего планировщика.</p>
+        <a href="/docs/02-essentials/scheduled-tasks">Задачи по расписанию →</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="home-section home-section--premium">
+    <h2 class="home-section-title">
+      Лицензируемые плагины
+      <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> Коммерческая</span>
+    </h2>
+    <p class="home-section-lead">Тот же бинарник <code>superd</code> — добавьте <code>plugins/*.so</code> и действующий <code>[license].key</code> в <code>conf/super.toml</code>.</p>
+    <div class="home-grid home-grid--3">
+      <article class="home-feature home-feature--premium">
+        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> Плагин</span>
+        <h3>Аутентификация API</h3>
+        <p>Bearer-токен на каждом endpoint; вход в панель и API обязателен.</p>
+        <a href="/docs/05-advanced-management/authentication">Аутентификация →</a>
+      </article>
+      <article class="home-feature home-feature--premium">
+        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> Плагин</span>
+        <h3>RBAC</h3>
+        <p>Ролевой доступ для операторов и tenants.</p>
+        <a href="/docs/05-advanced-management/access-control">Контроль доступа →</a>
+      </article>
+      <article class="home-feature home-feature--premium">
+        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> Плагин</span>
+        <h3>Изоляция Cgroup</h3>
+        <p>Лимиты CPU/памяти через cgroups v2 в Linux.</p>
+        <a href="/docs/05-advanced-management/resource-isolation">Изоляция ресурсов →</a>
+      </article>
+      <article class="home-feature home-feature--premium">
+        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> Плагин</span>
+        <h3>Webhook-уведомления</h3>
+        <p>Алерты в Slack, DingTalk, Feishu и на custom URL.</p>
+        <a href="/docs/05-advanced-management/event-notifications">Уведомления →</a>
+      </article>
+      <article class="home-feature home-feature--premium">
+        <span class="premium-badge"><span class="premium-badge-icon" aria-hidden="true">💎</span> Плагин</span>
+        <h3>Аудит</h3>
+        <p>Неизменяемый журнал изменений для compliance.</p>
+        <a href="/docs/05-advanced-management/operation-audit">Аудит операций →</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <h2 class="home-section-title">Встроенная панель</h2>
+    <div class="home-grid home-grid--2">
+      <article class="home-card">
+        <div class="home-card-media">
+          <img src="/images/oss_dash.01.png" alt="Список процессов и метрики">
+        </div>
+        <div class="home-card-body">
+          <h3>Обзор</h3>
+          <p>Статус, CPU/RAM и управление — через <code>superd</code>, без отдельного веб-сервера.</p>
+        </div>
+      </article>
+      <article class="home-card">
+        <div class="home-card-media">
+          <img src="/images/oss_dash.02.png" alt="Детали программы и live-логи">
+        </div>
+        <div class="home-card-body">
+          <h3>Логи и детали</h3>
+          <p>stdout/stderr, хуки и health checks в одной панели.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="home-section">
+    <h2 class="home-section-title">API-first</h2>
+    <div class="home-split">
+      <div class="home-split-text">
+        <h3>REST и WebSocket</h3>
+        <p>Регистрация и управление по HTTP; CLI использует те же endpoints.</p>
+        <a href="/docs/06-internals/api-reference">Полная справка API →</a>
+      </div>
+      <div class="home-split-code">
+        <pre><code>curl -X POST http://127.0.0.1:9002/api/programs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "api-server",
+    "command": "./app",
+    "autostart": true,
+    "autorestart": "unexpected"
+  }'</code></pre>
+      </div>
+    </div>
+  </section>
+
+</div>

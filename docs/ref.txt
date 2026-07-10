@@ -1,0 +1,52 @@
+Hextra theme — reference
+========================
+
+Documentation
+-------------
+- Configuration guide: https://imfing.github.io/hextra/docs/guide/configuration/
+- Starter template (hugo.yaml): https://github.com/imfing/hextra-starter-template/blob/main/hugo.yaml
+
+Reset the Hextra git submodule
+------------------------------
+Run from the repository root:
+
+```sh
+cd super
+
+# Remove a broken or stale submodule registration
+git rm -f docs/themes/hextra
+rm -rf .git/modules/docs/themes/hextra
+
+# Re-add the submodule
+git submodule add https://github.com/imfing/hextra.git docs/themes/hextra
+```
+
+After re-adding, initialize and update submodules if needed:
+
+```sh
+git submodule update --init --recursive
+```
+
+Local docs preview
+------------------
+Use Hugo's dev server only (simplest; CSS/JS paths work automatically):
+
+```sh
+make docs-serve
+# or: cd docs && hugo server -D --disableFastRender
+```
+
+Open http://localhost:1313/ (home: `/`, translations: `/zh-cn/`, `/ja/`, `/es/`, `/ru/`).
+
+- `hugo.yaml` → `baseURL` is the **production** site URL (`http://super.docs.sconts.com/`). CI sets `HUGO_BASEURL` when publishing.
+- Do **not** open `docs/public/*.html` in the browser (`file://`) or serve `public/` under a subpath — absolute `/css/...` links will 404.
+- `hugo server` rewrites asset URLs for localhost; no extra dev config needed.
+
+Chinese documentation (i18n)
+----------------------------
+Homepage-only multilingual setup (docs stay English):
+
+- Config: `hugo.yaml` → `languages` (en, zh-cn, ja, es, ru) + navbar **Language** switch.
+- Content: `_index.md` plus `_index.zh-cn.md`, `_index.ja.md`, `_index.es.md`, `_index.ru.md`.
+- Shared styles: `static/css/docs-home.css`.
+- Doc links on translated homepages and in the navbar point to `/docs/...` (English documentation only).

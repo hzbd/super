@@ -1,0 +1,130 @@
+baseURL: "http://super.docs.sconts.com/"
+title: Project Super
+author:
+  name: "Project Super Team"
+  email: "support@sconts.com"
+theme: hextra
+publishDir: "public"
+
+defaultContentLanguage: en
+hasCJKLanguage: true
+
+# Homepage-only translations (*.xx.md next to _index.md). Docs stay English.
+languages:
+  en:
+    label: English
+    locale: en-us
+    weight: 1
+  zh-cn:
+    label: 简体中文
+    locale: zh-CN
+    weight: 2
+  ja:
+    label: 日本語
+    locale: ja-JP
+    weight: 3
+  es:
+    label: Español
+    locale: es
+    weight: 4
+  ru:
+    label: Русский
+    locale: ru
+    weight: 5
+
+markup:
+  _merge: shallow
+  goldmark:
+    extensions:
+      passthrough:
+        delimiters:
+          block: [['\[', '\]'], ["$$", "$$"]]
+          inline: [['\(', '\)']]
+        enable: true
+    renderer:
+      unsafe: true
+  highlight:
+    noClasses: false
+    copy:
+      enable: true
+      display: hover
+  math:
+    engine: mathjax
+
+enableInlineShortcodes: true
+
+params:
+  banner:
+    key: 'announcement-v1.1.9'
+    message: |
+      Super **v1.1.9** is here! 🎉 See the [changelog](/docs/08-changelog/)
+  description: "Next-gen, High-performance Process Manager"
+  externalLinkDecoration: true
+  theme:
+    default: light
+    displayToggle: true
+  navbar:
+    displayTitle: true
+    logo:
+      text: Project Super
+      fontWeight: "bold"
+  footer:
+    enable: true
+    displayCopyright: true
+    displayPoweredBy: false
+    copyright: "© 2026 Project Super Team."
+  page:
+    # full (100%), wide (90rem), normal (80rem)
+    width: wide
+    tabs:
+      sync: true
+  displayUpdatedDate: true
+  dateFormat: "January 2, 2006"
+  toc:
+    enable: true
+    heading: "On this page"
+    displayTags: true
+  search:
+    enable: true
+    placeholder: "Search docs..."
+  editURL:
+    enable: true
+    base: "https://github.com/hzbd/super/edit/master/docs/content"
+  variables:
+    repository:
+      home: github.com/hzbd/super
+
+menu:
+  sidebar:
+    - identifier: more
+      name: More
+      params:
+        type: separator
+      weight: 1
+    - identifier: tryGithub
+      name: "Try to ↗"
+      url: "https://github.com/hzbd/super"
+      weight: 2
+  main:
+    - identifier: docs
+      name: Docs
+      url: /docs/
+      weight: 1
+    - identifier: api
+      name: API Reference
+      url: /docs/06-internals/api-reference/
+      weight: 2
+    - name: Search
+      weight: 3
+      params:
+        type: search
+    - name: Language
+      weight: 4
+      params:
+        type: language-switch
+    - identifier: github
+      name: GitHub
+      url: https://github.com/hzbd/super
+      weight: 5
+      params:
+        icon: github

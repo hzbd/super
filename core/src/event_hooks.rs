@@ -1,0 +1,266 @@
+use common::config::EventHookConfig;
+use common::SystemEvent;
+use crate::extension::Extension;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::Arc;
+
+/// Notify extensions and run configured OSS event hooks.
+pub fn emit(extension: &Arc<dyn Extension>, hooks: &[EventHookConfig], event: SystemEvent) {
+    extension.on_event(event.clone());
+    dispatch(hooks, &event);
+}
+
+pub fn dispatch(hooks: &[EventHookConfig], event: &SystemEvent) {
+    let matching: Vec<EventHookConfig> = hooks
+        .iter()
+        .filter(|h| matches_hook(h, event))
+        .cloned()
+        .collect();
+
+    if matching.is_empty() {
+        return;
+    }
+
+    let json_body = match build_payload(event) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!("Failed to serialize event hook payload: {}", e);
+            return;
+        }
+    };
+
+    let env = build_env(event);
+
+    tokio::spawn(async move {
+        for hook in matching {
+            let cmd = hook.command.clone();
+            let body = json_body.clone();
+            let env = env.clone();
+            let timeout = hook.timeout_secs;
+            let hook_id = hook.id.clone();
+
+            if hook.r#async {
+                tokio::spawn(async move {
+                    run_one(&cmd, &body, &env, timeout, hook_id.as_deref()).await;
+                });
+            } else {
+                run_one(&cmd, &body, &env, timeout, hook_id.as_deref()).await;
+            }
+        }
+    });
+}
+
+async fn run_one(command: &str, json_body: &str, env: &HashMap<String, String>, timeout_secs: u64, id: Option<&str>) {
+    let label = id.unwrap_or(command);
+    match crate::hooks::run_hook_with_stdin(command, env, Some(json_body), timeout_secs).await {
+        Ok(true) => tracing::debug!("Event hook '{}' completed", label),
+        Ok(false) => tracing::warn!("Event hook '{}' exited non-zero", label),
+        Err(e) => tracing::warn!("Event hook '{}' failed: {}", label, e),
+    }
+}
+
+fn matches_hook(hook: &EventHookConfig, event: &SystemEvent) -> bool {
+    let event_type = event.event_type();
+    let event_match = hook.events.iter().any(|e| e == "*" || e == event_type);
+    if !event_match {
+        return false;
+    }
+
+    if hook.programs.iter().any(|p| p == "*") {
+        return true;
+    }
+
+    match event.program_name() {
+        Some(name) => hook.programs.iter().any(|p| p == name),
+        None => false,
+    }
+}
+
+fn build_payload(event: &SystemEvent) -> anyhow::Result<String> {
+    let hostname = hostname::get()
+        .map(|h| h.to_string_lossy().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    let program_json = match event {
+        SystemEvent::ProcessFatal {
+            program_id,
+            program_name,
+            pid,
+            uptime_secs,
+            ..
+        }
+        | SystemEvent::ProcessBackoff {
+            program_id,
+            program_name,
+            pid,
+            uptime_secs,
+            ..
+        } => Some(json!({
+            "id": program_id,
+            "name": program_name,
+            "pid": pid,
+            "uptime_secs": uptime_secs,
+        })),
+        SystemEvent::ProcessStarted {
+            program_id,
+            program_name,
+            pid,
+        } => Some(json!({
+            "id": program_id,
+            "name": program_name,
+            "pid": pid,
+            "uptime_secs": 0,
+        })),
+        SystemEvent::ProcessRecovered {
+            program_id,
+            program_name,
+            pid,
+            uptime_sec,
+        } => Some(json!({
+            "id": program_id,
+            "name": program_name,
+            "pid": pid,
+            "uptime_secs": uptime_sec,
+        })),
+        SystemEvent::SystemStartup { .. } | SystemEvent::SystemShutdown => None,
+    };
+
+    let payload: Value = match event {
+        SystemEvent::ProcessFatal {
+            exit_code,
+            msg,
+            log_tail,
+            ..
+        } => json!({
+            "exit_code": exit_code,
+            "msg": msg,
+            "log_tail": log_tail,
+        }),
+        SystemEvent::ProcessBackoff {
+            exit_code,
+            retry_count,
+            ..
+        } => json!({
+            "exit_code": exit_code,
+            "retry_count": retry_count,
+        }),
+        SystemEvent::ProcessStarted { .. } => json!({}),
+        SystemEvent::ProcessRecovered { uptime_sec, .. } => json!({ "uptime_sec": uptime_sec }),
+        SystemEvent::SystemStartup { hostname } => json!({ "hostname": hostname }),
+        SystemEvent::SystemShutdown => json!({}),
+    };
+
+    let body = json!({
+        "event": event.event_type(),
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "hostname": hostname,
+        "version": env!("CARGO_PKG_VERSION"),
+        "program": program_json,
+        "payload": payload,
+    });
+
+    Ok(serde_json::to_string(&body)?)
+}
+
+fn build_env(event: &SystemEvent) -> HashMap<String, String> {
+    let mut env = HashMap::new();
+    env.insert("SUPER_EVENT".to_string(), event.event_type().to_string());
+
+    let hostname = hostname::get()
+        .map(|h| h.to_string_lossy().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+    env.insert("SUPER_HOSTNAME".to_string(), hostname);
+
+    match event {
+        SystemEvent::ProcessFatal {
+            program_id,
+            program_name,
+            pid,
+            uptime_secs,
+            exit_code,
+            ..
+        }
+        | SystemEvent::ProcessBackoff {
+            program_id,
+            program_name,
+            pid,
+            uptime_secs,
+            exit_code,
+            ..
+        } => {
+            env.insert("SUPER_ID".to_string(), program_id.to_string());
+            env.insert("SUPER_NAME".to_string(), program_name.clone());
+            if let Some(p) = pid {
+                env.insert("SUPER_PID".to_string(), p.to_string());
+            }
+            env.insert("SUPER_UPTIME_SECS".to_string(), uptime_secs.to_string());
+            if let Some(c) = exit_code {
+                env.insert("SUPER_EXIT_CODE".to_string(), c.to_string());
+            }
+        }
+        SystemEvent::ProcessStarted {
+            program_id,
+            program_name,
+            pid,
+        } => {
+            env.insert("SUPER_ID".to_string(), program_id.to_string());
+            env.insert("SUPER_NAME".to_string(), program_name.clone());
+            env.insert("SUPER_PID".to_string(), pid.to_string());
+        }
+        SystemEvent::ProcessRecovered {
+            program_id,
+            program_name,
+            pid,
+            uptime_sec,
+        } => {
+            env.insert("SUPER_ID".to_string(), program_id.to_string());
+            env.insert("SUPER_NAME".to_string(), program_name.clone());
+            if let Some(p) = pid {
+                env.insert("SUPER_PID".to_string(), p.to_string());
+            }
+            env.insert("SUPER_UPTIME_SECS".to_string(), uptime_sec.to_string());
+        }
+        SystemEvent::SystemStartup { .. } | SystemEvent::SystemShutdown => {}
+    }
+
+    env
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn matches_event_and_program_filters() {
+        let hook = EventHookConfig {
+            command: "true".into(),
+            events: vec!["process_fatal".into()],
+            programs: vec!["web".into()],
+            r#async: true,
+            timeout_secs: 5,
+            id: None,
+        };
+        let id = uuid::Uuid::new_v4();
+        let event = SystemEvent::ProcessFatal {
+            program_id: id,
+            program_name: "web".into(),
+            pid: None,
+            uptime_secs: 0,
+            exit_code: None,
+            msg: "x".into(),
+            log_tail: None,
+        };
+        assert!(matches_hook(&hook, &event));
+        let other = SystemEvent::ProcessFatal {
+            program_id: id,
+            program_name: "worker".into(),
+            pid: None,
+            uptime_secs: 0,
+            exit_code: None,
+            msg: "x".into(),
+            log_tail: None,
+        };
+        assert!(!matches_hook(&hook, &other));
+    }
+}

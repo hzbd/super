@@ -1,0 +1,124 @@
+---
+title: "Installation"
+weight: 1
+description: "Install Super via Docker, GitHub Releases, or build from source."
+---
+
+Project Super ships as static binaries (`superd`, `super`) with no runtime dependencies on Python or a JVM. Building from source requires Rust and Node.js (dashboard UI).
+
+## Method 1: Docker (Recommended)
+
+The official image ships `superd` and `super` with the embedded dashboard.
+
+### Pull and run
+
+The image ships with a default config at `/app/super/conf/super.toml` (`host = "0.0.0.0"`, port `9002`). No volume mount is required for a first try.
+
+```bash
+docker pull containerpi/super:latest
+
+docker run --rm -p 9002:9002 containerpi/super:latest
+```
+
+Open **http://localhost:9002** for the dashboard. Add programs via the UI, CLI, or API.
+
+Images are published for **linux/amd64** (Intel/AMD servers and most cloud VMs).
+
+### Custom configuration
+
+Mount your own `conf/` (and optionally `data/` for persistence):
+
+```bash
+docker run --rm -p 9002:9002 \
+  -v /path/to/conf:/app/super/conf \
+  -v /path/to/data:/app/super/data \
+  containerpi/super:latest
+```
+
+Place `super.toml` under `/path/to/conf/`. Drop JSON stack files into `conf/conf.d/*.json` to seed programs on startup — see `dockerbuild/conf/` in the repository for the image defaults and an example stack template.
+
+### Build from this repository
+
+```bash
+git clone https://github.com/hzbd/super.git
+cd super
+docker build -f dockerbuild/Dockerfile -t containerpi/super:latest .
+```
+
+Or: `make docker`. See [dockerbuild/README.md](https://github.com/hzbd/super/blob/master/dockerbuild/README.md) for publish notes.
+
+### Use as a base image in your stack
+
+```dockerfile
+FROM ubuntu:22.04
+
+COPY --from=containerpi/super:latest /usr/local/bin/superd /usr/local/bin/superd
+COPY --from=containerpi/super:latest /usr/local/bin/super /usr/local/bin/super
+
+COPY conf/ /app/super/conf/
+
+RUN apt-get update && apt-get install -y --no-install-recommends tini \
+    && rm -rf /var/lib/apt/lists/*
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/superd"]
+```
+
+For container signal handling and `tini` guidance, see [Zombie reaping in containers](/docs/04-production-scenarios/stability/zombie-reaping-in-containers). For how Super compares to Supervisor or shell entrypoints, see [vs Supervisor](/docs/04-production-scenarios/migrations/vs-supervisor).
+
+## Method 2: GitHub Releases or build from source
+
+Pre-built archives are published on [GitHub Releases](https://github.com/hzbd/super/releases). Extract and run `bin/superd`.
+
+| Archive | Platform |
+| :--- | :--- |
+| `super-{version}-linux-amd64.tar.gz` | Linux x86_64 |
+| `super-{version}-linux-arm64.tar.gz` | Linux ARM64 |
+| `super-{version}-macos-amd64.tar.gz` | macOS Intel |
+| `super-{version}-macos-arm64.tar.gz` | macOS Apple Silicon |
+| `super-{version}-freebsd-amd64.tar.gz` | FreeBSD x86_64 |
+
+Each archive contains `bin/superd`, `bin/super`, and a `README` with quick-start steps and source links. A `SHA256SUMS` file is attached to every release.
+
+> **Windows:** Pre-built Windows binaries are **not published** at this time. Super targets Unix-like servers and edge devices. On Windows, use [Docker](#method-1-docker-recommended) (e.g. with WSL2), or build from source on Linux, macOS, or FreeBSD.
+
+To build locally (requires Rust, Node.js for the dashboard):
+
+```bash
+git clone https://github.com/hzbd/super.git
+cd super
+make build
+
+./target/release/superd --help
+./target/release/super --version
+```
+
+## Method 3: Systemd (VM / bare metal)
+
+### 1. Create unit file
+
+`/etc/systemd/system/superd.service`:
+
+```ini
+[Unit]
+Description=Project Super Process Manager
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/superd
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 2. Enable and start
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now superd
+sudo systemctl status superd
+```
+
+> **Note**: Default configuration paths are `/etc/super/super.toml` (system) or `~/.super/super.toml` (user). Set `SUPER_ROOT` if your layout differs.

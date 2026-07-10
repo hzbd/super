@@ -1,0 +1,181 @@
+---
+title: "CLI Reference"
+weight: 4
+description: "Command-line arguments for the 'super' client."
+---
+
+The `super` binary is the primary way to interact with the daemon.
+
+**Global Flags:**
+*   `--server <URL>`: Override the server URL (default: `http://127.0.0.1:9002`).
+
+## Core Management
+
+### `list`
+List all managed programs and their status.
+
+```bash
+super list
+```
+
+### `add`
+Register a new program without a config file.
+
+```bash
+super add <COMMAND> [ARGS...] [FLAGS]
+```
+
+**Flags:**
+*   `--name <NAME>`: Custom name (defaults to binary name).
+*   `--autostart`: Enable autostart (default: true).
+*   `--cwd <DIR>`: Working directory.
+*   `--env <KEY=VAL>`: Set environment variables (can be used multiple times).
+*   `--env-file <PATH>`: Load environment variables from a file at spawn time.
+*   `--user <USER>`: Run as specific user.
+*   `--numprocs <N>`: Spawn N instances.
+
+### `update`
+Update configuration for an existing program.
+
+```bash
+super update <TARGET> [FLAGS]
+```
+
+**Flags:**
+*   `--command`, `--args`, `--cwd`, `--user`, `--group`: Execution settings.
+*   `--env <KEY=VAL>`, `--env-file <PATH>`: Environment (`--env-file ""` clears).
+*   `--autostart`, `--retry-limit`, `--autorestart`, `--exitcodes`, `--startsecs`, `--stopsecs`.
+*   `--no-health-check`: Disable health check.
+*   `--artifact-url`, `--artifact-sha256`: OTA download URL and expected SHA256 checksum.
+*   `--artifact-destination`: **Absolute path** on the host filesystem where the binary lives (e.g. `/usr/local/bin/my-app`). Required on first OTA setup if the program has no existing `artifact`; omit on later updates if unchanged.
+*   `--artifact-extract`: Extract archive before swap (default: `false`).
+*   Full flow: [Atomic OTA Updates](/docs/03-orchestration/ota-updates).
+*   Scheduled tasks: `--cron` (see [Scheduled Tasks](/docs/02-essentials/scheduled-tasks)).
+*   Licensed (`isolation` plugin): `--cpu`, `--memory` (Linux only; warns if plugin not loaded).
+
+### `rm` (or `remove`)
+Remove a program configuration. It must be stopped first.
+
+```bash
+super rm <TARGET>
+```
+
+## Process Control
+
+All control commands support targeting by `ID`, `Name`, `all`, or `@group`.
+
+### `start`
+Start a stopped process.
+
+```bash
+super start <TARGET> [--wait]
+```
+
+### `stop`
+Stop a running process.
+
+```bash
+super stop <TARGET> [--wait] [--timeout N]
+```
+
+### `restart`
+Restart a process.
+
+```bash
+super restart <TARGET> [--wait]
+```
+
+### `signal`
+Send a specific POSIX signal.
+
+```bash
+super signal <TARGET> --sig <SIGNAL>
+```
+*   **Signals**: `hup`, `int`, `term`, `kill`, `quit`, `usr1`, `usr2`.
+
+## Observability
+
+### `info`
+Show detailed JSON/Table information about a specific program.
+
+```bash
+super info <TARGET>
+```
+
+### `logs`
+Read historical lines from disk and/or stream live output via WebSocket.
+
+```bash
+super logs <TARGET>              # live stream (WebSocket)
+super logs <TARGET> --tail 200   # last 200 lines from disk
+super logs <TARGET> --tail 50 --follow   # tail then follow live
+```
+
+| Flag | Description |
+| :--- | :--- |
+| `--tail N` | Read last N lines from log files (`GET /api/programs/{id}/logs`) |
+| `--source` | `stdout` or `stderr` only |
+| `--follow` | After `--tail`, keep streaming via WebSocket |
+
+## System
+
+### `reload`
+Reload system configuration from `super.toml` (logging, includes, event hooks), or send **SIGHUP** to a running program when a target is given.
+
+```bash
+super reload              # reload super.toml (no program restart)
+super reload <TARGET>     # SIGHUP to program(s) — e.g. nginx config reload
+```
+
+### `apply`
+Apply a declarative stack configuration (JSON).
+
+```bash
+super apply <FILE>
+```
+
+### `export`
+Export current state as a stack JSON.
+
+```bash
+super export
+```
+
+### `shutdown`
+Gracefully shut down the Super daemon and all child processes.
+
+```bash
+super shutdown
+```
+
+## Security (requires `security` plugin 💎)
+
+When the `security` plugin is loaded, use the same `super` CLI:
+
+```bash
+super login <auth_secret>          # save credentials to ~/.super/cli.json
+super token list
+super token create ci-bot --role operator
+super token revoke <id>
+
+# or pass token per invocation:
+super --token sk-... list
+export SUPER_TOKEN=sk-...
+```
+
+Without the plugin, `super login` fails (404 on `/api/auth/tokens`). OSS deployments without auth can use `super list` directly on localhost.
+
+Alternative via curl:
+
+```bash
+curl -H "Authorization: Bearer <auth_secret>" http://127.0.0.1:9002/api/auth/tokens
+
+curl -X POST http://127.0.0.1:9002/api/auth/tokens \
+  -H "Authorization: Bearer <auth_secret>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"ci-bot","role":"operator"}'
+
+curl -H "Authorization: Bearer sk-..." http://127.0.0.1:9002/api/programs
+```
+
+See [Authentication](/docs/05-advanced-management/authentication) for details.

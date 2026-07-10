@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "payloads",
+    "generator",
+    "runner"
+]
+resolver = "2"

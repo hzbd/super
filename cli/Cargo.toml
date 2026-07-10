@@ -1,0 +1,34 @@
+[package]
+name = "super-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "super"
+path = "src/main.rs"
+
+[dependencies]
+common = { path = "../common" }
+chrono = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }
+url = "2.5"
+toml = "0.8"
+colored = "2.0"
+glob = "0.3"
+# Root privilege check (geteuid)
+libc = "0.2"
+# Table formatting
+comfy-table = "7.0"
+dirs = "5.0"
+dotenvy = "0.15"
+ratatui = "0.30"
+crossterm = "0.29"

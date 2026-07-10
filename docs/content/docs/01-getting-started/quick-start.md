@@ -1,0 +1,122 @@
+---
+title: "Quick Start"
+weight: 2
+description: "Start the server and manage processes dynamically via the API."
+---
+
+In this guide, we will start the **Super** daemon with a minimal configuration and use its **REST API** to dynamically register and start a "Hello World" web server.
+
+> **Before adding programs:** Read the [Process Management Contract](/docs/02-essentials/process-management-contract) — managed apps must run in the foreground and must not daemonize or escape Super's process group.
+
+## 1. Minimal Configuration
+
+Create a file named `super.toml`. We only need to configure the server port.
+
+```toml
+# super.toml
+
+[server]
+host = "127.0.0.1"
+port = 9002
+```
+
+> **Note**: OSS has no API authentication. The default bind is `127.0.0.1`. Use a firewall if you expose another address. Commercial auth requires the `security` plugin — see [Authentication](/docs/05-advanced-management/authentication).
+
+If you use the repo's [example config](https://github.com/hzbd/super/blob/master/example/conf/super.toml), it also binds to port **9002** — keep CLI/API URLs in sync with your `super.toml`.
+
+## 2. Start the Daemon (OSS)
+
+Run the daemon in the foreground. It will start up and wait for API commands.
+
+```bash
+superd
+```
+
+Expected output includes `Super Core starting...` and the listen address.
+
+## 3. Create Program via API
+
+Open a new terminal. Use the CLI or `curl` to register a program:
+
+{{< tabs >}}
+  {{< tab name="CLI" >}}
+  ```bash
+  super add --name demo-web \
+    --autostart python3 -m http.server 8080
+  ```
+  {{< /tab >}}
+  {{< tab name="REST API" >}}
+  ```bash
+  curl -X POST http://127.0.0.1:9002/api/programs \
+    -H "Content-Type: application/json" \
+    -d '{
+        "name": "demo-web",
+        "command": "python3",
+        "args": ["-m", "http.server", "8080"],
+        "autostart": true,
+        "health_check": {
+            "type": "tcp",
+            "port": 8080
+        }
+    }'
+  ```
+  {{< /tab >}}
+{{< /tabs >}}
+
+On success, the API returns a JSON array with the new program ID.
+
+## 4. Verify Status
+
+```bash
+super list
+```
+
+```bash
+curl http://127.0.0.1:8080
+# Directory listing HTML from the managed Python server
+```
+
+## 5. Web Dashboard
+
+Open **[http://127.0.0.1:9002](http://127.0.0.1:9002)** — you should see `demo-web`, live logs, and start/stop controls.
+
+---
+
+## Next Steps
+
+*   [API Reference](/docs/06-internals/api-reference) — stop, restart, historical logs
+*   [Configuration](/docs/02-essentials/configuration) — persistent `super.toml`
+*   [Dependency Orchestration](/docs/03-orchestration/dependencies)
+
+---
+
+## Appendix: Licensed Plugins 💎
+
+Commercial features use the **same OSS `superd` and `super` binaries** — drop licensed `.so` / `.dylib` files under `$SUPER_ROOT/plugins/` and add `[license].key` to `conf/super.toml`.
+
+**Prerequisites:**
+
+```bash
+$SUPER_ROOT/
+  conf/super.toml           # [license].key + auth_secret (security plugin)
+  plugins/security.dylib    # API auth + RBAC + audit
+```
+
+**Build & run** (OSS repo only — no super-plugins build required for the daemon):
+
+```bash
+cd super
+cargo build --release -p superd --features web-ui -p super-cli
+export SUPER_ROOT=/path/to/instance
+./target/release/superd
+```
+
+**API authentication** (requires `security` plugin + `auth_secret`):
+
+```bash
+./target/release/super login <auth_secret>
+./target/release/super token list
+
+# or curl directly:
+curl -H "Authorization: Bearer <auth_secret>" http://127.0.0.1:9002/api/auth/tokens
+```

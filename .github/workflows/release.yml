@@ -1,0 +1,192 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Build dashboard
+        run: |
+          cd dashboard
+          npm ci
+          VITE_EDITION=oss npm run build
+
+      - name: Upload dashboard dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+          retention-days: 7
+
+  build:
+    needs: build-frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is not in the release matrix yet (Unix-focused daemon/CLI).
+        include:
+          - name: linux-amd64
+            runner: ubuntu-latest
+            target: ''
+          - name: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: ''
+          - name: macos-amd64
+            runner: macos-latest
+            target: x86_64-apple-darwin
+          - name: macos-arm64
+            runner: macos-latest
+            target: ''
+
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download dashboard dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add Rust target
+        if: matrix.target != ''
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}-${{ matrix.target }}
+
+      - name: Build and package
+        run: bash .github/scripts/package-release-unix.sh "${{ steps.ver.outputs.version }}" "${{ matrix.name }}" "${{ matrix.target }}"
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: super-${{ steps.ver.outputs.version }}-${{ matrix.name }}
+          path: |
+            super-*-${{ matrix.name }}.*
+          retention-days: 7
+
+  build-freebsd:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download dashboard dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dashboard-dist
+          path: dashboard/dist
+
+      - name: Build on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg update
+            pkg install -y curl git openssl pkgconf
+          run: |
+            set -e
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+            . "$HOME/.cargo/env"
+            export RUSTFLAGS=""
+            if [ ! -f dashboard/dist/index.html ]; then
+              echo "dashboard/dist missing" >&2
+              exit 1
+            fi
+            cargo build --release -p superd -p super-cli
+            ver="${{ steps.ver.outputs.version }}"
+            root="super-${ver}-freebsd-amd64"
+            mkdir -p "${root}/bin"
+            cp target/release/superd target/release/super "${root}/bin/"
+            chmod +x "${root}/bin/"*
+            if [ -f LICENSE ]; then cp LICENSE "${root}/"; fi
+            sh .github/scripts/write-release-readme.sh "${ver}" "freebsd-amd64" "${root}"
+            tar -czf "${root}.tar.gz" "${root}"
+            echo "Created ${root}.tar.gz"
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: super-${{ steps.ver.outputs.version }}-freebsd-amd64
+          path: super-*-freebsd-amd64.tar.gz
+          retention-days: 7
+
+  release:
+    needs: [build, build-freebsd]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all archives
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: super-*
+          merge-multiple: true
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd artifacts
+          sha256sum super-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: artifacts/SHA256SUMS
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/super-*
+            artifacts/SHA256SUMS

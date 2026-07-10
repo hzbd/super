@@ -1,0 +1,21 @@
+---
+title: "Advanced Management 🌟"
+weight: 5
+description: "Security, governance, and observability with optional licensed plugins."
+---
+
+> **Licensed plugins 💎:** Pages in this section describe capabilities provided by optional plugins (`security`, `isolation`, `notify`). OSS `superd` without those plugins does not register the related API routes.
+
+As your infrastructure grows from a single server to a fleet of edge devices or a microservices cluster, **governance** becomes critical.
+
+You need to know **who** executed a restart command, ensure that a memory leak doesn't crash the whole machine, and get notified immediately when a service fails.
+
+This section covers advanced capabilities enabled by licensed plugins.
+
+### In this section
+
+*   [**Authentication**](./authentication): Securing the API with tokens (`security`).
+*   [**Access Control (RBAC)**](./access-control): Fine-grained permissions (Viewer/Operator/Admin).
+*   [**Resource Isolation**](./resource-isolation): CPU and memory limits via cgroups (`isolation`, Linux).
+*   [**Operation Audit**](./operation-audit): Compliance logging for API mutations (`security`).
+*   [**Event Notifications**](./event-notifications): Webhook integration (`notify`).

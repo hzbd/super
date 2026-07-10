@@ -1,0 +1,33 @@
+# -------------------------------------------------------------
+# Superd OSS main configuration
+# Install path: /app/super/conf/super.toml
+# -------------------------------------------------------------
+
+[server]
+host = "127.0.0.1"
+port = 9002   # docs and quick-start use 9002; change if you need another port
+# Graceful shutdown timeout (seconds)
+shutdown_timeout = 7
+enable_docs = true
+
+# [logging] Superd daemon log settings
+[logging]
+log_level = "trace"  # trace, debug, info, warn, error
+log_max_mb = 50     # max size per log file
+log_backups = 3     # number of rotated files to keep
+
+# Child process log rotation
+# Prevents stdout/stderr from filling the disk
+[child_logging]
+max_size_mb = 10    # max 10MB per child log
+max_backups = 5     # keep 5 backups per child
+max_line_size_kb = 64   # max line length
+
+[include]
+files = ["conf/conf.d/*.json"]
+
+# Global event hook (OSS) — see docs/03-orchestration/event-hooks.md
+[[event_hooks]]
+id = "my-debugger"
+command = "python3 ./demo_listener.py"
+events = ["*"]

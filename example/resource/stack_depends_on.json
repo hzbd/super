@@ -1,0 +1,39 @@
+{
+  "prune": false,
+  "services": [
+    {
+      "name": "mysql-db",
+      "group": "backend-stack",
+      "command": "/usr/bin/mysqld_safe",
+      "autostart": true,
+      "health_check": {
+        "type": "tcp",
+        "port": 3306
+      }
+    },
+    {
+      "name": "redis-cache",
+      "group": "backend-stack",
+      "command": "/usr/bin/redis-server",
+      "autostart": true,
+      "health_check": {
+        "type": "tcp",
+        "port": 6379
+      }
+    },
+    {
+      "name": "api-server",
+      "group": "backend-stack",
+      "command": "/opt/bin/api-server",
+      "args": ["--port", "8080"],
+      "cwd": "/opt/api",
+      "autostart": true,
+      "depends_on": ["mysql-db", "redis-cache"],
+      "health_check": {
+        "type": "http",
+        "url": "http://127.0.0.1:8080/healthz",
+        "method": "GET"
+      }
+    }
+  ]
+}

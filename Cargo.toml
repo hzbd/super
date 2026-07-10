@@ -1,0 +1,54 @@
+[workspace]
+resolver = "2"
+members = [
+    "common",
+    "core",
+    "cli",
+    "superd"
+]
+
+[workspace.package]
+version = "1.1.9"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+super-core = { path = "./core" }
+common = { path = "./common" }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+base64 = "0.22"
+ed25519-dalek = { version = "2.2", features = ["rand_core"] }
+# CLI parsing
+clap = { version = "4.4", features = ["derive", "env"] }
+# Logging
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+# Web & HTTP
+axum = { version = "0.8.1", features = ["ws", "macros"] }
+tower-http = { version = "0.6.2", features = ["cors", "fs", "trace"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+
+tokio-tungstenite = { version = "0.20", features = ["native-tls"] }
+futures-util = "0.3"
+toml = "0.8"
+
+# Signal handling (Unix only)
+nix = { version = "0.27", features = ["signal", "process", "user"] }
+
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+#panic = "abort"

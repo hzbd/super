@@ -1,0 +1,3 @@
+[submodule "docs/themes/hextra"]
+	path = docs/themes/hextra
+	url = git@github.com:imfing/hextra.git

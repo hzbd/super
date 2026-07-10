@@ -1,0 +1,71 @@
+# =============================================================================
+# Project Super — default configuration for containerpi/super Docker image
+# =============================================================================
+# Layout (SUPER_ROOT=/app/super):
+#   conf/super.toml       — this file (daemon settings)
+#   conf/conf.d/*.json    — optional program stacks (loaded on start & reload)
+#   data/snapshot.json    — persisted program registry (auto-created)
+#   logs/                 — superd + child process logs (auto-created)
+#
+# Override: copy dockerbuild/conf/ and mount, e.g.
+#   -v ./my-conf:/app/super/conf -v ./my-data:/app/super/data
+# =============================================================================
+
+[server]
+# Bind on all interfaces so the API/dashboard is reachable from outside the container.
+host = "0.0.0.0"
+port = 9002
+
+# Graceful shutdown: seconds to wait after SIGTERM before SIGKILL.
+shutdown_timeout = 10
+
+# Max seconds for artifact/OTA downloads.
+download_timeout = 86400
+
+# Flapping detection: too many restarts within a window → Fatal.
+flapping_window = 60
+flapping_threshold = 5
+
+# Swagger UI at /swagger-ui (when built with docs feature).
+enable_docs = true
+
+# Paths below mirror SUPER_ROOT layout. Bootstrap always resolves state/logs
+# under /app/super/data and /app/super/logs at runtime.
+[storage]
+data_file = "data/snapshot.json"
+log_dir = "logs"
+
+[logging]
+log_level = "info"
+log_max_mb = 50
+log_backups = 5
+
+[child_logging]
+driver = "file"
+max_size_mb = 10
+max_backups = 5
+max_line_size_kb = 64
+
+[include]
+# JSON stack files in conf/conf.d/ are applied on daemon start and `super reload`.
+# See conf/conf.d/example-stack.json.example for the schema.
+files = ["conf/conf.d/*.json"]
+
+# -----------------------------------------------------------------------------
+# Programs
+# -----------------------------------------------------------------------------
+# Managed processes are stored in data/snapshot.json (API/CLI/dashboard).
+# You can also seed programs by adding JSON stack files under conf/conf.d/.
+#
+# Example (API after container starts):
+#   super add --name my-app --autostart /path/to/binary
+#
+# Example event hook (uncomment to enable):
+#
+# [[event_hooks]]
+# id = "on-fatal"
+# command = "sh -c 'logger -t super \"fatal: $SUPER_EVENT\"'"
+# events = ["process_fatal"]
+# programs = ["*"]
+# async = true
+# timeout_secs = 30

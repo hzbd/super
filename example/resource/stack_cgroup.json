@@ -1,0 +1,13 @@
+{
+  "prune": false,
+  "services": [
+    {
+      "name": "cpu-test",
+      "command": "stress",
+      "args": ["-c", "1"],
+      "resource_limits": {
+         "cpu_quota": 20.0
+      }
+    }
+  ]
+}

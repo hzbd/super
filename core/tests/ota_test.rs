@@ -1,0 +1,261 @@
+use super_core::config::ServerConfig;
+use super_core::manager::Manager;
+use super_core::ManagerHandle;
+use super_core::extension::NoOpExtension;
+use common::{
+    CreateProgramRequest, UpdateProgramRequest, ArtifactConfig,
+    ProcessStatus, ProgramConfig
+};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::time::Duration;
+use std::io::Write;
+use tempfile::TempDir;
+use tokio::sync::{broadcast, mpsc};
+use wiremock::{Mock, MockServer, ResponseTemplate};
+use wiremock::matchers::{method, path};
+use sha2::{Digest, Sha256};
+
+// + Helpers +
+
+fn calculate_hash(content: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(content.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+async fn setup_system() -> (ManagerHandle, TempDir, PathBuf, PathBuf) {
+    let temp_dir = TempDir::new().unwrap();
+    let root = temp_dir.path();
+
+    let config_file = root.join("super.toml");
+    let data_file = root.join("snapshot.json");
+    let log_dir = root.join("logs");
+    let target_bin = root.join("my_app");
+
+    // 1. Create initial version (v1)
+    let mut f = std::fs::File::create(&target_bin).unwrap();
+    f.write_all(b"VERSION_1").unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&target_bin).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&target_bin, perms).unwrap();
+    }
+
+    let mut config = ServerConfig::default();
+    config.storage.data_file = data_file.clone();
+    config.storage.log_dir = log_dir;
+    config.server.shutdown_timeout = 1;
+
+    let (log_tx, _) = broadcast::channel(100);
+    let (tx, rx) = mpsc::channel(32);
+    let log_reloader = Box::new(|_| Ok(()));
+
+    let manager = Manager::new(
+        config,
+        config_file,
+        log_reloader,
+        rx,
+        tx.clone(),
+        HashMap::new(),
+        log_tx,
+        Box::new(NoOpExtension),
+    );
+
+    tokio::spawn(async move {
+        manager.run().await;
+    });
+
+    (ManagerHandle::new(tx), temp_dir, target_bin, data_file)
+}
+
+// + Test cases +
+
+#[tokio::test]
+async fn test_ota_transaction_rollback() {
+    let (handle, _tmp, target_bin, data_file) = setup_system().await;
+    let mock_server = MockServer::start().await;
+
+    // 1. Prepare v2
+    let v2_content = "VERSION_2_NEW";
+    let v2_hash = calculate_hash(v2_content);
+
+    Mock::given(method("GET"))
+        .and(path("/download/v2"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(v2_content))
+        .mount(&mock_server)
+        .await;
+
+    // 2. Run v1
+    let req = CreateProgramRequest {
+        name: Some("app-rollback".to_string()),
+        command: "sleep".to_string(),
+        args: vec!["100".to_string()],
+        autostart: true,
+        ..Default::default()
+    };
+    let ids = handle.create_program(req).await.unwrap();
+    let id = ids[0];
+
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let info_v1 = handle.get_program(id).await.unwrap();
+    let pid_v1 = info_v1.pid.expect("Process v1 should have PID");
+    assert_eq!(info_v1.state, ProcessStatus::Healthy);
+
+    // 3. Trigger OTA update
+    println!(">>> Triggering Update...");
+    let update_req = UpdateProgramRequest {
+        artifact: Some(ArtifactConfig {
+            source: format!("{}/download/v2", mock_server.uri()),
+            checksum: v2_hash,
+            extract: false,
+            destination: target_bin.to_string_lossy().to_string(),
+            restart_policy: "immediate".to_string(),
+        }),
+        ..Default::default()
+    };
+    handle.update_program(id, update_req).await.unwrap();
+
+    // 4. Wait for verification phase (restore_path persisted) and PID change (process restart)
+    let mut verified_phase_reached = false;
+    let mut new_pid = None;
+
+    // Poll longer to allow download and restart to finish
+    for _ in 0..50 {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Check on-disk state
+        let content = std::fs::read_to_string(&data_file).unwrap_or_default();
+        if content.is_empty() { continue; }
+
+        let saved_state: HashMap<uuid::Uuid, ProgramConfig> =
+            serde_json::from_str(&content).unwrap_or_default();
+
+        if let Some(cfg) = saved_state.get(&id) {
+            // Condition 1: restore_path recorded on disk (state machine entered verification)
+            if cfg.restore_path.is_some() {
+                // Condition 2: process restarted (PID changed)
+                // Must fetch the latest in-memory PID via the API
+                if let Ok(info) = handle.get_program(id).await
+                    && let Some(p) = info.pid 
+                        && p != pid_v1 {
+                            verified_phase_reached = true;
+                            new_pid = Some(p);
+                            break;
+                }
+            }
+        }
+    }
+
+    assert!(verified_phase_reached, "Manager failed to enter verification phase or restart process");
+    let pid_v2 = new_pid.expect("New PID should exist");
+    println!(">>> Process restarted: PID {} -> PID {}", pid_v1, pid_v2);
+
+    // Verify: on-disk file should be v2
+    let current_content = std::fs::read_to_string(&target_bin).unwrap();
+    assert_eq!(current_content, v2_content, "File should be swapped to v2");
+
+    // Verify: backup file should exist
+    let backup_path = target_bin.with_extension("bak");
+    assert!(backup_path.exists(), "Backup file missing");
+
+    // 5. Simulate new process crash (kill PID v2)
+    // restore_path is set and this is not a user stop → should trigger rollback
+    println!(">>> Simulating Crash on PID {}...", pid_v2);
+    nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid_v2 as i32), nix::sys::signal::Signal::SIGKILL).unwrap();
+
+    // 6. Wait for rollback to complete
+    tokio::time::sleep(Duration::from_secs(2)).await;
+
+    // 7. Final verification
+    // A. File rolled back to v1
+    let restored_content = std::fs::read_to_string(&target_bin).unwrap();
+    assert_eq!(restored_content, "VERSION_1", "Rollback failed! Content mismatch");
+
+    // B. Backup file should be gone (renamed back to target)
+    assert!(!backup_path.exists(), "Backup file should be consumed");
+
+    // C. restore_path cleared
+    let saved_state_final: HashMap<uuid::Uuid, ProgramConfig> =
+        serde_json::from_str(&std::fs::read_to_string(&data_file).unwrap()).unwrap();
+    assert!(saved_state_final.get(&id).unwrap().restore_path.is_none(), "restore_path should be cleared");
+
+    println!("✅ Test Passed: Rollback successful.");
+}
+
+#[tokio::test]
+async fn test_ota_transaction_commit() {
+    let (handle, _tmp, target_bin, data_file) = setup_system().await;
+    let mock_server = MockServer::start().await;
+
+    let v2_content = "VERSION_2_COMMIT";
+    let v2_hash = calculate_hash(v2_content);
+
+    Mock::given(method("GET"))
+        .and(path("/download/v2"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(v2_content))
+        .mount(&mock_server)
+        .await;
+
+    // 1. Register (exec "true" simulates passing health check)
+    let req = CreateProgramRequest {
+        name: Some("app-commit".to_string()),
+        command: "sleep".to_string(),
+        args: vec!["100".to_string()],
+        autostart: true,
+        health_check: Some(common::HealthCheck::Exec { command: "true".to_string() }),
+        ..Default::default()
+    };
+    let ids = handle.create_program(req).await.unwrap();
+    let id = ids[0];
+
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    // 2. Trigger update
+    println!(">>> Triggering Update...");
+    let update_req = UpdateProgramRequest {
+        artifact: Some(ArtifactConfig {
+            source: format!("{}/download/v2", mock_server.uri()),
+            checksum: v2_hash,
+            extract: false,
+            destination: target_bin.to_string_lossy().to_string(),
+            restart_policy: "immediate".to_string(),
+        }),
+        ..Default::default()
+    };
+    handle.update_program(id, update_req).await.unwrap();
+
+    // 3. Wait for commit (restore_path cleared & healthy state)
+    let backup_path = target_bin.with_extension("bak");
+    let mut commit_done = false;
+
+    for _ in 0..30 {
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let info = handle.get_program(id).await.unwrap();
+        // Commit is complete only when restore_path is empty and state is Healthy
+        if info.config.restore_path.is_none() && info.state == ProcessStatus::Healthy {
+            commit_done = true;
+            break;
+        }
+    }
+    assert!(commit_done, "Upgrade did not commit (restore_path did not clear)");
+
+    // 4. Verify
+    // A. File is v2
+    let current_content = std::fs::read_to_string(&target_bin).unwrap();
+    assert_eq!(current_content, v2_content, "File should be v2");
+
+    // B. Backup deleted
+    assert!(!backup_path.exists(), "Backup file should be deleted");
+
+    // C. On-disk state consistent
+    let saved_state: HashMap<uuid::Uuid, ProgramConfig> =
+        serde_json::from_str(&std::fs::read_to_string(&data_file).unwrap()).unwrap();
+    assert!(saved_state.get(&id).unwrap().restore_path.is_none());
+
+    println!("✅ Test Passed: Commit successful.");
+}
