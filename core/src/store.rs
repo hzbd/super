@@ -46,8 +46,12 @@ pub async fn load_with_recovery(path: &Path) -> anyhow::Result<HashMap<Uuid, Pro
     match load_internal(path).await {
         Ok(data) => return Ok(data),
         Err(e) => {
+            if !path.exists() {
+                tracing::info!("No snapshot at {:?}; starting with empty state", path);
+                return Ok(HashMap::new());
+            }
             tracing::error!(
-                "⚠️ CRITICAL: Failed to load primary config {:?}: {}",
+                "Failed to load primary config {:?}: {}",
                 path,
                 e
             );

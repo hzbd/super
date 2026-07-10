@@ -310,18 +310,20 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
         }
 
         let limits = if cpu.is_some() || memory.is_some() {
-            let limits = Some(ResourceLimits {
+            Some(ResourceLimits {
                 cpu_quota: *cpu,
                 memory_limit: *memory,
-            });
-            eprintln!(
-                "Warning: --cpu/--memory require the isolation plugin on Linux; \
-                 limits are stored but not enforced without it."
-            );
-            limits
+            })
         } else {
             None
         };
+
+        #[cfg(not(target_os = "linux"))]
+        if limits.is_some() {
+            eprintln!(
+                "Warning: --cpu/--memory are only enforced on Linux with the isolation plugin loaded."
+            );
+        }
 
         let autorestart_policy = match autorestart.as_deref() {
             Some(s) => Some(parse_autorestart(s)?),
@@ -422,18 +424,20 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
         };
 
         let limits = if cpu.is_some() || memory.is_some() {
-            let limits = Some(ResourceLimits {
+            Some(ResourceLimits {
                 cpu_quota: *cpu,
                 memory_limit: *memory,
-            });
-            eprintln!(
-                "Warning: --cpu/--memory require the isolation plugin on Linux; \
-                 limits are stored but not enforced without it."
-            );
-            limits
+            })
         } else {
             None
         };
+
+        #[cfg(not(target_os = "linux"))]
+        if limits.is_some() {
+            eprintln!(
+                "Warning: --cpu/--memory are only enforced on Linux with the isolation plugin loaded."
+            );
+        }
 
         let artifact = if artifact_url.is_some()
             || artifact_sha256.is_some()
