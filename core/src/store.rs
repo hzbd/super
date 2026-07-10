@@ -46,7 +46,11 @@ pub async fn load_with_recovery(path: &Path) -> anyhow::Result<HashMap<Uuid, Pro
     match load_internal(path).await {
         Ok(data) => return Ok(data),
         Err(e) => {
-            tracing::error!("⚠️ CRITICAL: Failed to load primary config {:?}: {}", path, e);
+            tracing::error!(
+                "⚠️ CRITICAL: Failed to load primary config {:?}: {}",
+                path,
+                e
+            );
         }
     }
 
@@ -58,7 +62,7 @@ pub async fn load_with_recovery(path: &Path) -> anyhow::Result<HashMap<Uuid, Pro
             Ok(data) => {
                 tracing::info!("✅ Successfully recovered state from backup!");
                 return Ok(data);
-            },
+            }
             Err(e) => {
                 tracing::error!("❌ Backup file is also corrupted: {}", e);
             }
@@ -73,7 +77,10 @@ pub async fn load_with_recovery(path: &Path) -> anyhow::Result<HashMap<Uuid, Pro
         return Ok(HashMap::new());
     }
 
-    Err(anyhow::anyhow!("All configuration files are corrupted. Please check {:?} manually.", path))
+    Err(anyhow::anyhow!(
+        "All configuration files are corrupted. Please check {:?} manually.",
+        path
+    ))
 }
 
 // Internal load helper

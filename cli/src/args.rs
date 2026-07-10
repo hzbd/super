@@ -138,7 +138,7 @@ pub enum Commands {
         /// Update environment file path (empty string to remove)
         #[arg(long)]
         env_file: Option<String>,
-        
+
         #[arg(long, value_parser = clap::value_parser!(bool))]
         autostart: Option<bool>,
         #[arg(long)]
@@ -200,7 +200,6 @@ pub enum Commands {
     },
 
     // --- Operations ---
-
     /// Start program(s). Supports `all` or `@group`
     Start {
         target: String,
@@ -222,7 +221,7 @@ pub enum Commands {
         /// Timeout in seconds for wait operation (default: 5)
         #[arg(long, default_value = "5")]
         timeout: u64,
-        
+
         #[arg(short, long)]
         force: bool,
     },
@@ -243,7 +242,6 @@ pub enum Commands {
     Remove { target: String },
 
     // --- Monitoring & Signals ---
-
     /// Show detailed information for a specific program
     Info { target: String },
 
@@ -304,7 +302,5 @@ pub enum TokenCommands {
     },
     /// Revoke (delete) a token by ID
     #[command(alias = "rm")]
-    Revoke {
-        id: String,
-    },
+    Revoke { id: String },
 }

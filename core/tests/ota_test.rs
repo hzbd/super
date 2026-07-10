@@ -1,20 +1,19 @@
-use super_core::config::ServerConfig;
-use super_core::manager::Manager;
-use super_core::ManagerHandle;
-use super_core::extension::NoOpExtension;
 use common::{
-    CreateProgramRequest, UpdateProgramRequest, ArtifactConfig,
-    ProcessStatus, ProgramConfig
+    ArtifactConfig, CreateProgramRequest, ProcessStatus, ProgramConfig, UpdateProgramRequest,
 };
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
-use std::io::Write;
+use super_core::ManagerHandle;
+use super_core::config::ServerConfig;
+use super_core::extension::NoOpExtension;
+use super_core::manager::Manager;
 use tempfile::TempDir;
 use tokio::sync::{broadcast, mpsc};
-use wiremock::{Mock, MockServer, ResponseTemplate};
 use wiremock::matchers::{method, path};
-use sha2::{Digest, Sha256};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // + Helpers +
 
@@ -129,7 +128,9 @@ async fn test_ota_transaction_rollback() {
 
         // Check on-disk state
         let content = std::fs::read_to_string(&data_file).unwrap_or_default();
-        if content.is_empty() { continue; }
+        if content.is_empty() {
+            continue;
+        }
 
         let saved_state: HashMap<uuid::Uuid, ProgramConfig> =
             serde_json::from_str(&content).unwrap_or_default();
@@ -140,17 +141,21 @@ async fn test_ota_transaction_rollback() {
                 // Condition 2: process restarted (PID changed)
                 // Must fetch the latest in-memory PID via the API
                 if let Ok(info) = handle.get_program(id).await
-                    && let Some(p) = info.pid 
-                        && p != pid_v1 {
-                            verified_phase_reached = true;
-                            new_pid = Some(p);
-                            break;
+                    && let Some(p) = info.pid
+                    && p != pid_v1
+                {
+                    verified_phase_reached = true;
+                    new_pid = Some(p);
+                    break;
                 }
             }
         }
     }
 
-    assert!(verified_phase_reached, "Manager failed to enter verification phase or restart process");
+    assert!(
+        verified_phase_reached,
+        "Manager failed to enter verification phase or restart process"
+    );
     let pid_v2 = new_pid.expect("New PID should exist");
     println!(">>> Process restarted: PID {} -> PID {}", pid_v1, pid_v2);
 
@@ -165,7 +170,11 @@ async fn test_ota_transaction_rollback() {
     // 5. Simulate new process crash (kill PID v2)
     // restore_path is set and this is not a user stop → should trigger rollback
     println!(">>> Simulating Crash on PID {}...", pid_v2);
-    nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid_v2 as i32), nix::sys::signal::Signal::SIGKILL).unwrap();
+    nix::sys::signal::kill(
+        nix::unistd::Pid::from_raw(pid_v2 as i32),
+        nix::sys::signal::Signal::SIGKILL,
+    )
+    .unwrap();
 
     // 6. Wait for rollback to complete
     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -173,7 +182,10 @@ async fn test_ota_transaction_rollback() {
     // 7. Final verification
     // A. File rolled back to v1
     let restored_content = std::fs::read_to_string(&target_bin).unwrap();
-    assert_eq!(restored_content, "VERSION_1", "Rollback failed! Content mismatch");
+    assert_eq!(
+        restored_content, "VERSION_1",
+        "Rollback failed! Content mismatch"
+    );
 
     // B. Backup file should be gone (renamed back to target)
     assert!(!backup_path.exists(), "Backup file should be consumed");
@@ -181,7 +193,10 @@ async fn test_ota_transaction_rollback() {
     // C. restore_path cleared
     let saved_state_final: HashMap<uuid::Uuid, ProgramConfig> =
         serde_json::from_str(&std::fs::read_to_string(&data_file).unwrap()).unwrap();
-    assert!(saved_state_final.get(&id).unwrap().restore_path.is_none(), "restore_path should be cleared");
+    assert!(
+        saved_state_final.get(&id).unwrap().restore_path.is_none(),
+        "restore_path should be cleared"
+    );
 
     println!("✅ Test Passed: Rollback successful.");
 }
@@ -206,7 +221,9 @@ async fn test_ota_transaction_commit() {
         command: "sleep".to_string(),
         args: vec!["100".to_string()],
         autostart: true,
-        health_check: Some(common::HealthCheck::Exec { command: "true".to_string() }),
+        health_check: Some(common::HealthCheck::Exec {
+            command: "true".to_string(),
+        }),
         ..Default::default()
     };
     let ids = handle.create_program(req).await.unwrap();
@@ -242,7 +259,10 @@ async fn test_ota_transaction_commit() {
             break;
         }
     }
-    assert!(commit_done, "Upgrade did not commit (restore_path did not clear)");
+    assert!(
+        commit_done,
+        "Upgrade did not commit (restore_path did not clear)"
+    );
 
     // 4. Verify
     // A. File is v2

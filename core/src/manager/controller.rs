@@ -1,21 +1,21 @@
-use uuid::Uuid;
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::{mpsc, broadcast};
-use nix::sys::signal::{self, Signal};
-use nix::unistd::Pid;
+use tokio::sync::{broadcast, mpsc};
+use uuid::Uuid;
 
-use common::{ProgramConfig, ProcessStatus, WsMessage, SystemEvent};
-use crate::extension::Extension;
-use crate::process;
-use crate::logger;
-use crate::health;
-use crate::monitor::ResourceMonitor;
 use crate::config::ServerConfig;
+use crate::extension::Extension;
+use crate::health;
+use crate::logger;
 use crate::manager::command::Command;
 use crate::manager::registry::{ProcessRegistry, RuntimeState};
 use crate::manager::tracker::FlappingTracker;
+use crate::monitor::ResourceMonitor;
+use crate::process;
+use common::{ProcessStatus, ProgramConfig, SystemEvent, WsMessage};
 
 /// Lifecycle controller: spawn, stop, and signal logic.
 pub struct LifecycleController {
@@ -52,13 +52,20 @@ impl LifecycleController {
 
     // Core spawn logic.
     // Registry is borrowed for state read/write with clear ownership.
-    pub async fn spawn_program(&mut self, registry: &mut ProcessRegistry, id: Uuid, retry_count: u32) -> anyhow::Result<()> {
+    pub async fn spawn_program(
+        &mut self,
+        registry: &mut ProcessRegistry,
+        id: Uuid,
+        retry_count: u32,
+    ) -> anyhow::Result<()> {
         // 1. Basic checks
         if registry.running.contains_key(&id) {
             return Err(anyhow::anyhow!("Program is already running"));
         }
 
-        let config = registry.programs.get(&id)
+        let config = registry
+            .programs
+            .get(&id)
             .ok_or_else(|| anyhow::anyhow!("Program not found"))?
             .clone();
 
@@ -66,30 +73,43 @@ impl LifecycleController {
 
         // 2. Flapping detection
         // Record start time
-        self.tracker.record_start(id, self.config.server.flapping_threshold);
+        self.tracker
+            .record_start(id, self.config.server.flapping_threshold);
 
         // Check for rapid restarts within the window
-        if self.tracker.is_flapping(id, self.config.server.flapping_window, self.config.server.flapping_threshold) {
-             tracing::error!("🔥 FLAPPING DETECTED for {}! Restarted too frequently.", program_name);
+        if self.tracker.is_flapping(
+            id,
+            self.config.server.flapping_window,
+            self.config.server.flapping_threshold,
+        ) {
+            tracing::error!(
+                "🔥 FLAPPING DETECTED for {}! Restarted too frequently.",
+                program_name
+            );
 
-             // Mark state as Fatal
-             registry.restarting.remove(&id);
-             registry.waiting.remove(&id);
-             registry.crashed.insert(id);
+            // Mark state as Fatal
+            registry.restarting.remove(&id);
+            registry.waiting.remove(&id);
+            registry.crashed.insert(id);
 
-             if let Some(cfg) = registry.programs.get_mut(&id) {
-                 cfg.autostart = false;
-                 cfg.updated_at = chrono::Utc::now().timestamp() as u64;
-             }
+            if let Some(cfg) = registry.programs.get_mut(&id) {
+                cfg.autostart = false;
+                cfg.updated_at = chrono::Utc::now().timestamp() as u64;
+            }
 
-             // Record flapping error so the UI shows a reason, not just Fatal
-            let err_msg = format!("FLAPPING DETECTED: Restarted too frequently in {}s.", self.config.server.flapping_window);
+            // Record flapping error so the UI shows a reason, not just Fatal
+            let err_msg = format!(
+                "FLAPPING DETECTED: Restarted too frequently in {}s.",
+                self.config.server.flapping_window
+            );
             registry.startup_errors.insert(id, err_msg.clone());
 
-             registry.mark_dirty();
+            registry.mark_dirty();
 
-             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Fatal, name: program_name.clone()
+            let _ = self.log_tx.send(WsMessage::StatusChange {
+                id,
+                status: ProcessStatus::Fatal,
+                name: program_name.clone(),
             });
 
             // Extension Event
@@ -99,7 +119,10 @@ impl LifecycleController {
                 pid: None,
                 uptime_secs: 0,
                 exit_code: None,
-                msg: format!("FLAPPING DETECTED: Restarted too frequently in {}s.", self.config.server.flapping_window),
+                msg: format!(
+                    "FLAPPING DETECTED: Restarted too frequently in {}s.",
+                    self.config.server.flapping_window
+                ),
                 log_tail: None,
             };
             crate::event_hooks::emit(&self.extension, &self.config.event_hooks, event);
@@ -120,7 +143,9 @@ impl LifecycleController {
 
             for dep_name in &config.depends_on {
                 // Look up dependency service ID in registry
-                let dep_id = registry.programs.iter()
+                let dep_id = registry
+                    .programs
+                    .iter()
                     .find(|(_, cfg)| &cfg.name == dep_name)
                     .map(|(id, _)| *id);
 
@@ -135,7 +160,7 @@ impl LifecycleController {
                             all_ready = false;
                             missing_deps.push(format!("{} (Not Running)", dep_name));
                         }
-                    },
+                    }
                     None => {
                         all_ready = false;
                         missing_deps.push(format!("{} (Missing)", dep_name));
@@ -144,10 +169,16 @@ impl LifecycleController {
             }
 
             if !all_ready {
-                tracing::info!("Program {} is WAITING. Dependencies not ready: {:?}", config.name, missing_deps);
+                tracing::info!(
+                    "Program {} is WAITING. Dependencies not ready: {:?}",
+                    config.name,
+                    missing_deps
+                );
                 registry.waiting.insert(id);
                 let _ = self.log_tx.send(WsMessage::StatusChange {
-                    id, status: ProcessStatus::Waiting, name: config.name.clone()
+                    id,
+                    status: ProcessStatus::Waiting,
+                    name: config.name.clone(),
                 });
                 return Ok(());
             }
@@ -163,7 +194,9 @@ impl LifecycleController {
                 registry.crashed.insert(id);
 
                 let _ = self.log_tx.send(WsMessage::StatusChange {
-                    id, status: ProcessStatus::Fatal, name: config.name.clone()
+                    id,
+                    status: ProcessStatus::Fatal,
+                    name: config.name.clone(),
                 });
 
                 let event = SystemEvent::ProcessFatal {
@@ -183,24 +216,33 @@ impl LifecycleController {
 
         // 6. [Hook] Pre-Start Script (Shell)
         if let Some(cmd) = &config.hooks.pre_start {
-             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Starting, name: config.name.clone()
+            let _ = self.log_tx.send(WsMessage::StatusChange {
+                id,
+                status: ProcessStatus::Starting,
+                name: config.name.clone(),
             });
             let mut envs = self.build_context(id, &config, None, None, None);
-            if let Some(ext) = &extra_envs_from_ext { envs.extend(ext.clone()); }
+            if let Some(ext) = &extra_envs_from_ext {
+                envs.extend(ext.clone());
+            }
 
             use crate::hooks;
             match hooks::run_hook(cmd, &envs).await {
                 Ok(true) => {
                     tracing::info!("Pre-start hook passed for {}", config.name);
-                },
-                _ => { // false or Error
+                }
+                _ => {
+                    // false or Error
                     tracing::error!("Pre-start hook failed for {}. Aborting start.", config.name);
                     registry.crashed.insert(id);
                     let _ = self.log_tx.send(WsMessage::StatusChange {
-                        id, status: ProcessStatus::Fatal, name: config.name.clone()
+                        id,
+                        status: ProcessStatus::Fatal,
+                        name: config.name.clone(),
                     });
-                    registry.startup_errors.insert(id, "Pre-start hook failed".to_string());
+                    registry
+                        .startup_errors
+                        .insert(id, "Pre-start hook failed".to_string());
 
                     let event = SystemEvent::ProcessFatal {
                         program_id: id,
@@ -219,12 +261,16 @@ impl LifecycleController {
 
         tracing::info!("Starting program: {} (Retry: {})", config.name, retry_count);
         let _ = self.log_tx.send(WsMessage::StatusChange {
-            id, status: ProcessStatus::Running, name: config.name.clone()
+            id,
+            status: ProcessStatus::Running,
+            name: config.name.clone(),
         });
 
         // 7. Spawn Process
         let mut proc_envs = self.build_context(id, &config, None, None, None);
-        if let Some(ext) = extra_envs_from_ext { proc_envs.extend(ext); }
+        if let Some(ext) = extra_envs_from_ext {
+            proc_envs.extend(ext);
+        }
 
         let mut child = match process::spawn_process(&config, &proc_envs) {
             Ok(c) => c,
@@ -235,7 +281,9 @@ impl LifecycleController {
                 registry.crashed.insert(id);
 
                 let _ = self.log_tx.send(WsMessage::StatusChange {
-                    id, status: ProcessStatus::Fatal, name: config.name.clone()
+                    id,
+                    status: ProcessStatus::Fatal,
+                    name: config.name.clone(),
                 });
 
                 let event = SystemEvent::ProcessFatal {
@@ -253,16 +301,16 @@ impl LifecycleController {
             }
         };
 
-        let pid = child.id().ok_or_else(|| anyhow::anyhow!("Failed to get PID"))?;
+        let pid = child
+            .id()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get PID"))?;
 
         // 8. [Hook] After Start (Extension - Strict Policy)
         // Key logic: if cgroup/resource limits fail to apply, kill the process immediately
         let hook_result = {
             let ext = self.extension.clone();
             let cfg_clone = config.clone();
-            tokio::task::spawn_blocking(move || {
-                ext.after_start(id, pid, &cfg_clone)
-            }).await
+            tokio::task::spawn_blocking(move || ext.after_start(id, pid, &cfg_clone)).await
         };
 
         match hook_result {
@@ -278,7 +326,9 @@ impl LifecycleController {
                 registry.crashed.insert(id);
 
                 let _ = self.log_tx.send(WsMessage::StatusChange {
-                    id, status: ProcessStatus::Fatal, name: config.name.clone()
+                    id,
+                    status: ProcessStatus::Fatal,
+                    name: config.name.clone(),
                 });
 
                 let event = SystemEvent::ProcessFatal {
@@ -293,16 +343,20 @@ impl LifecycleController {
                 crate::event_hooks::emit(&self.extension, &self.config.event_hooks, event);
 
                 return Err(anyhow::anyhow!("Extension blocked startup (Strict Policy)"));
-            },
+            }
             Err(e) => {
-                 tracing::error!("❌ Extension thread panic: {}", e);
-                 let _ = child.start_kill();
-                 let _ = child.wait().await;
-                 registry.crashed.insert(id);
-                 return Err(anyhow::anyhow!("Extension panic during startup"));
+                tracing::error!("❌ Extension thread panic: {}", e);
+                let _ = child.start_kill();
+                let _ = child.wait().await;
+                registry.crashed.insert(id);
+                return Err(anyhow::anyhow!("Extension panic during startup"));
             }
             Ok(Ok(_)) => {
-                tracing::debug!("✅ Extension after_start executed for {} (PID: {})", config.name, pid);
+                tracing::debug!(
+                    "✅ Extension after_start executed for {} (PID: {})",
+                    config.name,
+                    pid
+                );
             }
         }
 
@@ -345,7 +399,16 @@ impl LifecycleController {
                 loop {
                     let result = health::perform_check(&check).await;
                     // Send internal command to update health status
-                    if tx.send(Command::InternalHealthUpdate { id, is_healthy: result }).await.is_err() { break; }
+                    if tx
+                        .send(Command::InternalHealthUpdate {
+                            id,
+                            is_healthy: result,
+                        })
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 }
             }));
@@ -358,23 +421,31 @@ impl LifecycleController {
             tokio::spawn(async move {
                 // Brief delay so registry state is inserted first
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                let _ = tx.send(Command::InternalHealthUpdate { id, is_healthy: true }).await;
+                let _ = tx
+                    .send(Command::InternalHealthUpdate {
+                        id,
+                        is_healthy: true,
+                    })
+                    .await;
             });
         }
 
         // 13. Record runtime state
-        registry.running.insert(id, RuntimeState {
-            pid,
-            start_time: chrono::Utc::now().timestamp() as u64,
-            retry_count,
-            stopping: false,
-            restart_requested: false,
-            is_healthy,
-            health_task,
-            alert_pending_recovery: retry_count > 0,
-            cpu_usage: 0.0,
-            mem_usage: 0,
-        });
+        registry.running.insert(
+            id,
+            RuntimeState {
+                pid,
+                start_time: chrono::Utc::now().timestamp() as u64,
+                retry_count,
+                stopping: false,
+                restart_requested: false,
+                is_healthy,
+                health_task,
+                alert_pending_recovery: retry_count > 0,
+                cpu_usage: 0.0,
+                mem_usage: 0,
+            },
+        );
 
         // 14. Start log capture
         let base_log_config = logger::LogConfig {
@@ -419,10 +490,14 @@ impl LifecycleController {
         // 16. Trigger dependency scheduling
         if is_healthy {
             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Healthy, name: config.name.clone()
+                id,
+                status: ProcessStatus::Healthy,
+                name: config.name.clone(),
             });
             let tx = self.tx_self.clone();
-            tokio::spawn(async move { let _ = tx.send(Command::CheckWaitingQueue).await; });
+            tokio::spawn(async move {
+                let _ = tx.send(Command::CheckWaitingQueue).await;
+            });
         }
 
         Ok(())
@@ -457,15 +532,25 @@ impl LifecycleController {
         }
 
         // 3. Inject built-in system variables
-        let hostname = hostname::get().map(|h| h.to_string_lossy().to_string()).unwrap_or_else(|_| "unknown".to_string());
+        let hostname = hostname::get()
+            .map(|h| h.to_string_lossy().to_string())
+            .unwrap_or_else(|_| "unknown".to_string());
         envs.insert("SUPER_HOSTNAME".to_string(), hostname);
         envs.insert("SUPER_ID".to_string(), id.to_string());
         envs.insert("SUPER_NAME".to_string(), config.name.clone());
-        if let Some(g) = &config.group { envs.insert("SUPER_GROUP".to_string(), g.clone()); }
-        if let Some(p) = pid { envs.insert("SUPER_PID".to_string(), p.to_string()); }
-        if let Some(code) = exit_code { envs.insert("SUPER_EXIT_CODE".to_string(), code.to_string()); }
-        if let Some(u) = uptime_secs { envs.insert("SUPER_UPTIME_SECS".to_string(), u.to_string()); }
-        
+        if let Some(g) = &config.group {
+            envs.insert("SUPER_GROUP".to_string(), g.clone());
+        }
+        if let Some(p) = pid {
+            envs.insert("SUPER_PID".to_string(), p.to_string());
+        }
+        if let Some(code) = exit_code {
+            envs.insert("SUPER_EXIT_CODE".to_string(), code.to_string());
+        }
+        if let Some(u) = uptime_secs {
+            envs.insert("SUPER_UPTIME_SECS".to_string(), u.to_string());
+        }
+
         envs
     }
 
@@ -478,7 +563,12 @@ impl LifecycleController {
             .unwrap_or(self.config.server.shutdown_timeout)
     }
 
-    pub async fn stop_program(&mut self, registry: &mut ProcessRegistry, id: Uuid, force: bool) -> anyhow::Result<()> {
+    pub async fn stop_program(
+        &mut self,
+        registry: &mut ProcessRegistry,
+        id: Uuid,
+        force: bool,
+    ) -> anyhow::Result<()> {
         // On manual stop, clear flapping history for a clean retry
         self.tracker.reset(&id);
 
@@ -497,15 +587,15 @@ impl LifecycleController {
 
         // Case 1: Running
         if let Some(pid) = target_pid {
-
             // [Hook] Pre-Stop
             if let Some(config) = registry.programs.get(&id)
-                && let Some(cmd) = &config.hooks.pre_stop {
-                    let envs = self.build_context(id, config, Some(pid), None, None);
-                    use crate::hooks;
-                    tracing::info!("Executing pre-stop hook for {}", config.name);
-                    let _ = hooks::run_hook(cmd, &envs).await;
-                }
+                && let Some(cmd) = &config.hooks.pre_stop
+            {
+                let envs = self.build_context(id, config, Some(pid), None, None);
+                use crate::hooks;
+                tracing::info!("Executing pre-stop hook for {}", config.name);
+                let _ = hooks::run_hook(cmd, &envs).await;
+            }
 
             // Send stop signal
             if force {
@@ -513,8 +603,15 @@ impl LifecycleController {
                 if let Err(e) = signal::kill(Pid::from_raw(-(pid as i32)), Signal::SIGKILL) {
                     // Process not found; already exited — trigger cleanup
                     if e == nix::errno::Errno::ESRCH {
-                        tracing::warn!("Process {} (PGID {}) not found during force stop. Assuming exited.", id, pid);
-                        let _ = self.tx_self.send(Command::ProcessExited { id, code: None }).await;
+                        tracing::warn!(
+                            "Process {} (PGID {}) not found during force stop. Assuming exited.",
+                            id,
+                            pid
+                        );
+                        let _ = self
+                            .tx_self
+                            .send(Command::ProcessExited { id, code: None })
+                            .await;
                         return Ok(());
                     }
                 }
@@ -523,9 +620,16 @@ impl LifecycleController {
                 if let Err(e) = signal::kill(Pid::from_raw(-(pid as i32)), Signal::SIGTERM) {
                     // ESRCH on signal: treat as exited immediately, do not wait for timeout
                     if e == nix::errno::Errno::ESRCH {
-                        tracing::warn!("Process {} (PGID {}) not found during stop. Assuming exited.", id, pid);
+                        tracing::warn!(
+                            "Process {} (PGID {}) not found during stop. Assuming exited.",
+                            id,
+                            pid
+                        );
                         // Send ProcessExited to Manager for cleanup
-                        let _ = self.tx_self.send(Command::ProcessExited { id, code: None }).await;
+                        let _ = self
+                            .tx_self
+                            .send(Command::ProcessExited { id, code: None })
+                            .await;
                         return Ok(());
                     }
                     return Err(e.into());
@@ -537,17 +641,26 @@ impl LifecycleController {
                 let _ = self.log_tx.send(WsMessage::StatusChange {
                     id,
                     status: ProcessStatus::Stopping,
-                    name: config.name.clone()
+                    name: config.name.clone(),
                 });
             }
 
             // Start timeout watchdog
             let tx = self.tx_self.clone();
-            let timeout_sec = if force { 1 } else { self.stop_timeout(registry, id) };
+            let timeout_sec = if force {
+                1
+            } else {
+                self.stop_timeout(registry, id)
+            };
 
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(timeout_sec)).await;
-                let _ = tx.send(Command::CheckTimeoutKill { id, target_pid: pid }).await;
+                let _ = tx
+                    .send(Command::CheckTimeoutKill {
+                        id,
+                        target_pid: pid,
+                    })
+                    .await;
             });
             return Ok(());
         }
@@ -555,19 +668,34 @@ impl LifecycleController {
         // Case 2: In restart queue (backoff)
         if registry.restarting.remove(&id) {
             tracing::info!("Program {} was waiting to restart. Cancelled by user.", id);
-            let name = registry.programs.get(&id).map(|c| c.name.clone()).unwrap_or_default();
+            let name = registry
+                .programs
+                .get(&id)
+                .map(|c| c.name.clone())
+                .unwrap_or_default();
             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Stopped, name
+                id,
+                status: ProcessStatus::Stopped,
+                name,
             });
             return Ok(());
         }
 
         // Case 3: Waiting on dependencies
         if registry.waiting.remove(&id) {
-            tracing::info!("Program {} removed from waiting queue by user stop request.", id);
-            let name = registry.programs.get(&id).map(|c| c.name.clone()).unwrap_or_default();
+            tracing::info!(
+                "Program {} removed from waiting queue by user stop request.",
+                id
+            );
+            let name = registry
+                .programs
+                .get(&id)
+                .map(|c| c.name.clone())
+                .unwrap_or_default();
             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Stopped, name
+                id,
+                status: ProcessStatus::Stopped,
+                name,
             });
             return Ok(());
         }

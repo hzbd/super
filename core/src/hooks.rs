@@ -8,7 +8,7 @@ use tokio::process::Command;
 /// Returns Ok(true) on exit 0, Ok(false) on script failure.
 pub async fn run_hook(
     hook_cmd: &str,
-    context_envs: &HashMap<String, String>
+    context_envs: &HashMap<String, String>,
 ) -> anyhow::Result<bool> {
     run_hook_with_stdin(hook_cmd, context_envs, None, 0).await
 }

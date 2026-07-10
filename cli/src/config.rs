@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CliConfig {
@@ -29,9 +29,10 @@ impl CliConfig {
     pub fn load() -> Self {
         let path = Self::path();
         if path.exists()
-            && let Ok(content) = fs::read_to_string(&path) {
-                return serde_json::from_str(&content).unwrap_or_default();
-            }
+            && let Ok(content) = fs::read_to_string(&path)
+        {
+            return serde_json::from_str(&content).unwrap_or_default();
+        }
         Self::default()
     }
 

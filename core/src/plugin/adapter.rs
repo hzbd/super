@@ -134,10 +134,10 @@ impl Extension for PluginExtensionAdapter {
         let Some(hook) = self.on_event else {
             return;
         };
-        if let Ok(json) = serde_json::to_string(&event) {
-            if let Ok(cstr) = std::ffi::CString::new(json) {
-                let _ = unsafe { hook(cstr.as_ptr()) };
-            }
+        if let Ok(json) = serde_json::to_string(&event)
+            && let Ok(cstr) = std::ffi::CString::new(json)
+        {
+            let _ = unsafe { hook(cstr.as_ptr()) };
         }
     }
 

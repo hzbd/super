@@ -1,7 +1,7 @@
-use super_core::scheduler::CronScheduler;
-use uuid::Uuid;
 use std::thread;
 use std::time::Duration;
+use super_core::scheduler::CronScheduler;
+use uuid::Uuid;
 
 #[test]
 fn test_scheduler_logic() {
@@ -16,7 +16,10 @@ fn test_scheduler_logic() {
     scheduler.upsert(id, cron_expr);
 
     // Verify next run time was computed
-    assert!(scheduler.get_next_run(&id).is_some(), "Should have next run time");
+    assert!(
+        scheduler.get_next_run(&id).is_some(),
+        "Should have next run time"
+    );
 
     // 2. Simulate time passing
     // Should not be due immediately after registration
@@ -33,6 +36,12 @@ fn test_scheduler_logic() {
 
     // 4. Verify automatic rescheduling
     let triggered_again = scheduler.tick();
-    assert!(triggered_again.is_empty(), "Should not trigger twice instantly");
-    assert!(scheduler.get_next_run(&id).is_some(), "Should have rescheduled");
+    assert!(
+        triggered_again.is_empty(),
+        "Should not trigger twice instantly"
+    );
+    assert!(
+        scheduler.get_next_run(&id).is_some(),
+        "Should have rescheduled"
+    );
 }

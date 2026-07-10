@@ -1,30 +1,32 @@
 use crate::client::ManagerHandle;
 use crate::config::ServerConfig;
+use axum::response::Response;
 use axum::{
-    extract::{Path, State, WebSocketUpgrade, ws::{WebSocket, Message}, Query},
+    Json, Router,
+    extract::{
+        Path, Query, State, WebSocketUpgrade,
+        ws::{Message, WebSocket},
+    },
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post, put},
-    Json, Router,
 };
-use axum::response::Response;
 
 use common::{
-    CreateProgramRequest, UpdateProgramRequest, WsMessage, StackApplyRequest,
-    SignalProgramRequest, ProgramSummary, ProgramInfo, HealthResponse,
-    ProcessStatus, ProgramConfig, HealthCheck, ProgramHooks, ArtifactConfig,
-    BatchProgramRequest, BatchProgramResponse, BatchAction,
-    ProgramLogsResponse, ProgramLogFile, SystemStats,
+    ArtifactConfig, BatchAction, BatchProgramRequest, BatchProgramResponse, CreateProgramRequest,
+    HealthCheck, HealthResponse, ProcessStatus, ProgramConfig, ProgramHooks, ProgramInfo,
+    ProgramLogFile, ProgramLogsResponse, ProgramSummary, SignalProgramRequest, StackApplyRequest,
+    SystemStats, UpdateProgramRequest, WsMessage,
 };
 
 use crate::logger::{self, LogSource};
 
-use uuid::Uuid;
-use tokio::sync::broadcast;
-use serde::Deserialize;
 use nix::sys::signal::Signal;
+use serde::Deserialize;
+use tokio::sync::broadcast;
+use uuid::Uuid;
 
-use utoipa::{OpenApi, IntoParams};
+use utoipa::{IntoParams, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 // App State
@@ -134,28 +136,33 @@ pub fn make_api_router(
     config: ServerConfig,
     mount_docs: bool,
 ) -> Router {
-    let state = AppState { manager, log_tx, shutdown_tx, config: config.clone() };
+    let state = AppState {
+        manager,
+        log_tx,
+        shutdown_tx,
+        config: config.clone(),
+    };
 
     // 1. Business API routes (require AppState)
     let mut api_router = Router::new()
         .route("/api/health", get(health_check))
         .route("/api/programs", get(list_programs).post(create_program))
-        .route("/api/programs/{id}", get(get_program_info)
-            .delete(remove_program)
-            .put(update_program))
+        .route(
+            "/api/programs/{id}",
+            get(get_program_info)
+                .delete(remove_program)
+                .put(update_program),
+        )
         .route("/api/programs/{id}/logs", get(get_program_logs))
         .route("/api/programs/{id}/start", post(start_program))
         .route("/api/programs/{id}/stop", post(stop_program))
         .route("/api/programs/{id}/restart", post(restart_program))
         .route("/api/programs/{id}/signal", post(signal_program))
-
         // Batch operation routes
         .route("/api/programs/batch", post(batch_programs))
-
         .route("/api/groups/{name}/start", post(start_group))
         .route("/api/groups/{name}/stop", post(stop_group))
         .route("/api/groups/{name}/restart", post(restart_group))
-
         .route("/api/stack", put(apply_stack).get(export_stack))
         .route("/api/system/shutdown", post(system_shutdown))
         .route("/api/system/reload", post(system_reload))
@@ -170,7 +177,8 @@ pub fn make_api_router(
     {
         if config.server.enable_docs && mount_docs {
             let openapi = ApiDoc::openapi();
-            api_router = api_router.merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi));
+            api_router = api_router
+                .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi));
         }
     }
 
@@ -189,7 +197,11 @@ pub fn make_api_router(
 )]
 async fn system_shutdown(State(state): State<AppState>) -> Result<StatusCode, AppError> {
     tracing::info!("API received shutdown signal. Initiating graceful shutdown sequence...");
-    state.manager.shutdown().await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    state
+        .manager
+        .shutdown()
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     let _ = state.shutdown_tx.send(());
     tracing::info!("Graceful shutdown completed. Server exiting.");
     Ok(StatusCode::OK)
@@ -208,7 +220,11 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(socket, state.log_tx, params.id))
 }
 
-async fn handle_socket(mut socket: WebSocket, log_tx: broadcast::Sender<WsMessage>, filter_id: Option<Uuid>) {
+async fn handle_socket(
+    mut socket: WebSocket,
+    log_tx: broadcast::Sender<WsMessage>,
+    filter_id: Option<Uuid>,
+) {
     let mut rx = log_tx.subscribe();
     while let Ok(msg) = rx.recv().await {
         let should_send = match &msg {
@@ -217,7 +233,10 @@ async fn handle_socket(mut socket: WebSocket, log_tx: broadcast::Sender<WsMessag
         };
         if should_send
             && let Ok(json) = serde_json::to_string(&msg)
-                && socket.send(Message::Text(json.into())).await.is_err() { break; }
+            && socket.send(Message::Text(json.into())).await.is_err()
+        {
+            break;
+        }
     }
 }
 
@@ -231,8 +250,14 @@ async fn handle_socket(mut socket: WebSocket, log_tx: broadcast::Sender<WsMessag
         (status = 500, description = "Internal server error")
     )
 )]
-async fn list_programs(State(state): State<AppState>) -> Result<Json<Vec<ProgramSummary>>, AppError> {
-    let list = state.manager.list_programs().await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+async fn list_programs(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<ProgramSummary>>, AppError> {
+    let list = state
+        .manager
+        .list_programs()
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(Json(list))
 }
 
@@ -249,9 +274,13 @@ async fn list_programs(State(state): State<AppState>) -> Result<Json<Vec<Program
 )]
 async fn create_program(
     State(state): State<AppState>,
-    Json(payload): Json<CreateProgramRequest>
+    Json(payload): Json<CreateProgramRequest>,
 ) -> Result<(StatusCode, Json<Vec<Uuid>>), AppError> {
-    let ids = state.manager.create_program(payload).await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let ids = state
+        .manager
+        .create_program(payload)
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok((StatusCode::CREATED, Json(ids)))
 }
 
@@ -268,8 +297,15 @@ async fn create_program(
         (status = 404, description = "Program not found")
     )
 )]
-async fn get_program_info(State(state): State<AppState>, Path(id): Path<Uuid>) -> Result<Json<ProgramInfo>, AppError> {
-    let info = state.manager.get_program(id).await.map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
+async fn get_program_info(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ProgramInfo>, AppError> {
+    let info = state
+        .manager
+        .get_program(id)
+        .await
+        .map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
     Ok(Json(info))
 }
 
@@ -292,7 +328,11 @@ async fn get_program_logs(
     Path(id): Path<Uuid>,
     Query(params): Query<LogQueryParams>,
 ) -> Result<Json<ProgramLogsResponse>, AppError> {
-    let info = state.manager.get_program(id).await.map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
+    let info = state
+        .manager
+        .get_program(id)
+        .await
+        .map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
 
     let tail_lines = params.tail.unwrap_or(200).clamp(1, 5000);
     let log_dir = &state.config.storage.log_dir;
@@ -303,14 +343,26 @@ async fn get_program_logs(
         Some("stdout") => vec![LogSource::Stdout],
         Some("stderr") => vec![LogSource::Stderr],
         None => vec![LogSource::Stdout, LogSource::Stderr],
-        _ => return Err(AppError(StatusCode::BAD_REQUEST, anyhow::anyhow!("source must be stdout or stderr"))),
+        _ => {
+            return Err(AppError(
+                StatusCode::BAD_REQUEST,
+                anyhow::anyhow!("source must be stdout or stderr"),
+            ));
+        }
     };
 
     let mut logs = Vec::new();
     for source in sources {
         if let Some(content) = logger::read_log_lines(
-            log_dir, id, source, tail_lines, stdout_logfile, stderr_logfile,
-        ).await {
+            log_dir,
+            id,
+            source,
+            tail_lines,
+            stdout_logfile,
+            stderr_logfile,
+        )
+        .await
+        {
             logs.push(ProgramLogFile {
                 source: source.as_str().to_string(),
                 content,
@@ -334,8 +386,15 @@ async fn get_program_logs(
         (status = 400, description = "Bad request")
     )
 )]
-async fn start_program(State(state): State<AppState>, Path(id): Path<Uuid>) -> Result<StatusCode, AppError> {
-    state.manager.start_program(id).await.map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
+async fn start_program(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    state
+        .manager
+        .start_program(id)
+        .await
+        .map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -358,7 +417,11 @@ async fn update_program(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateProgramRequest>,
 ) -> Result<StatusCode, AppError> {
-    state.manager.update_program(id, payload).await.map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
+    state
+        .manager
+        .update_program(id, payload)
+        .await
+        .map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -376,9 +439,17 @@ async fn update_program(
         (status = 400, description = "Bad request")
     )
 )]
-async fn stop_program(State(state): State<AppState>, Path(id): Path<Uuid>, Query(params): Query<StopParams>) -> Result<StatusCode, AppError> {
+async fn stop_program(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<StopParams>,
+) -> Result<StatusCode, AppError> {
     let force = params.force.unwrap_or(false);
-    state.manager.stop_program(id, force).await.map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
+    state
+        .manager
+        .stop_program(id, force)
+        .await
+        .map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -397,9 +468,13 @@ async fn stop_program(State(state): State<AppState>, Path(id): Path<Uuid>, Query
 )]
 async fn restart_program(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>
+    Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    state.manager.restart_program(id).await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    state
+        .manager
+        .restart_program(id)
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -416,8 +491,15 @@ async fn restart_program(
         (status = 400, description = "Bad request")
     )
 )]
-async fn remove_program(State(state): State<AppState>, Path(id): Path<Uuid>) -> Result<StatusCode, AppError> {
-    state.manager.remove_program(id).await.map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
+async fn remove_program(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    state
+        .manager
+        .remove_program(id)
+        .await
+        .map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -434,10 +516,14 @@ async fn remove_program(State(state): State<AppState>, Path(id): Path<Uuid>) -> 
 )]
 async fn batch_programs(
     State(state): State<AppState>,
-    Json(payload): Json<BatchProgramRequest>
+    Json(payload): Json<BatchProgramRequest>,
 ) -> Result<Json<BatchProgramResponse>, AppError> {
     // Use ManagerHandle wrapper; avoid direct tx access
-    let res = state.manager.batch_programs(payload).await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let res = state
+        .manager
+        .batch_programs(payload)
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(Json(res))
 }
 
@@ -454,8 +540,15 @@ async fn batch_programs(
         (status = 404, description = "Group not found")
     )
 )]
-async fn start_group(State(state): State<AppState>, Path(name): Path<String>) -> Result<Json<Vec<Uuid>>, AppError> {
-    let ids = state.manager.start_group(name).await.map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
+async fn start_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Vec<Uuid>>, AppError> {
+    let ids = state
+        .manager
+        .start_group(name)
+        .await
+        .map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
     Ok(Json(ids))
 }
 
@@ -473,9 +566,17 @@ async fn start_group(State(state): State<AppState>, Path(name): Path<String>) ->
         (status = 404, description = "Group not found")
     )
 )]
-async fn stop_group(State(state): State<AppState>, Path(name): Path<String>, Query(params): Query<StopParams>) -> Result<Json<Vec<Uuid>>, AppError> {
+async fn stop_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Query(params): Query<StopParams>,
+) -> Result<Json<Vec<Uuid>>, AppError> {
     let force = params.force.unwrap_or(false);
-    let ids = state.manager.stop_group(name, force).await.map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
+    let ids = state
+        .manager
+        .stop_group(name, force)
+        .await
+        .map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
     Ok(Json(ids))
 }
 
@@ -492,8 +593,15 @@ async fn stop_group(State(state): State<AppState>, Path(name): Path<String>, Que
         (status = 404, description = "Group not found")
     )
 )]
-async fn restart_group(State(state): State<AppState>, Path(name): Path<String>) -> Result<Json<Vec<Uuid>>, AppError> {
-    let ids = state.manager.restart_group(name).await.map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
+async fn restart_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Vec<Uuid>>, AppError> {
+    let ids = state
+        .manager
+        .restart_group(name)
+        .await
+        .map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
     Ok(Json(ids))
 }
 
@@ -508,7 +616,11 @@ async fn restart_group(State(state): State<AppState>, Path(name): Path<String>) 
     )
 )]
 async fn system_reload(State(state): State<AppState>) -> Result<StatusCode, AppError> {
-    state.manager.reload().await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    state
+        .manager
+        .reload()
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -522,7 +634,10 @@ async fn system_reload(State(state): State<AppState>) -> Result<StatusCode, AppE
     )
 )]
 async fn system_stats(State(state): State<AppState>) -> Result<Json<SystemStats>, AppError> {
-    let stats = state.manager.get_system_stats().await
+    let stats = state
+        .manager
+        .get_system_stats()
+        .await
         .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(Json(stats))
 }
@@ -538,7 +653,11 @@ async fn system_stats(State(state): State<AppState>) -> Result<Json<SystemStats>
     )
 )]
 async fn health_check(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
-    let res = state.manager.health_check().await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let res = state
+        .manager
+        .health_check()
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     if res.status == "healthy" {
         Ok((StatusCode::OK, Json(res)))
     } else {
@@ -559,9 +678,13 @@ async fn health_check(State(state): State<AppState>) -> Result<impl IntoResponse
 )]
 async fn apply_stack(
     State(state): State<AppState>,
-    Json(payload): Json<StackApplyRequest>
+    Json(payload): Json<StackApplyRequest>,
 ) -> Result<Json<Vec<String>>, AppError> {
-    let logs = state.manager.apply_stack(payload).await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let logs = state
+        .manager
+        .apply_stack(payload)
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(Json(logs))
 }
 
@@ -576,23 +699,51 @@ async fn apply_stack(
     )
 )]
 async fn export_stack(State(state): State<AppState>) -> Result<Json<StackApplyRequest>, AppError> {
-    let configs = state.manager.dump_programs().await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-    let services: Vec<CreateProgramRequest> = configs.into_iter().map(|c| {
-        #[allow(unused_mut, clippy::needless_update)]
-        let mut req = CreateProgramRequest {
-            name: Some(c.name), command: c.command, args: c.args, env: c.env, env_file: c.env_file, 
-            cwd: c.cwd, user: c.user, group: c.group, autostart: c.autostart, retry_limit: c.retry_limit,
-            autorestart: c.autorestart, exitcodes: c.exitcodes, startsecs: c.startsecs,
-            stopsecs: c.stopsecs, priority: c.priority,
-            stdout_logfile: c.stdout_logfile.clone(), stderr_logfile: c.stderr_logfile.clone(),
-            depends_on: c.depends_on, health_check: c.health_check, hooks: c.hooks, artifact: c.artifact,
-            cron: c.cron, numprocs: 1, process_name: None, ..Default::default()
-        };
-        req.resource_limits = c.resource_limits;
-        req
-    }).collect();
-    
-    Ok(Json(StackApplyRequest { prune: false, services }))
+    let configs = state
+        .manager
+        .dump_programs()
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let services: Vec<CreateProgramRequest> = configs
+        .into_iter()
+        .map(|c| {
+            #[allow(unused_mut, clippy::needless_update)]
+            let mut req = CreateProgramRequest {
+                name: Some(c.name),
+                command: c.command,
+                args: c.args,
+                env: c.env,
+                env_file: c.env_file,
+                cwd: c.cwd,
+                user: c.user,
+                group: c.group,
+                autostart: c.autostart,
+                retry_limit: c.retry_limit,
+                autorestart: c.autorestart,
+                exitcodes: c.exitcodes,
+                startsecs: c.startsecs,
+                stopsecs: c.stopsecs,
+                priority: c.priority,
+                stdout_logfile: c.stdout_logfile.clone(),
+                stderr_logfile: c.stderr_logfile.clone(),
+                depends_on: c.depends_on,
+                health_check: c.health_check,
+                hooks: c.hooks,
+                artifact: c.artifact,
+                cron: c.cron,
+                numprocs: 1,
+                process_name: None,
+                ..Default::default()
+            };
+            req.resource_limits = c.resource_limits;
+            req
+        })
+        .collect();
+
+    Ok(Json(StackApplyRequest {
+        prune: false,
+        services,
+    }))
 }
 
 /// Send signal to program
@@ -616,11 +767,25 @@ async fn signal_program(
 ) -> Result<StatusCode, AppError> {
     // Parse signal string
     let sig = match payload.signal.to_lowercase().as_str() {
-        "hup" => Signal::SIGHUP, "int" => Signal::SIGINT, "term" => Signal::SIGTERM,
-        "kill" => Signal::SIGKILL, "quit" => Signal::SIGQUIT, "usr1" => Signal::SIGUSR1, "usr2" => Signal::SIGUSR2,
-        _ => return Err(AppError(StatusCode::BAD_REQUEST, anyhow::anyhow!("Unsupported signal type"))),
+        "hup" => Signal::SIGHUP,
+        "int" => Signal::SIGINT,
+        "term" => Signal::SIGTERM,
+        "kill" => Signal::SIGKILL,
+        "quit" => Signal::SIGQUIT,
+        "usr1" => Signal::SIGUSR1,
+        "usr2" => Signal::SIGUSR2,
+        _ => {
+            return Err(AppError(
+                StatusCode::BAD_REQUEST,
+                anyhow::anyhow!("Unsupported signal type"),
+            ));
+        }
     };
-    state.manager.signal_program(id, sig).await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    state
+        .manager
+        .signal_program(id, sig)
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -634,6 +799,16 @@ async fn signal_program(
     )
 )]
 async fn metrics_handler(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
-    let metrics = state.manager.generate_metrics().await.map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-    Ok(([(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")], metrics))
+    let metrics = state
+        .manager
+        .generate_metrics()
+        .await
+        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    Ok((
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
+        metrics,
+    ))
 }

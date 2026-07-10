@@ -50,7 +50,10 @@ fn test_license_config() {
         port = 9002
     "#;
     let config: ServerConfig = toml::from_str(toml_str).unwrap();
-    assert_eq!(config.license.as_ref().unwrap().key.as_deref(), Some("test-key"));
+    assert_eq!(
+        config.license.as_ref().unwrap().key.as_deref(),
+        Some("test-key")
+    );
 }
 
 #[test]

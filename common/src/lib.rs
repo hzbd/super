@@ -15,23 +15,33 @@ pub mod resources;
 
 pub use paths::resolve_super_root;
 
-pub use plugin_abi::{SuperPluginV1, PLUGIN_API_VERSION, PLUGIN_SYMBOL};
-pub use plugin_http_abi::{
-    SuperPluginHttpV1, HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL,
-};
+pub use auth::{AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole};
+pub use plugin_abi::{PLUGIN_API_VERSION, PLUGIN_SYMBOL, SuperPluginV1};
+pub use plugin_http_abi::{HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL, SuperPluginHttpV1};
 pub use resources::ResourceLimits;
-pub use auth::{
-    AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole,
-};
 
 // Helpers
-fn default_true() -> bool { true }
-fn default_retry_limit() -> u32 { 3 }
-fn default_localhost() -> String { "127.0.0.1".to_string() }
-fn default_one() -> u32 { 1 }
-fn default_startsecs() -> u32 { 10 }
-fn default_exitcodes() -> Vec<i32> { vec![0] }
-fn default_priority() -> i32 { 999 }
+fn default_true() -> bool {
+    true
+}
+fn default_retry_limit() -> u32 {
+    3
+}
+fn default_localhost() -> String {
+    "127.0.0.1".to_string()
+}
+fn default_one() -> u32 {
+    1
+}
+fn default_startsecs() -> u32 {
+    10
+}
+fn default_exitcodes() -> Vec<i32> {
+    vec![0]
+}
+fn default_priority() -> i32 {
+    999
+}
 
 /// Auto-restart policy (Supervisor-compatible semantics)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, Default)]
@@ -120,7 +130,11 @@ pub struct ProgramConfig {
 
     /// Seconds to wait for SIGTERM before SIGKILL. Falls back to `[server].shutdown_timeout`.
     /// Supervisor config alias: `stopwaitsecs`.
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "stopwaitsecs")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "stopwaitsecs"
+    )]
     pub stopsecs: Option<u32>,
 
     /// Startup order when multiple programs autostart (Supervisor `priority`; lower = earlier).
@@ -190,10 +204,15 @@ pub enum HealthCheck {
     Tcp {
         #[serde(default = "default_localhost")]
         host: String,
-        port: u16
+        port: u16,
     },
-    Http { url: String, method: Option<String> },
-    Exec { command: String },
+    Http {
+        url: String,
+        method: Option<String>,
+    },
+    Exec {
+        command: String,
+    },
 
     Disabled,
 }
@@ -329,8 +348,16 @@ pub struct ProgramInfo {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", content = "payload")]
 pub enum WsMessage {
-    StatusChange { id: Uuid, status: ProcessStatus, name: String },
-    Log { id: Uuid, source: String, line: String },
+    StatusChange {
+        id: Uuid,
+        status: ProcessStatus,
+        name: String,
+    },
+    Log {
+        id: Uuid,
+        source: String,
+        line: String,
+    },
 }
 
 /// Health check response
@@ -437,10 +464,14 @@ pub struct SignalProgramRequest {
 #[serde(tag = "type", content = "payload")]
 pub enum BatchAction {
     Start,
-    Stop { force: bool },
+    Stop {
+        force: bool,
+    },
     Restart,
     /// Signal name (hup, int, term, kill, etc.)
-    Signal { signal: String },
+    Signal {
+        signal: String,
+    },
     Remove,
 }
 

@@ -1,7 +1,7 @@
+use chrono::{DateTime, Utc};
+use cron::Schedule;
 use std::collections::HashMap;
 use std::str::FromStr;
-use cron::Schedule;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 pub struct CronScheduler {
@@ -59,10 +59,11 @@ impl CronScheduler {
         for (id, expr) in to_update {
             if let Ok(schedule) = Schedule::from_str(&expr)
                 && let Some(next) = schedule.upcoming(Utc).next()
-                    && let Some(entry) = self.tasks.get_mut(&id) {
-                        entry.0 = next;
-                        tracing::debug!("Scheduler: rescheduled {} for {}", id, next);
-                    }
+                && let Some(entry) = self.tasks.get_mut(&id)
+            {
+                entry.0 = next;
+                tracing::debug!("Scheduler: rescheduled {} for {}", id, next);
+            }
         }
 
         triggered

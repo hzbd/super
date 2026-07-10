@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
-use uuid::Uuid;
-use tokio::task::JoinHandle;
 use common::ProgramConfig;
+use std::collections::{HashMap, HashSet};
+use tokio::task::JoinHandle;
+use uuid::Uuid;
 
 /// Runtime state (formerly private to Manager; now public).
 pub struct RuntimeState {

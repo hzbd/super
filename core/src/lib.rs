@@ -4,29 +4,29 @@ pub mod manager;
 pub mod process;
 pub mod store;
 
+pub mod artifact;
+pub mod event_hooks;
+pub mod extension;
 pub mod health;
 pub mod hooks;
-pub mod event_hooks;
-pub mod artifact;
-pub mod extension;
 pub mod plugin;
 
-pub mod scheduler;
-pub mod monitor;
 pub mod client;
+pub mod monitor;
+pub mod scheduler;
 
 pub use crate::client::ManagerHandle;
 pub mod config {
     pub use common::config::*;
 }
 use crate::config::ServerConfig;
-use crate::manager::Manager;
 use crate::extension::Extension;
+use crate::manager::Manager;
 
 use std::path::PathBuf;
 use tokio::sync::{broadcast, mpsc};
-use tracing_subscriber::{layer::SubscriberExt, reload, util::SubscriberInitExt, EnvFilter};
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, reload, util::SubscriberInitExt};
 
 // Public core handle: holds everything needed for system lifecycle
 pub struct SystemCore {
@@ -59,7 +59,6 @@ pub fn resolve_root() -> PathBuf {
 
 // Bootstrap: env init, config load, logging, and Manager startup
 pub async fn bootstrap(extension: Box<dyn Extension>) -> anyhow::Result<SystemCore> {
-
     // [Linux Only] Lower OOM score so the kernel is less likely to kill us under memory pressure
     #[cfg(target_os = "linux")]
     {
@@ -103,7 +102,11 @@ pub async fn bootstrap(extension: Box<dyn Extension>) -> anyhow::Result<SystemCo
         match toml::from_str::<ServerConfig>(&content) {
             Ok(c) => c,
             Err(e) => {
-                return Err(anyhow::anyhow!("Failed to parse config file {:?}: {}", paths.config_file, e));
+                return Err(anyhow::anyhow!(
+                    "Failed to parse config file {:?}: {}",
+                    paths.config_file,
+                    e
+                ));
             }
         }
     } else {
@@ -119,12 +122,13 @@ pub async fn bootstrap(extension: Box<dyn Extension>) -> anyhow::Result<SystemCo
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     // Support dynamic log level via reload layer
-    let (filter, reload_handle) = reload::Layer::new(
-        EnvFilter::new(&server_config.logging.log_level)
-    );
+    let (filter, reload_handle) =
+        reload::Layer::new(EnvFilter::new(&server_config.logging.log_level));
 
     let stdout_layer = tracing_subscriber::fmt::layer().with_target(true);
-    let file_layer = tracing_subscriber::fmt::layer().with_ansi(false).with_writer(non_blocking);
+    let file_layer = tracing_subscriber::fmt::layer()
+        .with_ansi(false)
+        .with_writer(non_blocking);
 
     let _ = tracing_subscriber::registry()
         .with(filter)

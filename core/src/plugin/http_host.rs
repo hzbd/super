@@ -1,19 +1,17 @@
 //! Generic HTTP bridge for optional `super_plugin_http_v1` exports.
 
-use crate::plugin::loader::PluginRuntime;
 use crate::SystemPaths;
+use crate::plugin::loader::PluginRuntime;
 use axum::{
+    Router,
     body::Bytes,
     extract::{ConnectInfo, State},
-    http::{header, Method, StatusCode, Uri},
+    http::{Method, StatusCode, Uri, header},
     middleware::Next,
     response::{IntoResponse, Response},
     routing::MethodRouter,
-    Router,
 };
-use common::plugin_http_abi::{
-    SuperPluginHttpV1, HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL,
-};
+use common::plugin_http_abi::{HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL, SuperPluginHttpV1};
 use libloading::Library;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -89,17 +87,18 @@ impl HttpPluginHandle {
             )
         };
         let nul = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-        (status as u16, String::from_utf8_lossy(&buf[..nul]).into_owned())
+        (
+            status as u16,
+            String::from_utf8_lossy(&buf[..nul]).into_owned(),
+        )
     }
 }
 
 fn load_http_vtable(library: &Library) -> Option<SuperPluginHttpV1> {
     // SAFETY: symbol must match `SuperPluginHttpV1` ABI when present.
     unsafe {
-        let symbol: Result<
-            libloading::Symbol<unsafe extern "C" fn() -> SuperPluginHttpV1>,
-            _,
-        > = library.get(HTTP_PLUGIN_SYMBOL);
+        let symbol: Result<libloading::Symbol<unsafe extern "C" fn() -> SuperPluginHttpV1>, _> =
+            library.get(HTTP_PLUGIN_SYMBOL);
         symbol.ok().map(|s| s())
     }
 }
@@ -121,7 +120,11 @@ fn list_routes(vtable: &SuperPluginHttpV1) -> anyhow::Result<Vec<RouteSpec>> {
 /// Merge plugin HTTP routes and apply auth middleware when a plugin provides it.
 ///
 /// Returns the merged router and whether API authentication is active.
-pub fn attach_http_plugins(router: Router, runtime: &PluginRuntime, paths: &SystemPaths) -> anyhow::Result<(Router, bool)> {
+pub fn attach_http_plugins(
+    router: Router,
+    runtime: &PluginRuntime,
+    paths: &SystemPaths,
+) -> anyhow::Result<(Router, bool)> {
     let init_json = serde_json::json!({ "super_root": paths.root });
     let init_payload = init_json.to_string();
 
@@ -264,12 +267,11 @@ async fn plugin_auth_middleware(
         3 => Ok(next.run(req).await),
         0 => {
             let nul = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-            let json = std::str::from_utf8(&buf[..nul])
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-            req.extensions_mut()
-                .insert(PluginAuthContext {
-                    ctx_json: json.to_string(),
-                });
+            let json =
+                std::str::from_utf8(&buf[..nul]).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            req.extensions_mut().insert(PluginAuthContext {
+                ctx_json: json.to_string(),
+            });
             Ok(next.run(req).await)
         }
         1 => {

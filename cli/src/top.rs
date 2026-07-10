@@ -1,16 +1,16 @@
-use std::{io, time::Duration};
-use tokio::sync::mpsc;
+use crate::handlers::Context;
+use common::{ProcessStatus, ProgramSummary};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Cell, Row, Table, TableState, Paragraph},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
 };
-use common::{ProgramSummary, ProcessStatus};
-use crate::handlers::Context;
+use std::{io, time::Duration};
+use tokio::sync::mpsc;
 
 // + App State +
 
@@ -90,7 +90,7 @@ pub async fn run(ctx: &Context) -> anyhow::Result<()> {
                     } else {
                         Err(format!("API Error: {}", resp.status()))
                     }
-                },
+                }
                 Err(e) => Err(format!("Network Error: {}", e)),
             };
 
@@ -115,15 +115,16 @@ pub async fn run(ctx: &Context) -> anyhow::Result<()> {
         // Handle Input (Non-blocking check)
         if event::poll(tick_rate)?
             && let Event::Key(key) = event::read()?
-                && key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => break,
-                        KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
-                        KeyCode::Down | KeyCode::Char('j') => app.next(),
-                        KeyCode::Up | KeyCode::Char('k') => app.previous(),
-                        _ => {}
-                    }
-                }
+            && key.kind == KeyEventKind::Press
+        {
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => break,
+                KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => break,
+                KeyCode::Down | KeyCode::Char('j') => app.next(),
+                KeyCode::Up | KeyCode::Char('k') => app.previous(),
+                _ => {}
+            }
+        }
 
         // Handle Data Update
         while let Ok(msg) = rx.try_recv() {
@@ -138,7 +139,7 @@ pub async fn run(ctx: &Context) -> anyhow::Result<()> {
                     if app.table_state.selected().is_none() && !app.items.is_empty() {
                         app.table_state.select(Some(0));
                     }
-                },
+                }
                 Err(e) => app.last_error = Some(e),
             }
         }
@@ -173,26 +174,48 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
     let (total, running, error) = app.items.iter().fold((0, 0, 0), |(t, r, e), p| {
         let is_run = matches!(p.status, ProcessStatus::Running | ProcessStatus::Healthy);
         let is_err = matches!(p.status, ProcessStatus::Fatal | ProcessStatus::Backoff);
-        (t + 1, r + if is_run { 1 } else { 0 }, e + if is_err { 1 } else { 0 })
+        (
+            t + 1,
+            r + if is_run { 1 } else { 0 },
+            e + if is_err { 1 } else { 0 },
+        )
     });
 
     let status_text = if let Some(err) = &app.last_error {
-        Line::from(vec![Span::styled(format!(" Error: {} ", err), Style::default().bg(Color::Red).fg(Color::White))])
+        Line::from(vec![Span::styled(
+            format!(" Error: {} ", err),
+            Style::default().bg(Color::Red).fg(Color::White),
+        )])
     } else {
         Line::from(vec![
-            Span::raw(" Total: "), Span::styled(total.to_string(), Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(" Total: "),
+            Span::styled(
+                total.to_string(),
+                Style::default().add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" | "),
             Span::styled(" Running ", Style::default().fg(Color::Green)),
-            Span::styled(running.to_string(), Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                running.to_string(),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" | "),
             Span::styled(" Fatal/Backoff ", Style::default().fg(Color::Red)),
-            Span::styled(error.to_string(), Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                error.to_string(),
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
         ])
     };
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(Span::styled(" Super Process Manager (TUI) ", Style::default().add_modifier(Modifier::BOLD).fg(Color::Cyan)));
+    let block = Block::default().borders(Borders::ALL).title(Span::styled(
+        " Super Process Manager (TUI) ",
+        Style::default()
+            .add_modifier(Modifier::BOLD)
+            .fg(Color::Cyan),
+    ));
 
     let p = Paragraph::new(status_text)
         .block(block)
@@ -202,7 +225,9 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
-    let header_style = Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+    let header_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
     let selected_style = Style::default().add_modifier(Modifier::REVERSED);
 
     let header = Row::new(vec![
@@ -217,55 +242,76 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     .style(header_style)
     .height(1);
 
-    let rows: Vec<Row> = app.items.iter().map(|p| {
-        let status_style = match p.status {
-            ProcessStatus::Healthy => Style::default().fg(Color::Green),
-            ProcessStatus::Running => Style::default().fg(Color::Green),
-            ProcessStatus::Fatal => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            ProcessStatus::Backoff => Style::default().fg(Color::Yellow),
-            ProcessStatus::Stopped => Style::default().fg(Color::DarkGray),
-            _ => Style::default(),
-        };
+    let rows: Vec<Row> = app
+        .items
+        .iter()
+        .map(|p| {
+            let status_style = match p.status {
+                ProcessStatus::Healthy => Style::default().fg(Color::Green),
+                ProcessStatus::Running => Style::default().fg(Color::Green),
+                ProcessStatus::Fatal => {
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+                }
+                ProcessStatus::Backoff => Style::default().fg(Color::Yellow),
+                ProcessStatus::Stopped => Style::default().fg(Color::DarkGray),
+                _ => Style::default(),
+            };
 
-        let pid = p.pid.map(|x| x.to_string()).unwrap_or_else(|| "-".to_string());
-        let cpu = p.cpu_usage.map(|x| format!("{:.1}", x)).unwrap_or_else(|| "-".to_string());
-        let mem = p.mem_usage.map(|x| {
-             if x > 1024 * 1024 { format!("{:.1} MB", x as f64 / 1024.0 / 1024.0) }
-             else { format!("{:.0} KB", x as f64 / 1024.0) }
-        }).unwrap_or_else(|| "-".to_string());
+            let pid = p
+                .pid
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "-".to_string());
+            let cpu = p
+                .cpu_usage
+                .map(|x| format!("{:.1}", x))
+                .unwrap_or_else(|| "-".to_string());
+            let mem = p
+                .mem_usage
+                .map(|x| {
+                    if x > 1024 * 1024 {
+                        format!("{:.1} MB", x as f64 / 1024.0 / 1024.0)
+                    } else {
+                        format!("{:.0} KB", x as f64 / 1024.0)
+                    }
+                })
+                .unwrap_or_else(|| "-".to_string());
 
-        let uptime = p.uptime_sec.map(|s| {
-            let h = s / 3600;
-            let m = (s % 3600) / 60;
-            let sec = s % 60;
-            format!("{:02}:{:02}:{:02}", h, m, sec)
-        }).unwrap_or_else(|| "-".to_string());
+            let uptime = p
+                .uptime_sec
+                .map(|s| {
+                    let h = s / 3600;
+                    let m = (s % 3600) / 60;
+                    let sec = s % 60;
+                    format!("{:02}:{:02}:{:02}", h, m, sec)
+                })
+                .unwrap_or_else(|| "-".to_string());
 
-        // ID Short
-        let id_short = p.id.to_string().chars().take(8).collect::<String>();
+            // ID Short
+            let id_short = p.id.to_string().chars().take(8).collect::<String>();
 
-        Row::new(vec![
-            Cell::from(id_short),
-            Cell::from(p.name.clone()),
-            Cell::from(format!("{:?}", p.status)).style(status_style),
-            Cell::from(pid),
-            Cell::from(cpu),
-            Cell::from(mem),
-            Cell::from(uptime),
-        ])
-    }).collect();
+            Row::new(vec![
+                Cell::from(id_short),
+                Cell::from(p.name.clone()),
+                Cell::from(format!("{:?}", p.status)).style(status_style),
+                Cell::from(pid),
+                Cell::from(cpu),
+                Cell::from(mem),
+                Cell::from(uptime),
+            ])
+        })
+        .collect();
 
     let t = Table::new(
         rows,
         [
-            Constraint::Length(10), // ID
+            Constraint::Length(10),     // ID
             Constraint::Percentage(20), // Name
             Constraint::Percentage(15), // Status
-            Constraint::Length(8), // PID
-            Constraint::Length(8), // CPU
-            Constraint::Length(12), // Mem
+            Constraint::Length(8),      // PID
+            Constraint::Length(8),      // CPU
+            Constraint::Length(12),     // Mem
             Constraint::Percentage(15), // Uptime
-        ]
+        ],
     )
     .header(header)
     .block(Block::default().borders(Borders::ALL).title(" Processes "))

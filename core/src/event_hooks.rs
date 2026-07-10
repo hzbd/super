@@ -1,7 +1,7 @@
-use common::config::EventHookConfig;
-use common::SystemEvent;
 use crate::extension::Extension;
-use serde_json::{json, Value};
+use common::SystemEvent;
+use common::config::EventHookConfig;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -51,7 +51,13 @@ pub fn dispatch(hooks: &[EventHookConfig], event: &SystemEvent) {
     });
 }
 
-async fn run_one(command: &str, json_body: &str, env: &HashMap<String, String>, timeout_secs: u64, id: Option<&str>) {
+async fn run_one(
+    command: &str,
+    json_body: &str,
+    env: &HashMap<String, String>,
+    timeout_secs: u64,
+    id: Option<&str>,
+) {
     let label = id.unwrap_or(command);
     match crate::hooks::run_hook_with_stdin(command, env, Some(json_body), timeout_secs).await {
         Ok(true) => tracing::debug!("Event hook '{}' completed", label),

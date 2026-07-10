@@ -12,19 +12,31 @@ fn test_flapping_logic() {
 
     // 1. First start
     tracker.record_start(id, threshold);
-    assert!(!tracker.is_flapping(id, window, threshold), "1st start should be fine");
+    assert!(
+        !tracker.is_flapping(id, window, threshold),
+        "1st start should be fine"
+    );
 
     // 2. Second start
     tracker.record_start(id, threshold);
-    assert!(!tracker.is_flapping(id, window, threshold), "2nd start should be fine");
+    assert!(
+        !tracker.is_flapping(id, window, threshold),
+        "2nd start should be fine"
+    );
 
     // 3. Third start
     tracker.record_start(id, threshold);
-    assert!(!tracker.is_flapping(id, window, threshold), "3rd start should be fine (threshold reached but not exceeded)");
+    assert!(
+        !tracker.is_flapping(id, window, threshold),
+        "3rd start should be fine (threshold reached but not exceeded)"
+    );
 
     // 4. Fourth start (should trigger flapping)
     tracker.record_start(id, threshold);
-    assert!(tracker.is_flapping(id, window, threshold), "4th start in short time should trigger flapping");
+    assert!(
+        tracker.is_flapping(id, window, threshold),
+        "4th start in short time should trigger flapping"
+    );
 }
 
 #[test]
@@ -43,5 +55,8 @@ fn test_flapping_recovery() {
 
     // Next start should count as the first
     tracker.record_start(id, 1);
-    assert!(!tracker.is_flapping(id, 60, 1), "Should be clean after reset");
+    assert!(
+        !tracker.is_flapping(id, 60, 1),
+        "Should be clean after reset"
+    );
 }

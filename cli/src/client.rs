@@ -1,11 +1,11 @@
-use common::{ProgramSummary, WsMessage, ProcessStatus, ProgramInfo};
-use reqwest::header;
-use uuid::Uuid;
+use common::{ProcessStatus, ProgramInfo, ProgramSummary, WsMessage};
 use futures_util::StreamExt;
+use reqwest::header;
+use std::io::Write;
+use std::time::{Duration, Instant};
 use tokio_tungstenite::connect_async;
 use url::Url;
-use std::time::{Duration, Instant};
-use std::io::Write;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
 pub enum WaitTarget {
@@ -25,7 +25,9 @@ pub fn build_client(token: Option<&String>) -> anyhow::Result<reqwest::Client> {
         auth_val.set_sensitive(true);
         headers.insert(header::AUTHORIZATION, auth_val);
     }
-    let client = reqwest::Client::builder().default_headers(headers).build()?;
+    let client = reqwest::Client::builder()
+        .default_headers(headers)
+        .build()?;
     Ok(client)
 }
 
@@ -47,7 +49,11 @@ pub async fn verify_credentials(base_url: &str, token: &str) -> anyhow::Result<(
 }
 
 /// Resolve target (all, @group, name, id)
-pub async fn resolve_targets(client: &reqwest::Client, base_url: &str, target: &str) -> anyhow::Result<Vec<Uuid>> {
+pub async fn resolve_targets(
+    client: &reqwest::Client,
+    base_url: &str,
+    target: &str,
+) -> anyhow::Result<Vec<Uuid>> {
     let url = format!("{}/api/programs", base_url);
     let resp = client.get(&url).send().await?;
 
@@ -59,31 +65,43 @@ pub async fn resolve_targets(client: &reqwest::Client, base_url: &str, target: &
     let programs: Vec<ProgramSummary> = resp.json().await?;
 
     if target == "all" {
-        if programs.is_empty() { return Err(anyhow::anyhow!("No programs found on server.")); }
+        if programs.is_empty() {
+            return Err(anyhow::anyhow!("No programs found on server."));
+        }
         return Ok(programs.into_iter().map(|p| p.id).collect());
     }
 
     if let Some(group_name) = target.strip_prefix('@') {
-        let matched: Vec<Uuid> = programs.iter()
+        let matched: Vec<Uuid> = programs
+            .iter()
             .filter(|p| p.group.as_deref() == Some(group_name))
             .map(|p| p.id)
             .collect();
         if matched.is_empty() {
-            return Err(anyhow::anyhow!("Error: No programs found in group '@{}'", group_name));
+            return Err(anyhow::anyhow!(
+                "Error: No programs found in group '@{}'",
+                group_name
+            ));
         }
         return Ok(matched);
     }
 
-    let matches: Vec<_> = programs.iter().filter(|p| {
-        p.name == target || p.id.to_string().starts_with(target)
-    }).collect();
+    let matches: Vec<_> = programs
+        .iter()
+        .filter(|p| p.name == target || p.id.to_string().starts_with(target))
+        .collect();
 
     match matches.len() {
         0 => Err(anyhow::anyhow!("Error: Program not found: '{}'", target)),
         1 => Ok(vec![matches[0].id]),
         _ => {
-            eprintln!("Error: Ambiguous target '{}'. Found multiple matches:", target);
-            for p in matches { eprintln!("   {} ({})", p.id, p.name); }
+            eprintln!(
+                "Error: Ambiguous target '{}'. Found multiple matches:",
+                target
+            );
+            for p in matches {
+                eprintln!("   {} ({})", p.id, p.name);
+            }
             Err(anyhow::anyhow!("Please be more specific."))
         }
     }
@@ -107,7 +125,10 @@ pub async fn wait_for_status(
     loop {
         if start_time.elapsed() > timeout {
             println!();
-            return Err(anyhow::anyhow!("Timeout: Status did not change within {}s.", timeout_sec));
+            return Err(anyhow::anyhow!(
+                "Timeout: Status did not change within {}s.",
+                timeout_sec
+            ));
         }
 
         let resp = client.get(&url).send().await?;
@@ -125,40 +146,43 @@ pub async fn wait_for_status(
                     ProcessStatus::Running | ProcessStatus::Healthy => {
                         println!(" Confirmed (Running, PID: {:?}).", current_pid.unwrap_or(0));
                         return Ok(());
-                    },
+                    }
                     ProcessStatus::Fatal => {
                         println!(" Failed (Crashed/Fatal).");
                         return Err(anyhow::anyhow!("Process crashed immediately."));
-                    },
+                    }
                     ProcessStatus::Backoff => {
                         println!(" Unstable (Backoff).");
                         return Err(anyhow::anyhow!("Process is restarting (Backoff)."));
-                    },
+                    }
                     _ => {} // Waiting, Starting, etc.
                 }
-            },
+            }
             WaitTarget::Down => {
                 if current_state == ProcessStatus::Stopped {
                     println!(" Confirmed (Stopped).");
                     return Ok(());
                 }
-            },
+            }
             WaitTarget::Restarted(old_pid) => {
                 if matches!(current_state, ProcessStatus::Fatal | ProcessStatus::Backoff) {
                     println!(" Failed (Crashed during restart).");
                     return Err(anyhow::anyhow!("Process crashed during restart."));
                 }
 
-                if matches!(current_state, ProcessStatus::Running | ProcessStatus::Healthy) {
+                if matches!(
+                    current_state,
+                    ProcessStatus::Running | ProcessStatus::Healthy
+                ) {
                     match (old_pid, current_pid) {
                         (Some(old), Some(new)) if old != new => {
                             println!(" Confirmed (Restarted, PID: {} -> {}).", old, new);
                             return Ok(());
-                        },
+                        }
                         (None, Some(new)) => {
                             println!(" Confirmed (Started, PID: {}).", new);
                             return Ok(());
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -171,7 +195,9 @@ pub async fn wait_for_status(
 
 /// Stream logs over WebSocket
 pub async fn monitor_logs(base_url: &str, id: Uuid, token_query: &str) -> anyhow::Result<()> {
-    let ws_base = base_url.replace("http://", "ws://").replace("https://", "wss://");
+    let ws_base = base_url
+        .replace("http://", "ws://")
+        .replace("https://", "wss://");
     let ws_url = format!("{}/ws?id={}{}", ws_base, id, token_query);
 
     println!("Connecting to logs for {}...", id);

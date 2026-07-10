@@ -1,15 +1,15 @@
+use crate::manager::Command;
+use common::SystemStats;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
+use sysinfo::{
+    CpuRefreshKind, MemoryRefreshKind, Pid as SysPid, ProcessRefreshKind, ProcessesToUpdate,
+    RefreshKind, System,
+};
 use tokio::sync::mpsc;
 use uuid::Uuid;
-use sysinfo::{
-    Pid as SysPid, System, RefreshKind, ProcessRefreshKind, MemoryRefreshKind, CpuRefreshKind,
-    ProcessesToUpdate,
-};
-use common::SystemStats;
-use crate::manager::Command;
 
 /// Resource monitor: collects CPU/mem in a background thread and sends to Manager.
 pub struct ResourceMonitor {
@@ -32,7 +32,10 @@ impl ResourceMonitor {
             })
             .expect("Failed to spawn monitor thread");
 
-        Self { pid_mapping, system_stats }
+        Self {
+            pid_mapping,
+            system_stats,
+        }
     }
 
     pub fn watch(&self, id: Uuid, pid: u32) {

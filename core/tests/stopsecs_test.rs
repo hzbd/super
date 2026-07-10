@@ -1,8 +1,8 @@
 use common::ProgramConfig;
+use std::collections::HashMap;
 use super_core::config::ServerConfig;
 use super_core::manager::controller::LifecycleController;
 use super_core::manager::registry::ProcessRegistry;
-use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
@@ -18,7 +18,9 @@ fn test_stopsecs_fallback_to_server_default() {
         tx,
         log_tx,
         std::sync::Arc::new(super_core::extension::NoOpExtension),
-        std::sync::Arc::new(super_core::monitor::ResourceMonitor::new(mpsc::channel(1).0)),
+        std::sync::Arc::new(super_core::monitor::ResourceMonitor::new(
+            mpsc::channel(1).0,
+        )),
     );
 
     let id = Uuid::new_v4();

@@ -1,6 +1,6 @@
 use crate::extension::{Extension, ExtensionStack, NoOpExtension};
-use common::plugin_abi::{SuperPluginV1, PLUGIN_SYMBOL};
 use crate::plugin::adapter::PluginExtensionAdapter;
+use common::plugin_abi::{PLUGIN_SYMBOL, SuperPluginV1};
 use libloading::Library;
 use std::path::{Path, PathBuf};
 use tracing::{error, info};
@@ -34,10 +34,7 @@ impl PluginRuntime {
     }
 }
 
-pub fn load_authorized_plugins(
-    plugins_dir: &Path,
-    authorized_ids: &[String],
-) -> PluginRuntime {
+pub fn load_authorized_plugins(plugins_dir: &Path, authorized_ids: &[String]) -> PluginRuntime {
     let mut stack = ExtensionStack::new();
     let mut libraries = Vec::new();
     let mut loaded_ids = Vec::new();

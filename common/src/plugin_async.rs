@@ -29,7 +29,10 @@ impl WorkerPool {
                 }
             })
             .expect("spawn plugin worker thread");
-        Self { tx, _handle: handle }
+        Self {
+            tx,
+            _handle: handle,
+        }
     }
 
     fn submit(&self, job: Job) -> bool {

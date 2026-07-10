@@ -1,6 +1,6 @@
 use common::HealthCheck;
-use std::time::Duration;
 use std::sync::OnceLock;
+use std::time::Duration;
 use tokio::net::TcpStream;
 
 // Shared HTTP client; avoid rebuilding connection pool per check
@@ -44,7 +44,7 @@ async fn check_http(url: &str, method: Option<&str>) -> bool {
     let method = match method_str.to_uppercase().as_str() {
         "POST" => reqwest::Method::POST,
         "HEAD" => reqwest::Method::HEAD,
-        "PUT"  => reqwest::Method::PUT,
+        "PUT" => reqwest::Method::PUT,
         _ => reqwest::Method::GET,
     };
 

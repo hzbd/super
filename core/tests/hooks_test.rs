@@ -1,5 +1,5 @@
-use super_core::hooks;
 use std::collections::HashMap;
+use super_core::hooks;
 
 #[tokio::test]
 async fn test_hook_execution() {

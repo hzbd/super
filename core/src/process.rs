@@ -1,13 +1,15 @@
 use common::ProgramConfig;
-use std::process::Stdio;
-use tokio::process::{Child, Command};
-use std::collections::HashMap;
 #[cfg(unix)]
 use nix::unistd::User;
-
+use std::collections::HashMap;
+use std::process::Stdio;
+use tokio::process::{Child, Command};
 
 /// Build a Tokio Command from config and spawn the process.
-pub fn spawn_process(config: &ProgramConfig, extra_envs: &HashMap<String, String>) -> anyhow::Result<Child> {
+pub fn spawn_process(
+    config: &ProgramConfig,
+    extra_envs: &HashMap<String, String>,
+) -> anyhow::Result<Child> {
     let mut cmd = Command::new(&config.command);
 
     // 1. Arguments
@@ -47,13 +49,19 @@ pub fn spawn_process(config: &ProgramConfig, extra_envs: &HashMap<String, String
                 cmd.gid(gid);
                 cmd.uid(uid);
             } else {
-                return Err(anyhow::anyhow!("User '{}' not found on this system", username));
+                return Err(anyhow::anyhow!(
+                    "User '{}' not found on this system",
+                    username
+                ));
             }
         }
 
         #[cfg(not(unix))]
         {
-            tracing::warn!("User switching (su) is not supported on non-Unix systems. Ignoring user='{}'.", username);
+            tracing::warn!(
+                "User switching (su) is not supported on non-Unix systems. Ignoring user='{}'.",
+                username
+            );
         }
     }
 

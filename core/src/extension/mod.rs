@@ -5,12 +5,15 @@ use uuid::Uuid;
 /// Core extension interface.
 /// Middleware-style hooks invoked at key lifecycle points.
 pub trait Extension: Send + Sync {
-
     // 1. Start interception
     /// [Pre-Start] Preparation phase.
     /// Timing: before process spawn.
     /// Default: no extra env; allow start.
-    fn before_start(&self, _id: Uuid, _config: &ProgramConfig) -> anyhow::Result<Option<HashMap<String, String>>> {
+    fn before_start(
+        &self,
+        _id: Uuid,
+        _config: &ProgramConfig,
+    ) -> anyhow::Result<Option<HashMap<String, String>>> {
         Ok(None)
     }
 
@@ -42,16 +45,26 @@ pub trait Extension: Send + Sync {
     fn on_event(&self, _event: SystemEvent) {}
 
     /// [Reload] Config reload hook.
-    fn on_reload(&self) -> anyhow::Result<()> { Ok(()) }
+    fn on_reload(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
 
     /// [Shutdown] Graceful shutdown hook.
-    fn on_shutdown(&self) -> anyhow::Result<()> { Ok(()) }
+    fn on_shutdown(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
 
     // Config update hook: fired when program config changes.
     // old_config: before update
     // new_config: after update
     // pid: running process PID, or None if stopped
-    fn on_update(&self, _id: Uuid, _pid: Option<u32>, _old_config: &ProgramConfig, _new_config: &ProgramConfig) -> anyhow::Result<()> {
+    fn on_update(
+        &self,
+        _id: Uuid,
+        _pid: Option<u32>,
+        _old_config: &ProgramConfig,
+        _new_config: &ProgramConfig,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 

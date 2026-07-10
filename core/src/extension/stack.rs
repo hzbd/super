@@ -117,6 +117,8 @@ impl Extension for ExtensionStack {
     }
 
     fn supports_resource_limits(&self) -> bool {
-        self.layers.iter().any(|layer| layer.supports_resource_limits())
+        self.layers
+            .iter()
+            .any(|layer| layer.supports_resource_limits())
     }
 }

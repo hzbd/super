@@ -9,14 +9,12 @@ pub fn resolve_super_root() -> PathBuf {
         return PathBuf::from(p);
     }
 
-    if let Ok(exe_path) = env::current_exe() {
-        if let Some(bin_dir) = exe_path.parent() {
-            if let Some(root) = bin_dir.parent() {
-                if root.join("bin").exists() {
-                    return root.to_path_buf();
-                }
-            }
-        }
+    if let Ok(exe_path) = env::current_exe()
+        && let Some(bin_dir) = exe_path.parent()
+        && let Some(root) = bin_dir.parent()
+        && root.join("bin").exists()
+    {
+        return root.to_path_buf();
     }
 
     PathBuf::from(".")

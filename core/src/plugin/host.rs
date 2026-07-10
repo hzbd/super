@@ -1,6 +1,6 @@
+use crate::plugin::loader::{PluginRuntime, load_authorized_plugins};
 use common::config::resolve_license_key;
-use common::license::{parse_major_version, verify_license, LicenseClaims};
-use crate::plugin::loader::{load_authorized_plugins, PluginRuntime};
+use common::license::{LicenseClaims, parse_major_version, verify_license};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
@@ -60,13 +60,10 @@ impl PluginHost {
                 info!("No license found; running OSS edition.");
                 if !installed_plugins.is_empty() {
                     for id in &installed_plugins {
-                        warn!(
-                            "Plugin '{}.so' present but no license; skipped.",
-                            id
-                        );
+                        warn!("Plugin '{}.so' present but no license; skipped.", id);
                     }
                 }
-                return Self {
+                Self {
                     mode: RunMode::Oss,
                     claims: None,
                     licensed_plugins: Vec::new(),
@@ -74,20 +71,17 @@ impl PluginHost {
                     loaded_plugins: Vec::new(),
                     runtime: PluginRuntime::empty(),
                     plugins_dir,
-                };
+                }
             }
             LicenseOutcome::Invalid { reason } => {
                 error!("{}", LICENSE_BANNER);
                 error!("License error: {}", reason);
                 if !installed_plugins.is_empty() {
                     for id in &installed_plugins {
-                        warn!(
-                            "Plugin '{}.so' present but license invalid; skipped.",
-                            id
-                        );
+                        warn!("Plugin '{}.so' present but license invalid; skipped.", id);
                     }
                 }
-                return Self {
+                Self {
                     mode: RunMode::Oss,
                     claims: None,
                     licensed_plugins: Vec::new(),
@@ -95,7 +89,7 @@ impl PluginHost {
                     loaded_plugins: Vec::new(),
                     runtime: PluginRuntime::empty(),
                     plugins_dir,
-                };
+                }
             }
             LicenseOutcome::Valid(claims) => {
                 if claims.major_version != host_major {
@@ -107,10 +101,7 @@ impl PluginHost {
                     error!("License error: {}", reason);
                     if !installed_plugins.is_empty() {
                         for id in &installed_plugins {
-                            warn!(
-                                "Plugin '{}.so' present but license invalid; skipped.",
-                                id
-                            );
+                            warn!("Plugin '{}.so' present but license invalid; skipped.", id);
                         }
                     }
                     return Self {
@@ -136,10 +127,7 @@ impl PluginHost {
 
                 for id in &installed_plugins {
                     if !licensed_set.contains(id.as_str()) {
-                        warn!(
-                            "Plugin '{}' present but not licensed; skipped.",
-                            id
-                        );
+                        warn!("Plugin '{}' present but not licensed; skipped.", id);
                     }
                 }
 
@@ -215,10 +203,10 @@ fn scan_plugin_files(plugins_dir: &Path) -> Vec<String> {
 
     for entry in entries.flatten() {
         let path = entry.path();
-        let is_plugin_lib = path.extension().is_some_and(|ext| ext == "so" || ext == "dylib");
-        if is_plugin_lib
-            && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
-        {
+        let is_plugin_lib = path
+            .extension()
+            .is_some_and(|ext| ext == "so" || ext == "dylib");
+        if is_plugin_lib && let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
             ids.push(stem.to_string());
         }
     }

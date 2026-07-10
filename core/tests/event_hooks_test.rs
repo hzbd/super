@@ -1,7 +1,7 @@
-use super_core::event_hooks;
-use common::config::EventHookConfig;
 use common::SystemEvent;
+use common::config::EventHookConfig;
 use std::sync::{Arc, Mutex};
+use super_core::event_hooks;
 use uuid::Uuid;
 
 #[tokio::test]
@@ -10,10 +10,7 @@ async fn test_event_hook_receives_json_on_stdin() {
     let out_file = dir.path().join("hook.out");
     let out = out_file.display().to_string();
 
-    let script = format!(
-        r#"read line; printf '%s' "$line" > "{out}""#,
-        out = out
-    );
+    let script = format!(r#"read line; printf '%s' "$line" > "{out}""#, out = out);
 
     let hook = EventHookConfig {
         command: script,
@@ -34,7 +31,10 @@ async fn test_event_hook_receives_json_on_stdin() {
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
     let body = std::fs::read_to_string(out_file).unwrap();
-    assert!(body.contains("\"event\":\"process_started\""), "body={body}");
+    assert!(
+        body.contains("\"event\":\"process_started\""),
+        "body={body}"
+    );
     assert!(body.contains("\"name\":\"demo\""), "body={body}");
     assert!(body.contains("4242"), "body={body}");
 }
@@ -70,11 +70,7 @@ async fn test_emit_notifies_extension_and_runs_hook() {
         id: None,
     }];
 
-    event_hooks::emit(
-        &extension,
-        &hooks,
-        SystemEvent::SystemShutdown,
-    );
+    event_hooks::emit(&extension, &hooks, SystemEvent::SystemShutdown);
 
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 

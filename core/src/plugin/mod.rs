@@ -6,7 +6,7 @@ mod host;
 mod http_host;
 mod loader;
 
-pub use abi::{SuperPluginV1, PLUGIN_API_VERSION, PLUGIN_SYMBOL};
+pub use abi::{PLUGIN_API_VERSION, PLUGIN_SYMBOL, SuperPluginV1};
 pub use host::{LicenseOutcome, PluginHost, RunMode};
 pub use http_host::attach_http_plugins;
-pub use loader::{load_authorized_plugins, PluginRuntime, resolve_plugin_path};
+pub use loader::{PluginRuntime, load_authorized_plugins, resolve_plugin_path};

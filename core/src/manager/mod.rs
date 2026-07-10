@@ -1,32 +1,32 @@
 pub mod command;
-pub mod registry;
 pub mod controller;
+pub mod registry;
 pub mod tracker;
 
 pub use command::Command;
 
 use crate::config::ServerConfig;
-use crate::store;
 use crate::extension::Extension;
-use crate::scheduler::CronScheduler;
 use crate::monitor::ResourceMonitor;
+use crate::scheduler::CronScheduler;
+use crate::store;
 
-use self::registry::ProcessRegistry;
 use self::controller::LifecycleController;
+use self::registry::ProcessRegistry;
 
 use common::{
-    ProgramConfig, ProcessStatus, ProgramSummary, ProgramInfo, WsMessage,
-    UpdateProgramRequest, HealthResponse, CreateProgramRequest, StackApplyRequest,
-    BatchProgramRequest, BatchProgramResponse, BatchAction, ResourceLimits,
+    BatchAction, BatchProgramRequest, BatchProgramResponse, CreateProgramRequest, HealthResponse,
+    ProcessStatus, ProgramConfig, ProgramInfo, ProgramSummary, ResourceLimits, StackApplyRequest,
+    UpdateProgramRequest, WsMessage,
 };
+use glob::glob;
+use nix::sys::signal::Signal;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
-use nix::sys::signal::Signal;
-use glob::glob;
 
 fn warn_if_resource_limits_unenforced(
     extension: &dyn Extension,
@@ -79,7 +79,6 @@ impl Manager {
         log_tx: broadcast::Sender<WsMessage>,
         extension: Box<dyn Extension>,
     ) -> Self {
-
         // Persistence heartbeat (debounced flush)
         let tx_persist = tx_self.clone();
         tokio::spawn(async move {
@@ -87,7 +86,9 @@ impl Manager {
             interval.tick().await;
             loop {
                 interval.tick().await;
-                if tx_persist.send(Command::PersistTick).await.is_err() { break; }
+                if tx_persist.send(Command::PersistTick).await.is_err() {
+                    break;
+                }
             }
         });
 
@@ -102,7 +103,9 @@ impl Manager {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
             loop {
                 interval.tick().await;
-                if tx_cron.send(Command::CronTick).await.is_err() { break; }
+                if tx_cron.send(Command::CronTick).await.is_err() {
+                    break;
+                }
             }
         });
 
@@ -139,7 +142,10 @@ impl Manager {
     }
 
     pub async fn run(mut self) {
-        tracing::info!("Manager Loop started. Loaded {} programs.", self.registry.programs.len());
+        tracing::info!(
+            "Manager Loop started. Loaded {} programs.",
+            self.registry.programs.len()
+        );
 
         let hostname = hostname::get()
             .map(|h| h.to_string_lossy().to_string())
@@ -159,12 +165,19 @@ impl Manager {
             // restore_path at startup means Manager crashed during upgrade validation.
             // Keep path and try new binary; handle_exited rolls back if it fails.
             if let Some(bak) = &config.restore_path {
-                tracing::warn!("Found unfinished upgrade transaction for {}. Backup at: {}", config.name, bak);
+                tracing::warn!(
+                    "Found unfinished upgrade transaction for {}. Backup at: {}",
+                    config.name,
+                    bak
+                );
             }
         }
 
         // Startup recovery (priority: lower value starts earlier, Supervisor-compatible)
-        let mut startup_ids: Vec<(i32, Uuid)> = self.registry.programs.iter()
+        let mut startup_ids: Vec<(i32, Uuid)> = self
+            .registry
+            .programs
+            .iter()
             .filter(|(_, config)| config.autostart && config.cron.is_none())
             .map(|(id, config)| (config.priority, *id))
             .collect();
@@ -172,10 +185,17 @@ impl Manager {
 
         let startup_count = startup_ids.len();
         if startup_count > 0 {
-            tracing::info!("Restoring {} programs with staggered startup (Anti-Avalanche)...", startup_count);
+            tracing::info!(
+                "Restoring {} programs with staggered startup (Anti-Avalanche)...",
+                startup_count
+            );
 
             for (i, (_, id)) in startup_ids.into_iter().enumerate() {
-                if let Err(e) = self.controller.spawn_program(&mut self.registry, id, 0).await {
+                if let Err(e) = self
+                    .controller
+                    .spawn_program(&mut self.registry, id, 0)
+                    .await
+                {
                     tracing::error!("Failed to restore program {}: {}", id, e);
                 }
 
@@ -216,11 +236,17 @@ impl Manager {
                         conf.updated_at = chrono::Utc::now().timestamp() as u64;
                     }
                     self.registry.mark_dirty();
-                    let res = self.controller.spawn_program(&mut self.registry, id, 0).await;
+                    let res = self
+                        .controller
+                        .spawn_program(&mut self.registry, id, 0)
+                        .await;
                     let _ = reply.send(res);
                 }
                 Command::StopProgram { id, force, reply } => {
-                    let res = self.controller.stop_program(&mut self.registry, id, force).await;
+                    let res = self
+                        .controller
+                        .stop_program(&mut self.registry, id, force)
+                        .await;
                     let _ = reply.send(res);
                 }
                 Command::RestartProgram { id, reply } => {
@@ -242,7 +268,10 @@ impl Manager {
 
                 Command::StartGroup { group, reply } => {
                     // 1. Select target IDs
-                    let ids: Vec<Uuid> = self.registry.programs.iter()
+                    let ids: Vec<Uuid> = self
+                        .registry
+                        .programs
+                        .iter()
                         .filter(|(_, cfg)| cfg.group.as_deref() == Some(&group))
                         .map(|(id, _)| *id)
                         .collect();
@@ -259,7 +288,12 @@ impl Manager {
                                 conf.updated_at = chrono::Utc::now().timestamp() as u64;
                             }
                             // Start; ignore individual failures
-                            if self.controller.spawn_program(&mut self.registry, id, 0).await.is_ok() {
+                            if self
+                                .controller
+                                .spawn_program(&mut self.registry, id, 0)
+                                .await
+                                .is_ok()
+                            {
                                 affected.push(id);
                             }
                         }
@@ -267,19 +301,31 @@ impl Manager {
                         let _ = reply.send(Ok(affected));
                     }
                 }
-                Command::StopGroup { group, force, reply } => {
-                    let ids: Vec<Uuid> = self.registry.programs.iter()
+                Command::StopGroup {
+                    group,
+                    force,
+                    reply,
+                } => {
+                    let ids: Vec<Uuid> = self
+                        .registry
+                        .programs
+                        .iter()
                         .filter(|(_, cfg)| cfg.group.as_deref() == Some(&group))
                         .map(|(id, _)| *id)
                         .collect();
 
                     let mut affected = Vec::new();
                     if ids.is_empty() {
-                         let _ = reply.send(Err(anyhow::anyhow!("Group not found")));
+                        let _ = reply.send(Err(anyhow::anyhow!("Group not found")));
                     } else {
                         for id in ids {
                             // stop_program sets autostart = false internally
-                            if self.controller.stop_program(&mut self.registry, id, force).await.is_ok() {
+                            if self
+                                .controller
+                                .stop_program(&mut self.registry, id, force)
+                                .await
+                                .is_ok()
+                            {
                                 affected.push(id);
                             }
                         }
@@ -287,14 +333,17 @@ impl Manager {
                     }
                 }
                 Command::RestartGroup { group, reply } => {
-                    let ids: Vec<Uuid> = self.registry.programs.iter()
+                    let ids: Vec<Uuid> = self
+                        .registry
+                        .programs
+                        .iter()
                         .filter(|(_, cfg)| cfg.group.as_deref() == Some(&group))
                         .map(|(id, _)| *id)
                         .collect();
 
                     let mut affected = Vec::new();
                     if ids.is_empty() {
-                         let _ = reply.send(Err(anyhow::anyhow!("Group not found")));
+                        let _ = reply.send(Err(anyhow::anyhow!("Group not found")));
                     } else {
                         for id in ids {
                             // Reuse handle_restart_request
@@ -322,7 +371,7 @@ impl Manager {
                             // Send SIGKILL
                             let kill_result = nix::sys::signal::kill(
                                 nix::unistd::Pid::from_raw(-(state.pid as i32)),
-                                Signal::SIGKILL
+                                Signal::SIGKILL,
                             );
 
                             match kill_result {
@@ -332,7 +381,11 @@ impl Manager {
                                 Err(nix::errno::Errno::ESRCH) => {
                                     // Process already gone
                                     // Force cleanup or state stays Stopping forever
-                                    tracing::warn!("Process {} (PID {}) gone during timeout kill. Forcing cleanup.", id, state.pid);
+                                    tracing::warn!(
+                                        "Process {} (PID {}) gone during timeout kill. Forcing cleanup.",
+                                        id,
+                                        state.pid
+                                    );
                                     force_cleanup = true;
                                 }
                                 Err(e) => {
@@ -349,9 +402,13 @@ impl Manager {
                 }
                 Command::ScheduledRestart { id, retry_count } => {
                     if self.registry.restarting.remove(&id)
-                         && let Err(e) = self.controller.spawn_program(&mut self.registry, id, retry_count).await {
-                             tracing::error!("Failed to restart program {}: {}", id, e);
-                         }
+                        && let Err(e) = self
+                            .controller
+                            .spawn_program(&mut self.registry, id, retry_count)
+                            .await
+                    {
+                        tracing::error!("Failed to restart program {}: {}", id, e);
+                    }
                 }
                 Command::HealthCheck { reply } => {
                     let res = self.handle_health_check().await;
@@ -365,7 +422,8 @@ impl Manager {
                     let _ = reply.send(res);
                 }
                 Command::DumpPrograms { reply } => {
-                    let configs: Vec<ProgramConfig> = self.registry.programs.values().cloned().collect();
+                    let configs: Vec<ProgramConfig> =
+                        self.registry.programs.values().cloned().collect();
                     let _ = reply.send(configs);
                 }
                 Command::InternalArtifactReady { id, path } => {
@@ -389,18 +447,25 @@ impl Manager {
                 Command::CronTick => {
                     let triggered_ids = self.scheduler.tick();
                     for id in triggered_ids {
-                         let name = match self.registry.get_config(&id) {
+                        let name = match self.registry.get_config(&id) {
                             Some(cfg) => cfg.name.clone(),
                             None => continue,
-                         };
-                         if self.registry.running.contains_key(&id) {
-                             tracing::warn!("Cron job {} is still running, skipping this tick.", name);
-                             continue;
-                         }
-                         tracing::info!("Cron job triggered: {}", name);
-                         if let Err(e) = self.controller.spawn_program(&mut self.registry, id, 0).await {
-                              tracing::error!("Failed to spawn cron job {}: {}", name, e);
-                         }
+                        };
+                        if self.registry.running.contains_key(&id) {
+                            tracing::warn!(
+                                "Cron job {} is still running, skipping this tick.",
+                                name
+                            );
+                            continue;
+                        }
+                        tracing::info!("Cron job triggered: {}", name);
+                        if let Err(e) = self
+                            .controller
+                            .spawn_program(&mut self.registry, id, 0)
+                            .await
+                        {
+                            tracing::error!("Failed to spawn cron job {}: {}", name, e);
+                        }
                     }
                 }
                 Command::PersistTick => {
@@ -427,7 +492,12 @@ impl Manager {
     // Unified signal delivery
     fn apply_signal(&self, id: Uuid, signal: Signal) -> anyhow::Result<()> {
         if let Some(state) = self.registry.get_running(&id) {
-            tracing::info!("Sending signal {:?} to program {} (PGID: {})", signal, id, state.pid);
+            tracing::info!(
+                "Sending signal {:?} to program {} (PGID: {})",
+                signal,
+                id,
+                state.pid
+            );
             // Negative PID targets the process group
             nix::sys::signal::kill(nix::unistd::Pid::from_raw(-(state.pid as i32)), signal)
                 .map_err(|e| e.into())
@@ -446,9 +516,21 @@ impl Manager {
         }
 
         if let Some(limits) = &req.resource_limits {
-            if let Some(cpu) = limits.cpu_quota && cpu <= 0.0 { return Err(anyhow::anyhow!("CPU quota must be positive")); }
-            if let Some(mem) = limits.memory_limit && mem == 0 { return Err(anyhow::anyhow!("Memory limit must be greater than 0")); }
-            warn_if_resource_limits_unenforced(self.extension.as_ref(), &req.resource_limits, "update program");
+            if let Some(cpu) = limits.cpu_quota
+                && cpu <= 0.0
+            {
+                return Err(anyhow::anyhow!("CPU quota must be positive"));
+            }
+            if let Some(mem) = limits.memory_limit
+                && mem == 0
+            {
+                return Err(anyhow::anyhow!("Memory limit must be greater than 0"));
+            }
+            warn_if_resource_limits_unenforced(
+                self.extension.as_ref(),
+                &req.resource_limits,
+                "update program",
+            );
         }
 
         let pid = self.registry.get_running(&id).map(|s| s.pid);
@@ -459,11 +541,18 @@ impl Manager {
         let mut _updated_config_clone = None;
 
         {
-            let config = self.registry.get_config_mut(&id).ok_or_else(|| anyhow::anyhow!("Program not found"))?;
+            let config = self
+                .registry
+                .get_config_mut(&id)
+                .ok_or_else(|| anyhow::anyhow!("Program not found"))?;
 
             // [Trigger Logic] Checksum change detection to trigger OTA
             if let Some(v) = &req.artifact {
-                let old_sum = config.artifact.as_ref().map(|a| a.checksum.clone()).unwrap_or_default();
+                let old_sum = config
+                    .artifact
+                    .as_ref()
+                    .map(|a| a.checksum.clone())
+                    .unwrap_or_default();
                 if v.checksum != old_sum {
                     trigger_ota = true;
                     artifact_cfg = Some(v.clone());
@@ -471,10 +560,18 @@ impl Manager {
                 config.artifact = Some(v.clone());
             }
 
-            if let Some(v) = req.name { config.name = v; }
-            if let Some(v) = req.command { config.command = v; }
-            if let Some(v) = req.args { config.args = v; }
-            if let Some(v) = req.env { config.env = v; }
+            if let Some(v) = req.name {
+                config.name = v;
+            }
+            if let Some(v) = req.command {
+                config.command = v;
+            }
+            if let Some(v) = req.args {
+                config.args = v;
+            }
+            if let Some(v) = req.env {
+                config.env = v;
+            }
 
             if let Some(v) = req.env_file {
                 config.env_file = if v.trim().is_empty() { None } else { Some(v) };
@@ -496,13 +593,27 @@ impl Manager {
                 self.scheduler.upsert(id, &v);
             }
 
-            if let Some(v) = req.autostart { config.autostart = v; }
-            if let Some(v) = req.retry_limit { config.retry_limit = v; }
-            if let Some(v) = req.autorestart { config.autorestart = v; }
-            if let Some(v) = req.exitcodes { config.exitcodes = v; }
-            if let Some(v) = req.startsecs { config.startsecs = v; }
-            if let Some(v) = req.stopsecs { config.stopsecs = Some(v); }
-            if let Some(v) = req.priority { config.priority = v; }
+            if let Some(v) = req.autostart {
+                config.autostart = v;
+            }
+            if let Some(v) = req.retry_limit {
+                config.retry_limit = v;
+            }
+            if let Some(v) = req.autorestart {
+                config.autorestart = v;
+            }
+            if let Some(v) = req.exitcodes {
+                config.exitcodes = v;
+            }
+            if let Some(v) = req.startsecs {
+                config.startsecs = v;
+            }
+            if let Some(v) = req.stopsecs {
+                config.stopsecs = Some(v);
+            }
+            if let Some(v) = req.priority {
+                config.priority = v;
+            }
             if let Some(v) = req.stdout_logfile {
                 config.stdout_logfile = if v.trim().is_empty() { None } else { Some(v) };
             }
@@ -510,7 +621,9 @@ impl Manager {
                 config.stderr_logfile = if v.trim().is_empty() { None } else { Some(v) };
             }
 
-            if let Some(v) = req.depends_on { config.depends_on = v; }
+            if let Some(v) = req.depends_on {
+                config.depends_on = v;
+            }
 
             if let Some(v) = req.health_check {
                 config.health_check = match v {
@@ -519,12 +632,18 @@ impl Manager {
                 };
             }
 
-            if let Some(v) = req.hooks { config.hooks = v; }
+            if let Some(v) = req.hooks {
+                config.hooks = v;
+            }
 
             if let Some(new_limits) = req.resource_limits {
                 if let Some(old_limits) = &mut config.resource_limits {
-                    if let Some(c) = new_limits.cpu_quota { old_limits.cpu_quota = Some(c); }
-                    if let Some(m) = new_limits.memory_limit { old_limits.memory_limit = Some(m); }
+                    if let Some(c) = new_limits.cpu_quota {
+                        old_limits.cpu_quota = Some(c);
+                    }
+                    if let Some(m) = new_limits.memory_limit {
+                        old_limits.memory_limit = Some(m);
+                    }
                 } else {
                     config.resource_limits = Some(new_limits);
                 }
@@ -536,38 +655,48 @@ impl Manager {
         }
 
         if let Some(cfg_clone) = _updated_config_clone {
-             let _ = self.extension.on_update(id, pid, &cfg_clone, &cfg_clone);
+            let _ = self.extension.on_update(id, pid, &cfg_clone, &cfg_clone);
         }
 
         self.registry.mark_dirty();
         tracing::info!("Program updated: {} ({})", _task_name, id);
 
-        if trigger_ota
-            && let Some(ac) = artifact_cfg {
-                let tx = self.tx_self.clone();
-                let task_name = _task_name.clone();
-                let download_timeout = self.config.server.download_timeout;
+        if trigger_ota && let Some(ac) = artifact_cfg {
+            let tx = self.tx_self.clone();
+            let task_name = _task_name.clone();
+            let download_timeout = self.config.server.download_timeout;
 
-                tracing::info!("Triggering OTA update for {} (Timeout: {}s)", task_name, download_timeout);
-                tokio::spawn(async move {
-                    use crate::artifact;
-                    match artifact::download_to_staging(&ac, download_timeout).await {
-                        Ok(path) => {
-                            tracing::info!("OTA Download complete for {}. Staging: {:?}", task_name, path);
-                            let _ = tx.send(Command::InternalArtifactReady { id, path }).await;
-                        },
-                        Err(e) => {
-                            tracing::error!("OTA Download failed for {}: {}", task_name, e);
-                        }
+            tracing::info!(
+                "Triggering OTA update for {} (Timeout: {}s)",
+                task_name,
+                download_timeout
+            );
+            tokio::spawn(async move {
+                use crate::artifact;
+                match artifact::download_to_staging(&ac, download_timeout).await {
+                    Ok(path) => {
+                        tracing::info!(
+                            "OTA Download complete for {}. Staging: {:?}",
+                            task_name,
+                            path
+                        );
+                        let _ = tx.send(Command::InternalArtifactReady { id, path }).await;
                     }
-                });
-            }
+                    Err(e) => {
+                        tracing::error!("OTA Download failed for {}: {}", task_name, e);
+                    }
+                }
+            });
+        }
         Ok(())
     }
 
     // Transactional artifact apply
     async fn handle_artifact_ready(&mut self, id: Uuid, staging_path: PathBuf) {
-        tracing::info!("Artifact ready for program {}. Initiating Transactional Swap...", id);
+        tracing::info!(
+            "Artifact ready for program {}. Initiating Transactional Swap...",
+            id
+        );
 
         let config = match self.registry.get_config_mut(&id) {
             Some(c) => c,
@@ -593,7 +722,10 @@ impl Manager {
 
         self.registry.mark_dirty();
         if let Err(e) = self.flush_to_disk().await {
-            tracing::error!("Critical: Failed to persist upgrade state: {}. Aborting.", e);
+            tracing::error!(
+                "Critical: Failed to persist upgrade state: {}. Aborting.",
+                e
+            );
             return;
         }
 
@@ -611,9 +743,15 @@ impl Manager {
         // Mark intentional restart so handle_exited does not treat upgrade as failed
         if let Some(state) = self.registry.get_running_mut(&id) {
             state.restart_requested = true;
-            let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(state.pid as i32), Signal::SIGTERM);
+            let _ = nix::sys::signal::kill(
+                nix::unistd::Pid::from_raw(state.pid as i32),
+                Signal::SIGTERM,
+            );
         } else {
-            let _ = self.controller.spawn_program(&mut self.registry, id, 0).await;
+            let _ = self
+                .controller
+                .spawn_program(&mut self.registry, id, 0)
+                .await;
         }
     }
 
@@ -629,16 +767,25 @@ impl Manager {
         let exited_uptime = chrono::Utc::now().timestamp() as u64 - state.start_time;
 
         // Stop health check task and resource monitor
-        if let Some(task) = state.health_task { task.abort(); }
+        if let Some(task) = state.health_task {
+            task.abort();
+        }
         self.monitor.unwatch(&id);
 
-        tracing::info!("Program exited: {} (PID: {}), Code: {:?}", id, exited_pid, code);
+        tracing::info!(
+            "Program exited: {} (PID: {}), Code: {:?}",
+            id,
+            exited_pid,
+            code
+        );
 
         // 2. Extension cleanup hook
         if let Some(cfg) = self.registry.get_config(&id).cloned() {
             let ext = self.extension.clone();
             let cfg_for_ext = cfg.clone();
-            tokio::task::spawn_blocking(move || { let _ = ext.after_stop(id, &cfg_for_ext); });
+            tokio::task::spawn_blocking(move || {
+                let _ = ext.after_stop(id, &cfg_for_ext);
+            });
         }
 
         // 3. Config snapshot
@@ -668,10 +815,12 @@ impl Manager {
         if let Some(backup_file) = &config.restore_path {
             // OTA validation only when not manual stop and not intentional restart
             if !state.stopping && !state.restart_requested {
-
                 // Case A: exit 0 (validation success) -> commit
                 if let Some(0) = code {
-                    tracing::info!("OTA Verification: Process {} exited with 0 (Success). Committing upgrade.", program_name);
+                    tracing::info!(
+                        "OTA Verification: Process {} exited with 0 (Success). Committing upgrade.",
+                        program_name
+                    );
 
                     // A1. Delete backup asynchronously
                     let backup_path = PathBuf::from(backup_file);
@@ -691,7 +840,11 @@ impl Manager {
                 }
                 // Case B: non-zero exit (crash) -> rollback
                 else {
-                    tracing::error!("Upgrade Validation Failed for {}. Process crashed (Code: {:?}). Initiating ROLLBACK.", program_name, code);
+                    tracing::error!(
+                        "Upgrade Validation Failed for {}. Process crashed (Code: {:?}). Initiating ROLLBACK.",
+                        program_name,
+                        code
+                    );
 
                     let target_path = PathBuf::from(&config.artifact.as_ref().unwrap().destination);
                     let backup_path = PathBuf::from(backup_file);
@@ -699,7 +852,10 @@ impl Manager {
                     use crate::artifact;
                     // B1. Roll back files
                     if let Err(e) = artifact::rollback(&target_path, &backup_path).await {
-                        tracing::error!("CRITICAL: File rollback failed: {}. Manual intervention required.", e);
+                        tracing::error!(
+                            "CRITICAL: File rollback failed: {}. Manual intervention required.",
+                            e
+                        );
                         self.registry.crashed.insert(id);
                     } else {
                         tracing::info!("File rolled back successfully.");
@@ -718,13 +874,18 @@ impl Manager {
                             pid: Some(exited_pid),
                             uptime_secs: exited_uptime,
                             exit_code: code,
-                            msg: "OTA upgrade failed. Automatically rolled back to previous version.".to_string(),
+                            msg:
+                                "OTA upgrade failed. Automatically rolled back to previous version."
+                                    .to_string(),
                             log_tail: None,
                         });
 
                         // B4. Restart previous version
                         tracing::info!("Restarting with stable version...");
-                        let _ = self.controller.spawn_program(&mut self.registry, id, 0).await;
+                        let _ = self
+                            .controller
+                            .spawn_program(&mut self.registry, id, 0)
+                            .await;
                     }
                     return; // rollback done; skip remaining exit logic
                 }
@@ -733,15 +894,19 @@ impl Manager {
 
         // 5. Cron job handling
         if config.cron.is_some() {
-             if let Some(0) = code {
+            if let Some(0) = code {
                 tracing::info!("Cron job '{}' finished successfully.", program_name);
                 let _ = self.log_tx.send(WsMessage::StatusChange {
-                    id, status: ProcessStatus::Stopped, name: program_name.clone()
+                    id,
+                    status: ProcessStatus::Stopped,
+                    name: program_name.clone(),
                 });
             } else {
                 tracing::error!("Cron job '{}' failed with code {:?}.", program_name, code);
                 let _ = self.log_tx.send(WsMessage::StatusChange {
-                    id, status: ProcessStatus::Fatal, name: program_name.clone()
+                    id,
+                    status: ProcessStatus::Fatal,
+                    name: program_name.clone(),
                 });
                 let event = common::SystemEvent::ProcessFatal {
                     program_id: id,
@@ -761,14 +926,19 @@ impl Manager {
         // Case: Restart API (intentional restart)
         if state.restart_requested {
             tracing::info!("Restarting program {} immediately...", id);
-            let _ = self.controller.spawn_program(&mut self.registry, id, 0).await;
+            let _ = self
+                .controller
+                .spawn_program(&mut self.registry, id, 0)
+                .await;
             return;
         }
 
         // Case: Stop API (intentional stop)
         if state.stopping {
-             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Stopped, name: program_name.clone()
+            let _ = self.log_tx.send(WsMessage::StatusChange {
+                id,
+                status: ProcessStatus::Stopped,
+                name: program_name.clone(),
             });
             return;
         }
@@ -777,10 +947,14 @@ impl Manager {
         if !config.should_autorestart(code) {
             tracing::info!(
                 "Program {} exited (code {:?}). Not restarting (autorestart={:?}).",
-                program_name, code, config.autorestart
+                program_name,
+                code,
+                config.autorestart
             );
-             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Stopped, name: program_name.clone()
+            let _ = self.log_tx.send(WsMessage::StatusChange {
+                id,
+                status: ProcessStatus::Stopped,
+                name: program_name.clone(),
             });
             return;
         }
@@ -798,7 +972,10 @@ impl Manager {
         if retry_count_to_use > retry_limit {
             // A. Retries exhausted -> Fatal
             self.registry.crashed.insert(id);
-            tracing::error!("Program {} failed too many times. Entering FATAL state.", id);
+            tracing::error!(
+                "Program {} failed too many times. Entering FATAL state.",
+                id
+            );
 
             if let Some(cfg) = self.registry.get_config_mut(&id) {
                 cfg.autostart = false; // prevent auto-start on next Manager restart
@@ -806,13 +983,18 @@ impl Manager {
             }
 
             // Record crash reason in startup_errors for UI error display
-            let err_msg = format!("Stopped after {} retries. Last exit code: {:?}", retry_count_to_use, code);
+            let err_msg = format!(
+                "Stopped after {} retries. Last exit code: {:?}",
+                retry_count_to_use, code
+            );
             self.registry.startup_errors.insert(id, err_msg.clone());
 
             self.registry.mark_dirty();
 
             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Fatal, name: program_name.clone()
+                id,
+                status: ProcessStatus::Fatal,
+                name: program_name.clone(),
             });
 
             // Read log tail asynchronously and fire alert
@@ -835,7 +1017,8 @@ impl Manager {
                     2048,
                     stdout_logfile.as_deref(),
                     stderr_logfile.as_deref(),
-                ).await;
+                )
+                .await;
                 let event = common::SystemEvent::ProcessFatal {
                     program_id: id,
                     program_name: name_clone,
@@ -850,17 +1033,25 @@ impl Manager {
 
             // Trigger immediate persist
             let tx = self.tx_self.clone();
-            tokio::spawn(async move { let _ = tx.send(Command::PersistTick).await; });
-
+            tokio::spawn(async move {
+                let _ = tx.send(Command::PersistTick).await;
+            });
         } else {
             // B. Retries remaining -> backoff
             self.registry.restarting.insert(id);
             // Exponential backoff: 1s, 2s, 4s, ... max 60s
             let delay_sec = std::cmp::min(1 << (retry_count_to_use.saturating_sub(1)), 60);
-            tracing::warn!("Program {} crashed. Backoff {}s (Retry {})", id, delay_sec, retry_count_to_use);
+            tracing::warn!(
+                "Program {} crashed. Backoff {}s (Retry {})",
+                id,
+                delay_sec,
+                retry_count_to_use
+            );
 
-             let _ = self.log_tx.send(WsMessage::StatusChange {
-                id, status: ProcessStatus::Backoff, name: program_name.clone()
+            let _ = self.log_tx.send(WsMessage::StatusChange {
+                id,
+                status: ProcessStatus::Backoff,
+                name: program_name.clone(),
             });
 
             let event = common::SystemEvent::ProcessBackoff {
@@ -876,7 +1067,12 @@ impl Manager {
             let tx = self.tx_self.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(delay_sec)).await;
-                let _ = tx.send(Command::ScheduledRestart { id, retry_count: retry_count_to_use }).await;
+                let _ = tx
+                    .send(Command::ScheduledRestart {
+                        id,
+                        retry_count: retry_count_to_use,
+                    })
+                    .await;
             });
         }
     }
@@ -884,7 +1080,6 @@ impl Manager {
     // Health Check Commit
     async fn handle_health_update(&mut self, id: Uuid, is_healthy: bool) {
         if let Some(state) = self.registry.running.get_mut(&id) {
-
             // Ignore health updates while stopping
             // Prevents Stop -> Stopping -> (health race) -> Healthy
             if state.stopping {
@@ -894,12 +1089,23 @@ impl Manager {
             if state.is_healthy != is_healthy {
                 state.is_healthy = is_healthy;
 
-                let name = self.registry.programs.get(&id).map(|c| c.name.clone()).unwrap_or_default();
-                let display_status = if is_healthy { ProcessStatus::Healthy } else { ProcessStatus::Running };
+                let name = self
+                    .registry
+                    .programs
+                    .get(&id)
+                    .map(|c| c.name.clone())
+                    .unwrap_or_default();
+                let display_status = if is_healthy {
+                    ProcessStatus::Healthy
+                } else {
+                    ProcessStatus::Running
+                };
                 tracing::info!("Program {} health changed: {}", name, is_healthy);
 
                 let _ = self.log_tx.send(WsMessage::StatusChange {
-                    id, status: display_status, name: name.clone(),
+                    id,
+                    status: display_status,
+                    name: name.clone(),
                 });
 
                 if is_healthy && state.alert_pending_recovery {
@@ -920,10 +1126,11 @@ impl Manager {
                 if is_healthy {
                     let mut backup_to_delete = None;
                     if let Some(cfg) = self.registry.get_config_mut(&id)
-                        && let Some(backup) = cfg.restore_path.take() {
-                            backup_to_delete = Some(backup);
-                            tracing::info!("Upgrade verified for {}. Committing changes.", id);
-                        }
+                        && let Some(backup) = cfg.restore_path.take()
+                    {
+                        backup_to_delete = Some(backup);
+                        tracing::info!("Upgrade verified for {}. Committing changes.", id);
+                    }
 
                     if let Some(backup) = backup_to_delete {
                         // Persist clean state (restore_path removed)
@@ -938,7 +1145,9 @@ impl Manager {
                     }
 
                     let tx = self.tx_self.clone();
-                    tokio::spawn(async move { let _ = tx.send(Command::CheckWaitingQueue).await; });
+                    tokio::spawn(async move {
+                        let _ = tx.send(Command::CheckWaitingQueue).await;
+                    });
                 }
             }
         }
@@ -961,7 +1170,10 @@ impl Manager {
                 let name = config.name.clone();
                 touched_programs.insert(name.clone());
 
-                let existing_id = self.registry.programs.iter()
+                let existing_id = self
+                    .registry
+                    .programs
+                    .iter()
                     .find(|(_, cfg)| cfg.name == name)
                     .map(|(id, _)| *id);
 
@@ -1014,10 +1226,14 @@ impl Manager {
 
                     self.registry.programs.insert(id, config);
                     if should_start
-                         && let Err(e) = self.controller.spawn_program(&mut self.registry, id, 0).await {
-                             tracing::error!("Failed to autostart {}: {}", name, e);
-                             logs.push(format!("Failed to start {}: {}", name, e));
-                         }
+                        && let Err(e) = self
+                            .controller
+                            .spawn_program(&mut self.registry, id, 0)
+                            .await
+                    {
+                        tracing::error!("Failed to autostart {}: {}", name, e);
+                        logs.push(format!("Failed to start {}: {}", name, e));
+                    }
                 }
             }
         }
@@ -1030,7 +1246,12 @@ impl Manager {
                 }
             }
             for id in ids_to_remove {
-                let name_str = self.registry.programs.get(&id).map(|c| c.name.clone()).unwrap_or_default();
+                let name_str = self
+                    .registry
+                    .programs
+                    .get(&id)
+                    .map(|c| c.name.clone())
+                    .unwrap_or_default();
                 logs.push(format!("Pruning service: {} ({})", name_str, id));
                 if let Err(e) = self.handle_remove(id).await {
                     logs.push(format!("Failed to prune {}: {}", name_str, e));
@@ -1063,13 +1284,18 @@ impl Manager {
                 if let Some(conf) = self.registry.get_config(id) {
                     tracing::info!("[{}/{}] Stopping {}...", i + 1, total, conf.name);
                 }
-                if let Err(e) = self.controller.stop_program(&mut self.registry, *id, false).await {
+                if let Err(e) = self
+                    .controller
+                    .stop_program(&mut self.registry, *id, false)
+                    .await
+                {
                     tracing::error!("Failed to stop program {}: {}", id, e);
                 }
             }
         }
 
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(self.config.server.shutdown_timeout);
+        let deadline = tokio::time::Instant::now()
+            + std::time::Duration::from_secs(self.config.server.shutdown_timeout);
         let check_interval = std::time::Duration::from_millis(100);
 
         tracing::info!("Waiting for processes to exit...");
@@ -1081,10 +1307,16 @@ impl Manager {
             }
 
             if tokio::time::Instant::now() > deadline {
-                tracing::warn!("Shutdown timeout reached. {} processes still running.", self.registry.running.len());
+                tracing::warn!(
+                    "Shutdown timeout reached. {} processes still running.",
+                    self.registry.running.len()
+                );
                 for state in self.registry.running.values() {
                     tracing::warn!("Force killing PID {}", state.pid);
-                    let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(state.pid as i32), Signal::SIGKILL);
+                    let _ = nix::sys::signal::kill(
+                        nix::unistd::Pid::from_raw(state.pid as i32),
+                        Signal::SIGKILL,
+                    );
                 }
                 break;
             }
@@ -1094,9 +1326,13 @@ impl Manager {
                     if let Command::ProcessExited { id, code } = cmd {
                         self.handle_exited(id, code).await;
                     }
-                },
-                Err(mpsc::error::TryRecvError::Empty) => { tokio::time::sleep(check_interval).await; },
-                Err(mpsc::error::TryRecvError::Disconnected) => { break; }
+                }
+                Err(mpsc::error::TryRecvError::Empty) => {
+                    tokio::time::sleep(check_interval).await;
+                }
+                Err(mpsc::error::TryRecvError::Disconnected) => {
+                    break;
+                }
             }
         }
         tracing::info!("Bye!");
@@ -1122,7 +1358,11 @@ impl Manager {
             }
         }
 
-        let mut queue: Vec<Uuid> = in_degree.iter().filter(|&(_, &deg)| deg == 0).map(|(id, _)| *id).collect();
+        let mut queue: Vec<Uuid> = in_degree
+            .iter()
+            .filter(|&(_, &deg)| deg == 0)
+            .map(|(id, _)| *id)
+            .collect();
         queue.sort();
         let mut start_order = Vec::new();
 
@@ -1132,14 +1372,18 @@ impl Manager {
                 for &v in neighbors {
                     let deg = in_degree.get_mut(&v).unwrap();
                     *deg -= 1;
-                    if *deg == 0 { queue.push(v); }
+                    if *deg == 0 {
+                        queue.push(v);
+                    }
                 }
             }
         }
 
         if start_order.len() < self.registry.programs.len() {
             for id in self.registry.programs.keys() {
-                if !start_order.contains(id) { start_order.push(*id); }
+                if !start_order.contains(id) {
+                    start_order.push(*id);
+                }
             }
         }
         start_order.reverse();
@@ -1149,7 +1393,7 @@ impl Manager {
     async fn handle_create_request(
         &mut self,
         req: CreateProgramRequest,
-        reply: tokio::sync::oneshot::Sender<anyhow::Result<Vec<Uuid>>>
+        reply: tokio::sync::oneshot::Sender<anyhow::Result<Vec<Uuid>>>,
     ) {
         let configs = self.expand_request(&req);
         let mut validation_error = None;
@@ -1160,9 +1404,23 @@ impl Manager {
             }
 
             if let Some(l) = &cfg.resource_limits {
-                 if let Some(c) = l.cpu_quota && c <= 0.0 { validation_error = Some(anyhow::anyhow!("CPU quota must be > 0")); break; }
-                 if let Some(m) = l.memory_limit && m == 0 { validation_error = Some(anyhow::anyhow!("Memory limit must be > 0")); break; }
-                 warn_if_resource_limits_unenforced(self.extension.as_ref(), &cfg.resource_limits, "create program");
+                if let Some(c) = l.cpu_quota
+                    && c <= 0.0
+                {
+                    validation_error = Some(anyhow::anyhow!("CPU quota must be > 0"));
+                    break;
+                }
+                if let Some(m) = l.memory_limit
+                    && m == 0
+                {
+                    validation_error = Some(anyhow::anyhow!("Memory limit must be > 0"));
+                    break;
+                }
+                warn_if_resource_limits_unenforced(
+                    self.extension.as_ref(),
+                    &cfg.resource_limits,
+                    "create program",
+                );
             }
         }
 
@@ -1172,8 +1430,16 @@ impl Manager {
         } else {
             let mut created_ids = Vec::new();
             for config in configs {
-                if self.registry.programs.values().any(|p| p.name == config.name) {
-                    tracing::warn!("Program '{}' already exists, skipping creation.", config.name);
+                if self
+                    .registry
+                    .programs
+                    .values()
+                    .any(|p| p.name == config.name)
+                {
+                    tracing::warn!(
+                        "Program '{}' already exists, skipping creation.",
+                        config.name
+                    );
                     continue;
                 }
 
@@ -1189,10 +1455,15 @@ impl Manager {
                 created_ids.push(id);
                 tracing::info!("Program created: {} ({})", name, id);
 
-                if should_start && self.scheduler.get_next_run(&id).is_none()
-                    && let Err(e) = self.controller.spawn_program(&mut self.registry, id, 0).await {
-                        tracing::error!("Failed to autostart {}: {}", id, e);
-                    }
+                if should_start
+                    && self.scheduler.get_next_run(&id).is_none()
+                    && let Err(e) = self
+                        .controller
+                        .spawn_program(&mut self.registry, id, 0)
+                        .await
+                {
+                    tracing::error!("Failed to autostart {}: {}", id, e);
+                }
             }
             self.registry.mark_dirty();
             let _ = reply.send(Ok(created_ids));
@@ -1205,7 +1476,11 @@ impl Manager {
         let new_config: ServerConfig = toml::from_str(&content)?;
 
         if new_config.logging.log_level != self.config.logging.log_level {
-            tracing::info!("Updating log level: {} -> {}", self.config.logging.log_level, new_config.logging.log_level);
+            tracing::info!(
+                "Updating log level: {} -> {}",
+                self.config.logging.log_level,
+                new_config.logging.log_level
+            );
             (self.log_reloader)(new_config.logging.log_level.clone())?;
         }
         self.config = new_config.clone();
@@ -1233,7 +1508,8 @@ impl Manager {
     fn handle_list(&self) -> Vec<ProgramSummary> {
         let mut list = Vec::new();
         for (id, config) in &self.registry.programs {
-            let (status, pid, uptime, cpu, mem) = if let Some(state) = self.registry.get_running(id) {
+            let (status, pid, uptime, cpu, mem) = if let Some(state) = self.registry.get_running(id)
+            {
                 let now = chrono::Utc::now().timestamp() as u64;
 
                 let s = if state.stopping {
@@ -1244,7 +1520,13 @@ impl Manager {
                     ProcessStatus::Running
                 };
 
-                (s, Some(state.pid), Some(now.saturating_sub(state.start_time)), Some(state.cpu_usage), Some(state.mem_usage))
+                (
+                    s,
+                    Some(state.pid),
+                    Some(now.saturating_sub(state.start_time)),
+                    Some(state.cpu_usage),
+                    Some(state.mem_usage),
+                )
             } else if self.registry.restarting.contains(id) {
                 (ProcessStatus::Backoff, None, None, None, None)
             } else if self.registry.waiting.contains(id) {
@@ -1273,7 +1555,9 @@ impl Manager {
     }
 
     fn handle_get(&self, id: Uuid) -> anyhow::Result<ProgramInfo> {
-        let config = self.registry.get_config(&id)
+        let config = self
+            .registry
+            .get_config(&id)
             .ok_or_else(|| anyhow::anyhow!("Program not found"))?;
 
         let (status, pid) = if let Some(state) = self.registry.get_running(&id) {
@@ -1291,7 +1575,7 @@ impl Manager {
         } else if self.registry.waiting.contains(&id) {
             (ProcessStatus::Waiting, None)
         } else if self.registry.crashed.contains(&id) {
-             (ProcessStatus::Fatal, None)
+            (ProcessStatus::Fatal, None)
         } else {
             (ProcessStatus::Stopped, None)
         };
@@ -1309,7 +1593,10 @@ impl Manager {
         if let Some(state) = self.registry.get_running_mut(&id) {
             tracing::info!("Restart requested for {}. Stopping current process...", id);
             state.restart_requested = true;
-            let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(state.pid as i32), Signal::SIGTERM);
+            let _ = nix::sys::signal::kill(
+                nix::unistd::Pid::from_raw(state.pid as i32),
+                Signal::SIGTERM,
+            );
 
             let tx = self.tx_self.clone();
             let target_pid = state.pid;
@@ -1327,7 +1614,9 @@ impl Manager {
             cfg.updated_at = chrono::Utc::now().timestamp() as u64;
         }
         self.registry.mark_dirty();
-        self.controller.spawn_program(&mut self.registry, id, 0).await
+        self.controller
+            .spawn_program(&mut self.registry, id, 0)
+            .await
     }
 
     async fn handle_remove(&mut self, id: Uuid) -> anyhow::Result<()> {
@@ -1335,7 +1624,9 @@ impl Manager {
             return Err(anyhow::anyhow!("Cannot remove running program"));
         }
         let config_opt = self.registry.programs.remove(&id);
-        if config_opt.is_none() { return Err(anyhow::anyhow!("Program not found")); }
+        if config_opt.is_none() {
+            return Err(anyhow::anyhow!("Program not found"));
+        }
 
         self.registry.restarting.remove(&id);
         self.registry.waiting.remove(&id);
@@ -1358,18 +1649,25 @@ impl Manager {
 
     async fn process_includes(&mut self) -> anyhow::Result<()> {
         let patterns = self.config.include.files.clone();
-        if patterns.is_empty() { return Ok(()); }
+        if patterns.is_empty() {
+            return Ok(());
+        }
         let root = crate::resolve_root();
 
         for pattern in patterns {
             let pattern_path = std::path::Path::new(&pattern);
-            let full_pattern = if pattern_path.is_relative() { root.join(pattern).to_string_lossy().to_string() } else { pattern };
+            let full_pattern = if pattern_path.is_relative() {
+                root.join(pattern).to_string_lossy().to_string()
+            } else {
+                pattern
+            };
             if let Ok(paths) = glob(&full_pattern) {
                 for entry in paths.flatten() {
                     if let Ok(content) = tokio::fs::read_to_string(&entry).await
-                        && let Ok(stack) = serde_json::from_str::<StackApplyRequest>(&content) {
-                            let _ = self.handle_apply_stack(stack).await;
-                        }
+                        && let Ok(stack) = serde_json::from_str::<StackApplyRequest>(&content)
+                    {
+                        let _ = self.handle_apply_stack(stack).await;
+                    }
                 }
             }
         }
@@ -1377,17 +1675,24 @@ impl Manager {
     }
 
     async fn check_waiting_queue(&mut self) {
-        let mut waiting_ids: Vec<(i32, Uuid)> = self.registry.waiting.iter()
-            .filter_map(|id| {
-                self.registry.get_config(id).map(|cfg| (cfg.priority, *id))
-            })
+        let mut waiting_ids: Vec<(i32, Uuid)> = self
+            .registry
+            .waiting
+            .iter()
+            .filter_map(|id| self.registry.get_config(id).map(|cfg| (cfg.priority, *id)))
             .collect();
-        if waiting_ids.is_empty() { return; }
+        if waiting_ids.is_empty() {
+            return;
+        }
         waiting_ids.sort_by_key(|(priority, _)| *priority);
         tracing::debug!("Checking waiting queue, size: {}", waiting_ids.len());
 
         for (_, id) in waiting_ids {
-            if let Err(e) = self.controller.spawn_program(&mut self.registry, id, 0).await {
+            if let Err(e) = self
+                .controller
+                .spawn_program(&mut self.registry, id, 0)
+                .await
+            {
                 tracing::error!("Failed to spawn waiting program {}: {}", id, e);
             }
         }
@@ -1404,21 +1709,55 @@ impl Manager {
         for (id, config) in &self.registry.programs {
             let safe_name = config.name.replace("\"", "\\\"");
             let safe_group = config.group.as_deref().unwrap_or("").replace("\"", "\\\"");
-            let labels = format!("id=\"{}\",name=\"{}\",group=\"{}\"", id, safe_name, safe_group);
+            let labels = format!(
+                "id=\"{}\",name=\"{}\",group=\"{}\"",
+                id, safe_name, safe_group
+            );
 
-            let (is_up, cpu, mem, uptime, restarts, status_code) = if let Some(state) = self.registry.get_running(id) {
-                (1, state.cpu_usage, state.mem_usage, now.saturating_sub(state.start_time), state.retry_count, if state.is_healthy { 1 } else { 5 })
-            } else {
-                let code = if self.registry.crashed.contains(id) { 2 } else if self.registry.restarting.contains(id) { 3 } else if self.registry.waiting.contains(id) { 4 } else { 0 };
-                (0, 0.0, 0, 0, 0, code)
-            };
+            let (is_up, cpu, mem, uptime, restarts, status_code) =
+                if let Some(state) = self.registry.get_running(id) {
+                    (
+                        1,
+                        state.cpu_usage,
+                        state.mem_usage,
+                        now.saturating_sub(state.start_time),
+                        state.retry_count,
+                        if state.is_healthy { 1 } else { 5 },
+                    )
+                } else {
+                    let code = if self.registry.crashed.contains(id) {
+                        2
+                    } else if self.registry.restarting.contains(id) {
+                        3
+                    } else if self.registry.waiting.contains(id) {
+                        4
+                    } else {
+                        0
+                    };
+                    (0, 0.0, 0, 0, 0, code)
+                };
 
             buffer.push_str(&format!("super_process_up{{{}}} {}\n", labels, is_up));
-            buffer.push_str(&format!("super_process_cpu_percent{{{}}} {:.2}\n", labels, cpu));
-            buffer.push_str(&format!("super_process_memory_bytes{{{}}} {}\n", labels, mem));
-            buffer.push_str(&format!("super_process_uptime_seconds{{{}}} {}\n", labels, uptime));
-            buffer.push_str(&format!("super_process_restart_count{{{}}} {}\n", labels, restarts));
-            buffer.push_str(&format!("super_process_status_code{{{}}} {}\n", labels, status_code));
+            buffer.push_str(&format!(
+                "super_process_cpu_percent{{{}}} {:.2}\n",
+                labels, cpu
+            ));
+            buffer.push_str(&format!(
+                "super_process_memory_bytes{{{}}} {}\n",
+                labels, mem
+            ));
+            buffer.push_str(&format!(
+                "super_process_uptime_seconds{{{}}} {}\n",
+                labels, uptime
+            ));
+            buffer.push_str(&format!(
+                "super_process_restart_count{{{}}} {}\n",
+                labels, restarts
+            ));
+            buffer.push_str(&format!(
+                "super_process_status_code{{{}}} {}\n",
+                labels, status_code
+            ));
         }
 
         buffer.push_str("\n# --- Extension Metrics ---\n");
@@ -1432,33 +1771,54 @@ impl Manager {
         components.insert("manager".to_string(), "up".to_string());
 
         let persistence_status = if self.config.storage.data_file.exists() {
-             match tokio::fs::metadata(&self.config.storage.data_file).await {
-                Ok(m) => if m.permissions().readonly() { "error: read-only" } else { "up" },
-                Err(_e) => return HealthResponse { status: "degraded".to_string(), components },
-             }.to_string()
+            match tokio::fs::metadata(&self.config.storage.data_file).await {
+                Ok(m) => {
+                    if m.permissions().readonly() {
+                        "error: read-only"
+                    } else {
+                        "up"
+                    }
+                }
+                Err(_e) => {
+                    return HealthResponse {
+                        status: "degraded".to_string(),
+                        components,
+                    };
+                }
+            }
+            .to_string()
         } else {
             "up (no data)".to_string()
         };
         components.insert("persistence".to_string(), persistence_status);
 
-        HealthResponse { status: "healthy".to_string(), components }
+        HealthResponse {
+            status: "healthy".to_string(),
+            components,
+        }
     }
 
-
-    async fn handle_batch_programs(&mut self, req: BatchProgramRequest) -> anyhow::Result<BatchProgramResponse> {
+    async fn handle_batch_programs(
+        &mut self,
+        req: BatchProgramRequest,
+    ) -> anyhow::Result<BatchProgramResponse> {
         // 1. Select target IDs
         let mut target_ids: Vec<Uuid> = Vec::new();
 
         if req.select_all {
             target_ids = self.registry.programs.keys().cloned().collect();
         } else if let Some(group) = req.group_name {
-            target_ids = self.registry.programs.iter()
+            target_ids = self
+                .registry
+                .programs
+                .iter()
                 .filter(|(_, cfg)| cfg.group.as_deref() == Some(&group))
                 .map(|(id, _)| *id)
                 .collect();
         } else if let Some(ids) = req.target_ids {
             // Filter to existing IDs only
-            target_ids = ids.into_iter()
+            target_ids = ids
+                .into_iter()
                 .filter(|id| self.registry.programs.contains_key(id))
                 .collect();
         }
@@ -1482,18 +1842,18 @@ impl Manager {
                         conf.autostart = true;
                         conf.updated_at = chrono::Utc::now().timestamp() as u64;
                     }
-                    self.controller.spawn_program(&mut self.registry, id, 0).await
-                },
+                    self.controller
+                        .spawn_program(&mut self.registry, id, 0)
+                        .await
+                }
                 BatchAction::Stop { force } => {
                     // stop_program sets autostart = false internally
-                    self.controller.stop_program(&mut self.registry, id, *force).await
-                },
-                BatchAction::Restart => {
-                    self.handle_restart_request(id).await
-                },
-                BatchAction::Remove => {
-                    self.handle_remove(id).await
-                },
+                    self.controller
+                        .stop_program(&mut self.registry, id, *force)
+                        .await
+                }
+                BatchAction::Restart => self.handle_restart_request(id).await,
+                BatchAction::Remove => self.handle_remove(id).await,
                 BatchAction::Signal { signal } => {
                     // Parse signal string
                     let sig = match signal.to_lowercase().as_str() {
@@ -1534,9 +1894,16 @@ impl Manager {
 
         for i in 0..count {
             let final_name = if count > 1 {
-                let template = req.process_name.clone().unwrap_or_else(|| "{name}-{num}".to_string());
-                template.replace("{name}", &base_name).replace("{num}", &i.to_string())
-            } else { base_name.clone() };
+                let template = req
+                    .process_name
+                    .clone()
+                    .unwrap_or_else(|| "{name}-{num}".to_string());
+                template
+                    .replace("{name}", &base_name)
+                    .replace("{num}", &i.to_string())
+            } else {
+                base_name.clone()
+            };
 
             let mut final_env = req.env.clone();
             if count > 1 {
@@ -1556,8 +1923,16 @@ impl Manager {
                 autostart: req.autostart,
                 retry_limit: req.retry_limit,
                 autorestart: req.autorestart,
-                exitcodes: if req.exitcodes.is_empty() { vec![0] } else { req.exitcodes.clone() },
-                startsecs: if req.startsecs == 0 { 10 } else { req.startsecs },
+                exitcodes: if req.exitcodes.is_empty() {
+                    vec![0]
+                } else {
+                    req.exitcodes.clone()
+                },
+                startsecs: if req.startsecs == 0 {
+                    10
+                } else {
+                    req.startsecs
+                },
                 stopsecs: req.stopsecs,
                 priority: req.priority,
                 stdout_logfile: req.stdout_logfile.clone(),
@@ -1584,7 +1959,8 @@ impl Manager {
 
     fn validate_parameters(&self, cron: Option<&str>) -> anyhow::Result<()> {
         if let Some(c) = cron
-            && cron::Schedule::from_str(c).is_err() {
+            && cron::Schedule::from_str(c).is_err()
+        {
             return Err(anyhow::anyhow!("Invalid cron: {}", c));
         }
         Ok(())

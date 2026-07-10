@@ -1,11 +1,11 @@
-use super_core::config::ServerConfig;
-use super_core::manager::Manager;
-use super_core::ManagerHandle;
-use super_core::extension::Extension;
-use common::{SystemEvent, ProcessStatus, ProgramConfig};
+use common::{ProcessStatus, ProgramConfig, SystemEvent};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use super_core::ManagerHandle;
+use super_core::config::ServerConfig;
+use super_core::extension::Extension;
+use super_core::manager::Manager;
 use tempfile::TempDir;
 use tokio::sync::{broadcast, mpsc};
 
@@ -18,7 +18,9 @@ struct MockExtension {
 
 impl MockExtension {
     fn new() -> Self {
-        Self { events: Arc::new(Mutex::new(Vec::new())) }
+        Self {
+            events: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     fn has_event(&self, event_type: &str) -> bool {
@@ -99,13 +101,16 @@ async fn test_basic_lifecycle() {
         ..Default::default()
     };
 
-    let ids = handle.create_program(common::CreateProgramRequest {
-        name: Some(config.name),
-        command: config.command,
-        args: config.args,
-        autostart: false,
-        ..Default::default()
-    }).await.unwrap();
+    let ids = handle
+        .create_program(common::CreateProgramRequest {
+            name: Some(config.name),
+            command: config.command,
+            args: config.args,
+            autostart: false,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 
     let id = ids[0];
 
@@ -122,7 +127,10 @@ async fn test_basic_lifecycle() {
     // 5. Verify running state
     let info = handle.get_program(id).await.unwrap();
     println!("Lifecycle State: {:?}", info.state);
-    assert!(matches!(info.state, ProcessStatus::Running | ProcessStatus::Healthy));
+    assert!(matches!(
+        info.state,
+        ProcessStatus::Running | ProcessStatus::Healthy
+    ));
 
     // 6. Stop
     handle.stop_program(id, false).await.unwrap();
@@ -139,23 +147,29 @@ async fn test_dependency_orchestration() {
     let (handle, _tmp, _notify) = setup_manager().await;
 
     // A. Upstream service (provider)
-    handle.create_program(common::CreateProgramRequest {
-        name: Some("provider".to_string()),
-        command: "/bin/sleep".to_string(),
-        args: vec!["100".to_string()],
-        autostart: false,
-        ..Default::default()
-    }).await.unwrap();
+    handle
+        .create_program(common::CreateProgramRequest {
+            name: Some("provider".to_string()),
+            command: "/bin/sleep".to_string(),
+            args: vec!["100".to_string()],
+            autostart: false,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 
     // B. Downstream service (consumer) — depends on provider
-    let consumer_ids = handle.create_program(common::CreateProgramRequest {
-        name: Some("consumer".to_string()),
-        command: "/bin/echo".to_string(),
-        args: vec!["hello".to_string()],
-        autostart: false,
-        depends_on: vec!["provider".to_string()],
-        ..Default::default()
-    }).await.unwrap();
+    let consumer_ids = handle
+        .create_program(common::CreateProgramRequest {
+            name: Some("consumer".to_string()),
+            command: "/bin/echo".to_string(),
+            args: vec!["hello".to_string()],
+            autostart: false,
+            depends_on: vec!["provider".to_string()],
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     let consumer_id = consumer_ids[0];
 
     // 1. Start consumer first → should enter Waiting (provider not running)
@@ -163,7 +177,11 @@ async fn test_dependency_orchestration() {
 
     tokio::time::sleep(Duration::from_millis(100)).await;
     let info = handle.get_program(consumer_id).await.unwrap();
-    assert_eq!(info.state, ProcessStatus::Waiting, "Consumer should wait for provider");
+    assert_eq!(
+        info.state,
+        ProcessStatus::Waiting,
+        "Consumer should wait for provider"
+    );
 
     // 2. Start provider
     let list = handle.list_programs().await.unwrap();
@@ -176,7 +194,11 @@ async fn test_dependency_orchestration() {
     // 4. Verify consumer state
     let info = handle.get_program(consumer_id).await.unwrap();
     println!("Consumer State after provider start: {:?}", info.state);
-    assert_ne!(info.state, ProcessStatus::Waiting, "Consumer should have been triggered");
+    assert_ne!(
+        info.state,
+        ProcessStatus::Waiting,
+        "Consumer should have been triggered"
+    );
 }
 
 #[tokio::test]
@@ -184,14 +206,17 @@ async fn test_fatal_alert() {
     let (handle, _tmp, notify) = setup_manager().await;
 
     // Create a task that is guaranteed to fail
-    handle.create_program(common::CreateProgramRequest {
-        name: Some("crasher".to_string()),
-        command: "/bin/sh".to_string(),
-        args: vec!["-c".to_string(), "exit 1".to_string()],
-        autostart: true,
-        retry_limit: 1,
-        ..Default::default()
-    }).await.unwrap();
+    handle
+        .create_program(common::CreateProgramRequest {
+            name: Some("crasher".to_string()),
+            command: "/bin/sh".to_string(),
+            args: vec!["-c".to_string(), "exit 1".to_string()],
+            autostart: true,
+            retry_limit: 1,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 
     // Wait for retry logic to complete
     tokio::time::sleep(Duration::from_secs(4)).await;
@@ -201,5 +226,8 @@ async fn test_fatal_alert() {
     println!("Crasher Final Status: {:?}", prog.status);
 
     assert_eq!(prog.status, ProcessStatus::Fatal);
-    assert!(notify.has_event("process_fatal"), "Should have triggered process_fatal event");
+    assert!(
+        notify.has_event("process_fatal"),
+        "Should have triggered process_fatal event"
+    );
 }

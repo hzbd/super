@@ -1,5 +1,5 @@
 use anyhow::Context;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -28,8 +28,8 @@ pub fn verify_license(license_str: &str) -> anyhow::Result<LicenseClaims> {
         .decode(license_str.trim())
         .context("Invalid license format (Base64 decode failed)")?;
 
-    let container: LicenseContainer = serde_json::from_slice(&json_bytes)
-        .context("Invalid license structure")?;
+    let container: LicenseContainer =
+        serde_json::from_slice(&json_bytes).context("Invalid license structure")?;
 
     let key_array: [u8; 32] = PUBLIC_KEY_BYTES
         .try_into()
@@ -46,9 +46,7 @@ pub fn verify_license(license_str: &str) -> anyhow::Result<LicenseClaims> {
     verifying_key
         .verify(&claims_bytes, &signature)
         .map_err(|_| {
-            anyhow::anyhow!(
-                "License signature verification failed (invalid or tampered)"
-            )
+            anyhow::anyhow!("License signature verification failed (invalid or tampered)")
         })?;
 
     Ok(container.claims)

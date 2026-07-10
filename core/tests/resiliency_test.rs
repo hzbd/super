@@ -1,12 +1,12 @@
-use super_core::manager::Manager;
+use anyhow::anyhow;
+use common::{ProcessStatus, ProgramConfig};
+use std::collections::HashMap;
 use super_core::ManagerHandle;
 use super_core::config::ServerConfig;
 use super_core::extension::Extension;
-use common::{ProgramConfig, ProcessStatus};
-use std::collections::HashMap;
-use tokio::sync::{mpsc, broadcast};
+use super_core::manager::Manager;
+use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
-use anyhow::anyhow;
 
 // --- Mock Extension ---
 // Extension that can be configured to fail
@@ -38,7 +38,9 @@ async fn test_strict_policy_kills_process() {
     config.storage.data_file = data_file.clone();
 
     // Extension returns an error from after_start
-    let extension = Box::new(SaboteurExtension { should_fail_after_start: true });
+    let extension = Box::new(SaboteurExtension {
+        should_fail_after_start: true,
+    });
 
     let (cmd_tx, cmd_rx) = mpsc::channel(100);
 
@@ -80,12 +82,23 @@ async fn test_strict_policy_kills_process() {
     println!("Status after sabotage: {:?}", info.state);
 
     // Key check 1: status must be Fatal
-    assert_eq!(info.state, ProcessStatus::Fatal, "Process should be Fatal after extension failure");
+    assert_eq!(
+        info.state,
+        ProcessStatus::Fatal,
+        "Process should be Fatal after extension failure"
+    );
 
     // Key check 2: PID should be cleared (we SIGKILL and wait)
-    assert!(info.pid.is_none(), "PID should be cleared from running state");
+    assert!(
+        info.pid.is_none(),
+        "PID should be cleared from running state"
+    );
 
     // Key check 3: error message should include our mock error
     assert!(info.last_error.is_some());
-    assert!(info.last_error.unwrap().contains("Simulated Cgroup Failure"));
+    assert!(
+        info.last_error
+            .unwrap()
+            .contains("Simulated Cgroup Failure")
+    );
 }

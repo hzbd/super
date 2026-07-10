@@ -1,18 +1,18 @@
-mod config;
 mod args;
+mod check;
 mod client;
+mod config;
 mod display;
 mod handlers;
-mod check;
-mod top;
 mod session;
+mod top;
 
-use clap::Parser;
-use config::CliConfig;
 use args::{Cli, Commands};
-use handlers::Context;
+use clap::Parser;
 use client::WaitTarget;
 use common::BatchAction;
+use config::CliConfig;
+use handlers::Context;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -53,37 +53,73 @@ async fn main() -> anyhow::Result<()> {
         Commands::Add { .. } => handlers::handle_add(&ctx, &args.command).await?,
         Commands::Update { .. } => handlers::handle_update(&ctx, &args.command).await?,
 
-        Commands::Start { target, wait, timeout } =>
+        Commands::Start {
+            target,
+            wait,
+            timeout,
+        } => {
             handlers::handle_batch_action(
-                &ctx, target.clone(), BatchAction::Start,
-                *wait, Some(WaitTarget::Up), *timeout
-            ).await?,
+                &ctx,
+                target.clone(),
+                BatchAction::Start,
+                *wait,
+                Some(WaitTarget::Up),
+                *timeout,
+            )
+            .await?
+        }
 
-        Commands::Stop { target, wait, timeout, force } => {
+        Commands::Stop {
+            target,
+            wait,
+            timeout,
+            force,
+        } => {
             handlers::handle_batch_action(
-                &ctx, target.clone(), BatchAction::Stop { force: *force },
-                *wait, Some(WaitTarget::Down), *timeout
-            ).await?
-        },
+                &ctx,
+                target.clone(),
+                BatchAction::Stop { force: *force },
+                *wait,
+                Some(WaitTarget::Down),
+                *timeout,
+            )
+            .await?
+        }
 
-        Commands::Restart { target, wait, timeout } =>
+        Commands::Restart {
+            target,
+            wait,
+            timeout,
+        } => {
             handlers::handle_batch_action(
-                &ctx, target.clone(), BatchAction::Restart,
-                *wait, Some(WaitTarget::Restarted(None)), *timeout
-            ).await?,
+                &ctx,
+                target.clone(),
+                BatchAction::Restart,
+                *wait,
+                Some(WaitTarget::Restarted(None)),
+                *timeout,
+            )
+            .await?
+        }
 
-        Commands::Remove { target } =>
-            handlers::handle_batch_action(
-                &ctx, target.clone(), BatchAction::Remove,
-                false, None, 5
-            ).await?,
+        Commands::Remove { target } => {
+            handlers::handle_batch_action(&ctx, target.clone(), BatchAction::Remove, false, None, 5)
+                .await?
+        }
 
         Commands::Signal { target, sig } => {
             handlers::handle_batch_action(
-                &ctx, target.clone(), BatchAction::Signal { signal: sig.clone() },
-                false, None, 5
-            ).await?;
-        },
+                &ctx,
+                target.clone(),
+                BatchAction::Signal {
+                    signal: sig.clone(),
+                },
+                false,
+                None,
+                5,
+            )
+            .await?;
+        }
 
         Commands::Reload { target } => handlers::handle_reload(&ctx, target).await?,
         Commands::Token { action } => handlers::handle_token(&ctx, action).await?,
@@ -91,9 +127,12 @@ async fn main() -> anyhow::Result<()> {
         Commands::Export => handlers::handle_export(&ctx).await?,
         Commands::Shutdown => handlers::handle_shutdown(&ctx).await?,
         Commands::Info { target } => handlers::handle_info(&ctx, target).await?,
-        Commands::Logs { target, tail, source, follow } => {
-            handlers::handle_logs(&ctx, target, *tail, source.as_deref(), *follow).await?
-        },
+        Commands::Logs {
+            target,
+            tail,
+            source,
+            follow,
+        } => handlers::handle_logs(&ctx, target, *tail, source.as_deref(), *follow).await?,
 
         Commands::Top => top::run(&ctx).await?,
 

@@ -1,15 +1,15 @@
+use crate::args::{self, TokenCommands};
 use crate::client::{self, WaitTarget};
 use crate::display;
-use crate::args::{self, TokenCommands};
-use common::{CreateTokenRequest, CreateTokenResponse, UserRole};
+use colored::Colorize;
 use common::{
-    CreateProgramRequest, UpdateProgramRequest, StackApplyRequest, ResourceLimits,
-    ProgramSummary, ProgramInfo, BatchProgramRequest, BatchProgramResponse, BatchAction,
-    ProgramLogsResponse, AutorestartPolicy, ArtifactConfig,
+    ArtifactConfig, AutorestartPolicy, BatchAction, BatchProgramRequest, BatchProgramResponse,
+    CreateProgramRequest, ProgramInfo, ProgramLogsResponse, ProgramSummary, ResourceLimits,
+    StackApplyRequest, UpdateProgramRequest,
 };
+use common::{CreateTokenRequest, CreateTokenResponse, UserRole};
 use std::collections::HashMap;
 use uuid::Uuid;
-use colored::Colorize;
 
 pub struct Context {
     pub client: reqwest::Client,
@@ -22,7 +22,9 @@ fn parse_autorestart(s: &str) -> anyhow::Result<AutorestartPolicy> {
         "unexpected" => Ok(AutorestartPolicy::Unexpected),
         "true" => Ok(AutorestartPolicy::True),
         "false" => Ok(AutorestartPolicy::False),
-        _ => Err(anyhow::anyhow!("autorestart must be unexpected, true, or false")),
+        _ => Err(anyhow::anyhow!(
+            "autorestart must be unexpected, true, or false"
+        )),
     }
 }
 
@@ -40,10 +42,11 @@ pub async fn check_resp(resp: reqwest::Response) -> anyhow::Result<()> {
             }
         } else {
             if let Ok(err_json) = serde_json::from_str::<serde_json::Value>(&text)
-                && let Some(msg) = err_json.get("message").and_then(|m| m.as_str()) {
-                    eprintln!("Error: {}", msg);
-                    return Ok(());
-                }
+                && let Some(msg) = err_json.get("message").and_then(|m| m.as_str())
+            {
+                eprintln!("Error: {}", msg);
+                return Ok(());
+            }
             eprintln!("Error: {}", text);
         }
     }
@@ -64,7 +67,7 @@ pub async fn handle_batch_action(
         BatchAction::Stop { .. } => "STOP",
         BatchAction::Restart => "RESTART",
         BatchAction::Remove => "REMOVE",
-        BatchAction::Signal { signal: _ } => "SIGNAL", 
+        BatchAction::Signal { signal: _ } => "SIGNAL",
     };
 
     // 1. Build BatchRequest
@@ -87,13 +90,22 @@ pub async fn handle_batch_action(
     }
 
     // Safety confirmation
-    let count_hint = if req.select_all { 999 } else if let Some(ids) = &req.target_ids { ids.len() } else { 999 };
+    let count_hint = if req.select_all {
+        999
+    } else if let Some(ids) = &req.target_ids {
+        ids.len()
+    } else {
+        999
+    };
     if !display::confirm_batch(count_hint, action_verb) {
         println!("Aborted.");
         return Ok(());
     }
 
-    println!("Sending batch request: {} target='{}'...", action_verb, target);
+    println!(
+        "Sending batch request: {} target='{}'...",
+        action_verb, target
+    );
 
     // 3. Send single request
     let url = format!("{}/api/programs/batch", ctx.base_url);
@@ -112,7 +124,11 @@ pub async fn handle_batch_action(
         eprintln!("{} Failed: {} - {}", "✖".red(), id, err);
     }
 
-    println!("Success: {}, Failed: {}", result.affected.len(), result.failed.len());
+    println!(
+        "Success: {}, Failed: {}",
+        result.affected.len(),
+        result.failed.len()
+    );
 
     // 5. Wait for status change
     if wait && !result.affected.is_empty() {
@@ -121,19 +137,30 @@ pub async fn handle_batch_action(
             return Ok(());
         }
 
-        println!("Waiting for {} programs to reach target state...", result.affected.len());
+        println!(
+            "Waiting for {} programs to reach target state...",
+            result.affected.len()
+        );
 
         for id in result.affected {
-             // Batch restart cannot know old PIDs; fall back to waiting for UP
-             let specific_wait_target = match wait_target {
+            // Batch restart cannot know old PIDs; fall back to waiting for UP
+            let specific_wait_target = match wait_target {
                 Some(WaitTarget::Restarted(_)) => Some(WaitTarget::Up),
                 t => t,
             };
 
             if let Some(target_state) = specific_wait_target
-                && let Err(e) = client::wait_for_status(&ctx.client, &ctx.base_url, id, target_state, timeout_sec).await {
-                    eprintln!("   Verification warning for {}: {}", id, e);
-                }
+                && let Err(e) = client::wait_for_status(
+                    &ctx.client,
+                    &ctx.base_url,
+                    id,
+                    target_state,
+                    timeout_sec,
+                )
+                .await
+            {
+                eprintln!("   Verification warning for {}: {}", id, e);
+            }
         }
     }
 
@@ -218,14 +245,37 @@ pub async fn handle_logs(
     client::monitor_logs(
         &ctx.base_url,
         id,
-        &ctx.auth_token.as_ref().map(|t| format!("&token={t}")).unwrap_or_default(),
+        &ctx.auth_token
+            .as_ref()
+            .map(|t| format!("&token={t}"))
+            .unwrap_or_default(),
     )
     .await?;
     Ok(())
 }
 
 pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<()> {
-    if let args::Commands::Add { name, command, args, env, env_file, cwd, user, group, autostart, numprocs, process_name, cron, cpu, memory, autorestart, exitcodes, startsecs, stopsecs } = cmd {
+    if let args::Commands::Add {
+        name,
+        command,
+        args,
+        env,
+        env_file,
+        cwd,
+        user,
+        group,
+        autostart,
+        numprocs,
+        process_name,
+        cron,
+        cpu,
+        memory,
+        autorestart,
+        exitcodes,
+        startsecs,
+        stopsecs,
+    } = cmd
+    {
         let mut env_map = HashMap::new();
 
         // if let Some(path) = env_file {
@@ -245,9 +295,13 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
         // }
 
         if let Some(path) = env_file
-            && !path.exists() {
-                println!("Warning: Env file does not exist locally (will be evaluated on server): {:?}", path);
-            }
+            && !path.exists()
+        {
+            println!(
+                "Warning: Env file does not exist locally (will be evaluated on server): {:?}",
+                path
+            );
+        }
 
         for item in env {
             if let Some((k, v)) = item.split_once('=') {
@@ -256,7 +310,10 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
         }
 
         let limits = if cpu.is_some() || memory.is_some() {
-            let limits = Some(ResourceLimits { cpu_quota: *cpu, memory_limit: *memory });
+            let limits = Some(ResourceLimits {
+                cpu_quota: *cpu,
+                memory_limit: *memory,
+            });
             eprintln!(
                 "Warning: --cpu/--memory require the isolation plugin on Linux; \
                  limits are stored but not enforced without it."
@@ -272,12 +329,24 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
         };
 
         let payload = CreateProgramRequest {
-            name: name.clone(), command: command.clone(), args: args.clone(),
-            env: env_map, cwd: cwd.clone(), user: user.clone(), group: group.clone(),
+            name: name.clone(),
+            command: command.clone(),
+            args: args.clone(),
+            env: env_map,
+            cwd: cwd.clone(),
+            user: user.clone(),
+            group: group.clone(),
             env_file: env_file.as_ref().map(|p| p.to_string_lossy().to_string()),
-            autostart: *autostart, numprocs: *numprocs, process_name: process_name.clone(),
-            retry_limit: 3, depends_on: vec![], health_check: None, hooks: Default::default(),
-            artifact: None, cron: cron.clone(), resource_limits: limits,
+            autostart: *autostart,
+            numprocs: *numprocs,
+            process_name: process_name.clone(),
+            retry_limit: 3,
+            depends_on: vec![],
+            health_check: None,
+            hooks: Default::default(),
+            artifact: None,
+            cron: cron.clone(),
+            resource_limits: limits,
             autorestart: autorestart_policy.unwrap_or_default(),
             exitcodes: exitcodes.clone().unwrap_or(vec![0]),
             startsecs: startsecs.unwrap_or(10),
@@ -290,10 +359,13 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
 
         if resp.status().is_success() {
             let ids: Vec<Uuid> = resp.json().await?;
-            if ids.len() == 1 { println!("Program created: {}", ids[0]); }
-            else {
+            if ids.len() == 1 {
+                println!("Program created: {}", ids[0]);
+            } else {
                 println!("Created {} programs:", ids.len());
-                for id in ids { println!("  - {}", id); }
+                for id in ids {
+                    println!("  - {}", id);
+                }
             }
         } else {
             eprintln!("Error: {}", resp.text().await?);
@@ -327,23 +399,33 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
         artifact_destination,
         artifact_extract,
         ..
-    } = cmd {
+    } = cmd
+    {
         let ids = client::resolve_targets(&ctx.client, &ctx.base_url, target).await?;
         if ids.len() != 1 {
-            return Err(anyhow::anyhow!("Update command only supports a single target."));
+            return Err(anyhow::anyhow!(
+                "Update command only supports a single target."
+            ));
         }
         let id = ids[0];
 
         let env_map = if let Some(env_vec) = env {
             let mut map = HashMap::new();
             for item in env_vec {
-                if let Some((k, v)) = item.split_once('=') { map.insert(k.to_string(), v.to_string()); }
+                if let Some((k, v)) = item.split_once('=') {
+                    map.insert(k.to_string(), v.to_string());
+                }
             }
             Some(map)
-        } else { None };
+        } else {
+            None
+        };
 
         let limits = if cpu.is_some() || memory.is_some() {
-            let limits = Some(ResourceLimits { cpu_quota: *cpu, memory_limit: *memory });
+            let limits = Some(ResourceLimits {
+                cpu_quota: *cpu,
+                memory_limit: *memory,
+            });
             eprintln!(
                 "Warning: --cpu/--memory require the isolation plugin on Linux; \
                  limits are stored but not enforced without it."
@@ -358,12 +440,12 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
             || artifact_destination.is_some()
             || artifact_extract.is_some()
         {
-            let source = artifact_url
-                .clone()
-                .ok_or_else(|| anyhow::anyhow!("--artifact-url is required when updating artifact"))?;
-            let checksum = artifact_sha256
-                .clone()
-                .ok_or_else(|| anyhow::anyhow!("--artifact-sha256 is required when updating artifact"))?;
+            let source = artifact_url.clone().ok_or_else(|| {
+                anyhow::anyhow!("--artifact-url is required when updating artifact")
+            })?;
+            let checksum = artifact_sha256.clone().ok_or_else(|| {
+                anyhow::anyhow!("--artifact-sha256 is required when updating artifact")
+            })?;
 
             let destination = if let Some(dest) = artifact_destination.clone() {
                 dest
@@ -371,7 +453,10 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
                 let url = format!("{}/api/programs/{}", ctx.base_url, id);
                 let resp = ctx.client.get(&url).send().await?;
                 if !resp.status().is_success() {
-                    return Err(anyhow::anyhow!("Failed to load program: {}", resp.text().await?));
+                    return Err(anyhow::anyhow!(
+                        "Failed to load program: {}",
+                        resp.text().await?
+                    ));
                 }
                 let info: ProgramInfo = resp.json().await?;
                 info.config
@@ -398,9 +483,15 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
         let ota_triggered = artifact.is_some();
 
         let mut payload = UpdateProgramRequest {
-            name: None, command: command.clone(), args: args.clone(), env: env_map,
+            name: None,
+            command: command.clone(),
+            args: args.clone(),
+            env: env_map,
             env_file: env_file.clone(),
-            cwd: cwd.clone(), user: user.clone(), group: group.clone(), autostart: *autostart,
+            cwd: cwd.clone(),
+            user: user.clone(),
+            group: group.clone(),
+            autostart: *autostart,
             retry_limit: *retry_limit,
             autorestart: match autorestart.as_deref() {
                 Some(s) => Some(parse_autorestart(s)?),
@@ -409,8 +500,12 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
             exitcodes: exitcodes.clone(),
             startsecs: *startsecs,
             stopsecs: *stopsecs,
-            depends_on: None, health_check: None, hooks: None,
-            artifact, cron: cron.clone(), resource_limits: limits,
+            depends_on: None,
+            health_check: None,
+            hooks: None,
+            artifact,
+            cron: cron.clone(),
+            resource_limits: limits,
             ..Default::default()
         };
 
@@ -437,7 +532,11 @@ pub async fn handle_token(ctx: &Context, action: &TokenCommands) -> anyhow::Resu
     let base_url = &ctx.base_url;
     match action {
         TokenCommands::List => {
-            let resp = ctx.client.get(format!("{base_url}/api/auth/tokens")).send().await?;
+            let resp = ctx
+                .client
+                .get(format!("{base_url}/api/auth/tokens"))
+                .send()
+                .await?;
             if resp.status().is_success() {
                 display::print_token_table(resp.json().await?);
             } else {
@@ -450,7 +549,10 @@ pub async fn handle_token(ctx: &Context, action: &TokenCommands) -> anyhow::Resu
                 "viewer" => UserRole::Viewer,
                 _ => UserRole::Operator,
             };
-            let req = CreateTokenRequest { name: name.clone(), role: role_enum };
+            let req = CreateTokenRequest {
+                name: name.clone(),
+                role: role_enum,
+            };
             let resp = ctx
                 .client
                 .post(format!("{base_url}/api/auth/tokens"))
@@ -497,14 +599,21 @@ pub async fn handle_reload(ctx: &Context, target: &Option<String>) -> anyhow::Re
         handle_batch_action(
             ctx,
             name.clone(),
-            BatchAction::Signal { signal: "hup".to_string() },
+            BatchAction::Signal {
+                signal: "hup".to_string(),
+            },
             false,
             None,
-            5
-        ).await?;
+            5,
+        )
+        .await?;
     } else {
         println!("Reloading System Configuration...");
-        let resp = ctx.client.post(format!("{}/api/system/reload", ctx.base_url)).send().await?;
+        let resp = ctx
+            .client
+            .post(format!("{}/api/system/reload", ctx.base_url))
+            .send()
+            .await?;
         check_resp(resp).await?;
     }
     Ok(())

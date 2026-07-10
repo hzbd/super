@@ -45,9 +45,9 @@ fn test_custom_exitcodes() {
 
 #[test]
 fn test_program_config_serde_defaults() {
-    let cfg: ProgramConfig = serde_json::from_str(
-        r#"{"name":"a","command":"b","created_at":0,"updated_at":0}"#
-    ).unwrap();
+    let cfg: ProgramConfig =
+        serde_json::from_str(r#"{"name":"a","command":"b","created_at":0,"updated_at":0}"#)
+            .unwrap();
     assert_eq!(cfg.autorestart, AutorestartPolicy::Unexpected);
     assert_eq!(cfg.exitcodes, vec![0]);
     assert_eq!(cfg.startsecs, 10);

@@ -1,10 +1,14 @@
-use super_core::{api, bootstrap, plugin::{attach_http_plugins, PluginHost}, resolve_root, ManagerHandle};
 use axum::{
-    http::{header, StatusCode, Uri, HeaderValue},
-    response::IntoResponse,
     Router,
+    http::{HeaderValue, StatusCode, Uri, header},
+    response::IntoResponse,
 };
 use rust_embed::RustEmbed;
+use super_core::{
+    ManagerHandle, api, bootstrap,
+    plugin::{PluginHost, attach_http_plugins},
+    resolve_root,
+};
 use tokio::signal;
 
 #[derive(RustEmbed)]
@@ -41,11 +45,12 @@ async fn static_handler(uri: Uri, auth_required: bool) -> impl IntoResponse {
     match OssAssets::get(file_path) {
         Some(content) => {
             if file_path == "index.html"
-                && let Some(injected) = get_index_html() {
-                    let mut headers = axum::http::HeaderMap::new();
-                    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
-                    return (headers, injected).into_response();
-                }
+                && let Some(injected) = get_index_html()
+            {
+                let mut headers = axum::http::HeaderMap::new();
+                headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
+                return (headers, injected).into_response();
+            }
 
             let mime = mime_guess::from_path(file_path).first_or_octet_stream();
             let content_type = HeaderValue::from_str(mime.as_ref())
@@ -144,17 +149,23 @@ async fn main() -> anyhow::Result<()> {
     let auth_flag = auth_required;
     let app = Router::new()
         .merge(api_router)
-        .fallback(move |uri: Uri| async move {
-            static_handler_with_auth(uri, auth_flag).await
-        });
+        .fallback(move |uri: Uri| async move { static_handler_with_auth(uri, auth_flag).await });
 
     let addr = format!("{}:{}", core.config.server.host, core.config.server.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
 
     if auth_required {
-        tracing::info!("Superd listening on {} (plugins: {:?}, auth enabled)", addr, loaded_plugins);
+        tracing::info!(
+            "Superd listening on {} (plugins: {:?}, auth enabled)",
+            addr,
+            loaded_plugins
+        );
     } else if is_licensed {
-        tracing::info!("Superd listening on {} (plugins: {:?})", addr, loaded_plugins);
+        tracing::info!(
+            "Superd listening on {} (plugins: {:?})",
+            addr,
+            loaded_plugins
+        );
     } else {
         tracing::info!("Superd (OSS) listening on {}", addr);
     }

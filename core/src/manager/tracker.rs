@@ -35,14 +35,15 @@ impl FlappingTracker {
     /// Returns true if restarts within `window` exceed `threshold`.
     pub fn is_flapping(&self, id: Uuid, window: u64, threshold: usize) -> bool {
         if let Some(queue) = self.history.get(&id)
-            && queue.len() > threshold {
-                let first_time = *queue.front().unwrap();
-                let last_time = *queue.back().unwrap(); // simplified: use last recorded start
-                // If (Nth start - 1st start) < window, restarts are too frequent
-                if last_time - first_time < window {
-                    return true;
-                }
+            && queue.len() > threshold
+        {
+            let first_time = *queue.front().unwrap();
+            let last_time = *queue.back().unwrap(); // simplified: use last recorded start
+            // If (Nth start - 1st start) < window, restarts are too frequent
+            if last_time - first_time < window {
+                return true;
             }
+        }
         false
     }
 

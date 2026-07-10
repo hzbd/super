@@ -1,14 +1,17 @@
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::net::TcpListener;
 use colored::Colorize;
 use common::config::ServerConfig;
+use std::fs;
+use std::net::TcpListener;
+use std::path::{Path, PathBuf};
 
 /// Run configuration check command
 pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
     // 1. Locate config file
     let path = resolve_config_path(file_path)?;
-    println!("Checking configuration at: {}", path.display().to_string().cyan());
+    println!(
+        "Checking configuration at: {}",
+        path.display().to_string().cyan()
+    );
 
     // 2. Read and parse TOML
     let content = match fs::read_to_string(&path) {
@@ -40,10 +43,13 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
     match TcpListener::bind(&bind_addr) {
         Ok(_) => {
             print!("{}", "Available".green());
-        },
+        }
         Err(e) => {
             print!("{}", "Occupied".red());
-            errors.push(format!("Port {} is likely in use: {}", config.server.port, e));
+            errors.push(format!(
+                "Port {} is likely in use: {}",
+                config.server.port, e
+            ));
         }
     }
 
@@ -52,7 +58,10 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
         #[cfg(unix)]
         if unsafe { libc::geteuid() } != 0 {
             print!(" {}", "(Non-Root Warning)".yellow());
-            warnings.push(format!("Port {} usually requires root privileges", config.server.port));
+            warnings.push(format!(
+                "Port {} usually requires root privileges",
+                config.server.port
+            ));
         }
     }
     println!();
@@ -71,7 +80,10 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
             }
         } else {
             println!("{}", "Error".red());
-            errors.push(format!("Log path {:?} exists but is not a directory", log_dir));
+            errors.push(format!(
+                "Log path {:?} exists but is not a directory",
+                log_dir
+            ));
         }
     } else {
         // Directory missing; check whether parent allows creation
@@ -80,7 +92,10 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
             println!("{}", "OK (Writable)".green());
         } else {
             println!("{}", "Permission Denied".red());
-            errors.push(format!("Cannot create log dir under read-only ancestor: {:?}", ancestor));
+            errors.push(format!(
+                "Cannot create log dir under read-only ancestor: {:?}",
+                ancestor
+            ));
         }
     }
 
@@ -92,22 +107,25 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
         if data_file.is_file() {
             // File exists; check writability
             if is_writable(data_file) {
-                 println!("{}", "Writable".green());
+                println!("{}", "Writable".green());
             } else {
-                 // Check read-only attribute
-                 if let Ok(m) = fs::metadata(data_file) {
-                     if m.permissions().readonly() {
-                         println!("{}", "Read-only".red());
-                         errors.push(format!("Data file {:?} is read-only", data_file));
-                     } else {
-                         println!("{}", "Permission Denied".red());
-                         errors.push(format!("Data file {:?} is not writable", data_file));
-                     }
-                 }
+                // Check read-only attribute
+                if let Ok(m) = fs::metadata(data_file) {
+                    if m.permissions().readonly() {
+                        println!("{}", "Read-only".red());
+                        errors.push(format!("Data file {:?} is read-only", data_file));
+                    } else {
+                        println!("{}", "Permission Denied".red());
+                        errors.push(format!("Data file {:?} is not writable", data_file));
+                    }
+                }
             }
         } else {
             println!("{}", "Error".red());
-            errors.push(format!("Data path {:?} exists but is not a file", data_file));
+            errors.push(format!(
+                "Data path {:?} exists but is not a file",
+                data_file
+            ));
         }
     } else {
         // File missing; check whether parent allows creation
@@ -117,7 +135,10 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
                 println!("{}", "OK (Writable)".green());
             } else {
                 println!("{}", "Permission Denied".red());
-                errors.push(format!("Cannot create data file under read-only ancestor: {:?}", ancestor));
+                errors.push(format!(
+                    "Cannot create data file under read-only ancestor: {:?}",
+                    ancestor
+                ));
             }
         } else {
             println!("{}", "Error".red());
@@ -127,7 +148,10 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
 
     // 6. Check include config (glob patterns)
     if !config.include.files.is_empty() {
-        println!("   Includes:    Found {} patterns", config.include.files.len());
+        println!(
+            "   Includes:    Found {} patterns",
+            config.include.files.len()
+        );
         for pattern in &config.include.files {
             if glob::glob(pattern).is_err() {
                 errors.push(format!("Invalid glob pattern: {}", pattern));
@@ -204,11 +228,7 @@ fn resolve_config_path(user_path: Option<PathBuf>) -> anyhow::Result<PathBuf> {
         return Ok(p);
     }
 
-    let candidates = vec![
-        "super.toml",
-        "conf/super.toml",
-        "/etc/super/super.toml",
-    ];
+    let candidates = vec!["super.toml", "conf/super.toml", "/etc/super/super.toml"];
 
     for c in candidates {
         let p = PathBuf::from(c);
@@ -217,5 +237,7 @@ fn resolve_config_path(user_path: Option<PathBuf>) -> anyhow::Result<PathBuf> {
         }
     }
 
-    Err(anyhow::anyhow!("Config file not found. Please specify with --file"))
+    Err(anyhow::anyhow!(
+        "Config file not found. Please specify with --file"
+    ))
 }

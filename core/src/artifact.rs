@@ -1,16 +1,19 @@
 use common::ArtifactConfig;
+use futures_util::StreamExt;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use futures_util::StreamExt;
-use std::time::Duration;
 
 /// Download phase (enhanced):
 /// 1. Automatic retry with exponential backoff
 /// 2. Fine-grained timeouts (connect vs transfer)
 /// 3. Smart error handling (no retry on fatal 4xx)
-pub async fn download_to_staging(config: &ArtifactConfig, timeout_secs: u64) -> anyhow::Result<PathBuf> {
+pub async fn download_to_staging(
+    config: &ArtifactConfig,
+    timeout_secs: u64,
+) -> anyhow::Result<PathBuf> {
     let target_path = PathBuf::from(&config.destination);
 
     // Ensure parent directory exists
@@ -19,7 +22,8 @@ pub async fn download_to_staging(config: &ArtifactConfig, timeout_secs: u64) -> 
     }
 
     // Naming: app -> app.new (same dir for atomic rename)
-    let file_name = target_path.file_name()
+    let file_name = target_path
+        .file_name()
         .ok_or_else(|| anyhow::anyhow!("Invalid destination path"))?
         .to_string_lossy();
     let staging_path = target_path.with_file_name(format!("{}.new", file_name));
@@ -43,7 +47,10 @@ pub async fn download_to_staging(config: &ArtifactConfig, timeout_secs: u64) -> 
                 attempt += 1;
 
                 // Decide whether retry is worthwhile
-                let is_fatal = if let Some(status) = e.downcast_ref::<reqwest::Error>().and_then(|re| re.status()) {
+                let is_fatal = if let Some(status) = e
+                    .downcast_ref::<reqwest::Error>()
+                    .and_then(|re| re.status())
+                {
                     // 4xx (e.g. 404, 403) is usually a non-recoverable config error
                     status.is_client_error()
                 } else {
@@ -51,7 +58,11 @@ pub async fn download_to_staging(config: &ArtifactConfig, timeout_secs: u64) -> 
                 };
 
                 if is_fatal || attempt > max_retries {
-                    tracing::error!("Download failed permanently after {} attempts: {}", attempt, e);
+                    tracing::error!(
+                        "Download failed permanently after {} attempts: {}",
+                        attempt,
+                        e
+                    );
                     // Remove any leftover empty staging file
                     let _ = fs::remove_file(&staging_path).await;
                     return Err(e);
@@ -59,7 +70,13 @@ pub async fn download_to_staging(config: &ArtifactConfig, timeout_secs: u64) -> 
 
                 // Exponential backoff: 1s -> 2s -> 4s
                 let wait_secs = 2u64.pow(attempt as u32 - 1);
-                tracing::warn!("Download failed: {}. Retrying in {}s (Attempt {}/{})", e, wait_secs, attempt, max_retries);
+                tracing::warn!(
+                    "Download failed: {}. Retrying in {}s (Attempt {}/{})",
+                    e,
+                    wait_secs,
+                    attempt,
+                    max_retries
+                );
                 tokio::time::sleep(Duration::from_secs(wait_secs)).await;
             }
         }
@@ -72,14 +89,20 @@ pub async fn download_to_staging(config: &ArtifactConfig, timeout_secs: u64) -> 
     let mut buffer = [0; 8192];
     loop {
         let n = file.read(&mut buffer).await?;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         hasher.update(&buffer[..n]);
     }
     let calculated_hash = hex::encode(hasher.finalize());
 
     if calculated_hash != config.checksum {
         let _ = fs::remove_file(&staging_path).await;
-        return Err(anyhow::anyhow!("Checksum mismatch! Expected: {}, Got: {}", config.checksum, calculated_hash));
+        return Err(anyhow::anyhow!(
+            "Checksum mismatch! Expected: {}, Got: {}",
+            config.checksum,
+            calculated_hash
+        ));
     }
 
     // Set execute permission (Unix only)
@@ -120,7 +143,9 @@ async fn perform_download(client: &reqwest::Client, url: &str, path: &Path) -> a
 
 /// Backup phase: prefer hard link (fast, atomic); fall back to copy.
 pub async fn create_backup(target: &Path) -> anyhow::Result<PathBuf> {
-    let file_name = target.file_name().ok_or_else(|| anyhow::anyhow!("Invalid path"))?;
+    let file_name = target
+        .file_name()
+        .ok_or_else(|| anyhow::anyhow!("Invalid path"))?;
     let backup = target.with_file_name(format!("{}.bak", file_name.to_string_lossy()));
 
     if target.exists() {

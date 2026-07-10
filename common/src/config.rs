@@ -197,22 +197,54 @@ pub struct WebhookSection {
 }
 
 // Defaults Helper Functions
-fn default_host() -> String { "127.0.0.1".to_string() }
-fn default_port() -> u16 { 9002 }
-fn default_shutdown_timeout() -> u64 { 10 }
-fn default_download_timeout() -> u64 { 86400 }  // default download timeout: 24 hours
-fn default_data_file() -> PathBuf { "./data/snapshot.json".into() }
-fn default_log_dir() -> PathBuf { "./logs".into() }
-fn default_log_level() -> String { "info".to_string() }
-fn default_log_max_mb() -> u64 { 50 }
-fn default_log_backups() -> u32 { 5 }
-fn default_webhook_type() -> String { "generic".to_string() }
-fn default_child_max_mb() -> u64 { 10 } // default 10MB
-fn default_child_backups() -> u32 { 5 } // default 5 backups
-fn default_child_line_max_kb() -> u64 { 16 } // default 16KB per line
-fn default_flapping_window() -> u64 { 60 }
-fn default_flapping_threshold() -> usize { 5 }
-fn default_enable_docs() -> bool { false } // OSS default off; enable for onboarding
+fn default_host() -> String {
+    "127.0.0.1".to_string()
+}
+fn default_port() -> u16 {
+    9002
+}
+fn default_shutdown_timeout() -> u64 {
+    10
+}
+fn default_download_timeout() -> u64 {
+    86400
+} // default download timeout: 24 hours
+fn default_data_file() -> PathBuf {
+    "./data/snapshot.json".into()
+}
+fn default_log_dir() -> PathBuf {
+    "./logs".into()
+}
+fn default_log_level() -> String {
+    "info".to_string()
+}
+fn default_log_max_mb() -> u64 {
+    50
+}
+fn default_log_backups() -> u32 {
+    5
+}
+fn default_webhook_type() -> String {
+    "generic".to_string()
+}
+fn default_child_max_mb() -> u64 {
+    10
+} // default 10MB
+fn default_child_backups() -> u32 {
+    5
+} // default 5 backups
+fn default_child_line_max_kb() -> u64 {
+    16
+} // default 16KB per line
+fn default_flapping_window() -> u64 {
+    60
+}
+fn default_flapping_threshold() -> usize {
+    5
+}
+fn default_enable_docs() -> bool {
+    false
+} // OSS default off; enable for onboarding
 
 /// Read `auth_secret` from `conf/super.toml`.
 pub fn read_auth_secret(config_path: &Path) -> anyhow::Result<Option<String>> {

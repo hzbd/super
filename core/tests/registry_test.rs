@@ -1,6 +1,6 @@
-use super_core::manager::registry::{ProcessRegistry, RuntimeState};
 use common::ProgramConfig;
 use std::collections::HashMap;
+use super_core::manager::registry::{ProcessRegistry, RuntimeState};
 use uuid::Uuid;
 
 // + Helpers +
@@ -46,18 +46,21 @@ fn test_registry_crud() {
     // 3. Runtime state
     // Note: RuntimeState has no is_upgrading field;
     // the design tracks transactions via restore_path in ProgramConfig.
-    registry.running.insert(id, RuntimeState {
-        pid: 1234,
-        start_time: 100,
-        retry_count: 0,
-        stopping: false,
-        restart_requested: false,
-        is_healthy: true,
-        health_task: None,
-        alert_pending_recovery: false,
-        cpu_usage: 0.0,
-        mem_usage: 0,
-    });
+    registry.running.insert(
+        id,
+        RuntimeState {
+            pid: 1234,
+            start_time: 100,
+            retry_count: 0,
+            stopping: false,
+            restart_requested: false,
+            is_healthy: true,
+            health_task: None,
+            alert_pending_recovery: false,
+            cpu_usage: 0.0,
+            mem_usage: 0,
+        },
+    );
 
     let state = registry.get_running(&id).unwrap();
     assert_eq!(state.pid, 1234);

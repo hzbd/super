@@ -1,5 +1,7 @@
 use common::WsMessage;
 use common::config::LogDriver;
+use std::io::SeekFrom;
+use std::path::Path;
 use std::path::PathBuf;
 use tokio::fs::{self, OpenOptions};
 use tokio::io::AsyncWriteExt;
@@ -7,8 +9,6 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio::process::{ChildStderr, ChildStdout};
 use tokio::sync::broadcast;
 use uuid::Uuid;
-use std::io::SeekFrom;
-use std::path::Path;
 
 // /// Production max line length (16KB)
 // /// Prevents unbounded single-line output from causing OOM or WS disconnect
@@ -77,21 +77,19 @@ pub fn spawn_log_consumer(
         // Fixed-size chunk reads; avoid unbounded BufReader::lines()
         let mut chunk = vec![0u8; 8192];
         let mut line_buf = Vec::new();
-        
+
         // Storage setup
         let mut file_opt = None;
         #[allow(unused_assignments)]
         let mut current_size = 0;
 
-        let file_path = config
-            .custom_path
-            .clone()
-            .unwrap_or_else(|| config.log_dir.join(format!("{}.{}", id, source.extension())));
+        let file_path = config.custom_path.clone().unwrap_or_else(|| {
+            config
+                .log_dir
+                .join(format!("{}.{}", id, source.extension()))
+        });
 
-        let rotate_dir = file_path
-            .parent()
-            .unwrap_or(&config.log_dir)
-            .to_path_buf();
+        let rotate_dir = file_path.parent().unwrap_or(&config.log_dir).to_path_buf();
         let rotate_name = file_path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
@@ -107,7 +105,12 @@ pub fn spawn_log_consumer(
                 tracing::error!("Failed to create log dir {:?}: {}", config.log_dir, e);
                 return;
             }
-            match OpenOptions::new().create(true).append(true).open(&file_path).await {
+            match OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&file_path)
+                .await
+            {
                 Ok(f) => {
                     current_size = fs::metadata(&file_path).await.map(|m| m.len()).unwrap_or(0);
                     file_opt = Some(f);
@@ -129,7 +132,7 @@ pub fn spawn_log_consumer(
                 if config.driver == LogDriver::Stdout {
                     let output = format!("{}{}\n", prefix, $line_str);
                     let _ = stdout_handle.write_all(output.as_bytes()).await;
-                } 
+                }
                 // B. File driver (with rotation)
                 else if let Some(file) = &mut file_opt {
                     let line_with_newline = format!("{}\n", $line_str);
@@ -137,16 +140,28 @@ pub fn spawn_log_consumer(
 
                     if current_size + bytes_len > config.max_size {
                         let _ = file.flush().await;
-                        if let Err(e) = rotate_logs(&rotate_dir, &rotate_name, config.backups).await {
+                        if let Err(e) = rotate_logs(&rotate_dir, &rotate_name, config.backups).await
+                        {
                             tracing::error!("Log rotation failed for {}: {}", rotate_name, e);
                         } else {
                             current_size = 0;
                         }
 
-                        match OpenOptions::new().create(true).append(true).open(&file_path).await {
-                            Ok(f) => { *file = f; }
+                        match OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(&file_path)
+                            .await
+                        {
+                            Ok(f) => {
+                                *file = f;
+                            }
                             Err(e) => {
-                                tracing::error!("Failed to reopen log file {:?} after rotation: {}", file_path, e);
+                                tracing::error!(
+                                    "Failed to reopen log file {:?} after rotation: {}",
+                                    file_path,
+                                    e
+                                );
                             }
                         }
                     }
@@ -193,10 +208,10 @@ pub fn spawn_log_consumer(
                     if line_buf.last() == Some(&b'\r') {
                         line_buf.pop();
                     }
-                    
+
                     let final_line = String::from_utf8_lossy(&line_buf).into_owned();
                     emit_line!(final_line);
-                    
+
                     line_buf.clear();
                     start = i + 1;
                 } else if line_buf.len() + (i - start) >= config.max_line_bytes {
@@ -204,9 +219,9 @@ pub fn spawn_log_consumer(
                     line_buf.extend_from_slice(&chunk[start..=i]);
                     let mut final_line = String::from_utf8_lossy(&line_buf).into_owned();
                     final_line.push_str("...[TRUNCATED]");
-                    
+
                     emit_line!(final_line);
-                    
+
                     line_buf.clear();
                     start = i + 1;
                 }
@@ -232,7 +247,11 @@ async fn rotate_logs(dir: &Path, filename: &str, backups: u32) -> std::io::Resul
     // e.g. backups = 3: delete .3, .2 -> .3, .1 -> .2, .0 -> .1 (active -> .1)
 
     for i in (0..backups).rev() {
-        let src_ext = if i == 0 { "".to_string() } else { format!(".{}", i) };
+        let src_ext = if i == 0 {
+            "".to_string()
+        } else {
+            format!(".{}", i)
+        };
         let dst_ext = format!(".{}", i + 1);
 
         let src = dir.join(format!("{}{}", filename, src_ext));
@@ -250,11 +269,21 @@ async fn rotate_logs(dir: &Path, filename: &str, backups: u32) -> std::io::Resul
     Ok(())
 }
 
-pub fn capture_stdout(id: Uuid, stream: ChildStdout, config: LogConfig, tx: broadcast::Sender<WsMessage>) {
+pub fn capture_stdout(
+    id: Uuid,
+    stream: ChildStdout,
+    config: LogConfig,
+    tx: broadcast::Sender<WsMessage>,
+) {
     spawn_log_consumer(id, LogSource::Stdout, stream, config, tx);
 }
 
-pub fn capture_stderr(id: Uuid, stream: ChildStderr, config: LogConfig, tx: broadcast::Sender<WsMessage>) {
+pub fn capture_stderr(
+    id: Uuid,
+    stream: ChildStderr,
+    config: LogConfig,
+    tx: broadcast::Sender<WsMessage>,
+) {
     spawn_log_consumer(id, LogSource::Stderr, stream, config, tx);
 }
 
@@ -268,10 +297,14 @@ pub async fn read_log_lines(
     stderr_logfile: Option<&str>,
 ) -> Option<String> {
     let path = log_file_path(log_dir, id, source, stdout_logfile, stderr_logfile);
-    if !path.exists() { return None; }
+    if !path.exists() {
+        return None;
+    }
 
     let content = tokio::fs::read_to_string(&path).await.ok()?;
-    if content.is_empty() { return None; }
+    if content.is_empty() {
+        return None;
+    }
 
     let lines: Vec<&str> = content.lines().collect();
     let n = max_lines as usize;
@@ -290,18 +323,24 @@ pub async fn read_log_tail(
 ) -> Option<String> {
     let path = log_file_path(log_dir, id, source, stdout_logfile, stderr_logfile);
 
-    if !path.exists() { return None; }
+    if !path.exists() {
+        return None;
+    }
 
     // Sync IO for a small tail read is acceptable here; keeps the runtime simple.
     match tokio::fs::File::open(&path).await {
         Ok(mut file) => {
             let len = file.metadata().await.ok()?.len();
-            if len == 0 { return None; }
+            if len == 0 {
+                return None;
+            }
 
             // let start = if len > max_bytes { len - max_bytes } else { 0 };
             let start = len.saturating_sub(max_bytes);
 
-            if file.seek(SeekFrom::Start(start)).await.is_err() { return None; }
+            if file.seek(SeekFrom::Start(start)).await.is_err() {
+                return None;
+            }
 
             let mut buffer = vec![0; max_bytes as usize];
             let n = file.read(&mut buffer).await.ok()?;
@@ -309,7 +348,7 @@ pub async fn read_log_tail(
             // Decode UTF-8, lossy on invalid bytes
             let s = String::from_utf8_lossy(&buffer[..n]).to_string();
             Some(s)
-        },
-        Err(_) => None
+        }
+        Err(_) => None,
     }
 }
