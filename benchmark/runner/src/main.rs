@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
 
     // 3. Teardown
     stop_target(&args.target, &args.config_dir);
-    println!("✅ Benchmark finished. Data saved to {:?}", args.output_csv);
+    println!("Benchmark finished. Data saved to {:?}", args.output_csv);
     Ok(())
 }
 

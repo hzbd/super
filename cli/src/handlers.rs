@@ -1,7 +1,6 @@
 use crate::args::{self, TokenCommands};
 use crate::client::{self, WaitTarget};
 use crate::display;
-use colored::Colorize;
 use common::{
     ArtifactConfig, AutorestartPolicy, BatchAction, BatchProgramRequest, BatchProgramResponse,
     CreateProgramRequest, ProgramInfo, ProgramLogsResponse, ProgramSummary, ResourceLimits,
@@ -121,7 +120,7 @@ pub async fn handle_batch_action(
 
     // Print failures
     for (id, err) in &result.failed {
-        eprintln!("{} Failed: {} - {}", "✖".red(), id, err);
+        eprintln!("Failed: {} - {}", id, err);
     }
 
     println!(

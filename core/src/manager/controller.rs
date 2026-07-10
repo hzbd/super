@@ -83,7 +83,7 @@ impl LifecycleController {
             self.config.server.flapping_threshold,
         ) {
             tracing::error!(
-                "🔥 FLAPPING DETECTED for {}! Restarted too frequently.",
+                "FLAPPING DETECTED for {}! Restarted too frequently.",
                 program_name
             );
 
@@ -189,7 +189,7 @@ impl LifecycleController {
             Ok(envs) => envs,
             Err(e) => {
                 let err_msg = format!("Extension blocked start: {}", e);
-                tracing::error!("❌ {}", err_msg);
+                tracing::error!("{}", err_msg);
                 registry.startup_errors.insert(id, err_msg.clone());
                 registry.crashed.insert(id);
 
@@ -276,7 +276,7 @@ impl LifecycleController {
             Ok(c) => c,
             Err(e) => {
                 let err_msg = format!("Spawn failed: {}", e);
-                tracing::error!("❌ Program {} failed to spawn: {}", config.name, err_msg);
+                tracing::error!("Program {} failed to spawn: {}", config.name, err_msg);
                 registry.startup_errors.insert(id, err_msg.clone());
                 registry.crashed.insert(id);
 
@@ -316,7 +316,7 @@ impl LifecycleController {
         match hook_result {
             Ok(Err(e)) => {
                 let err_msg = format!("Extension failed (Strict Policy): {}", e);
-                tracing::error!("❌ {}", err_msg);
+                tracing::error!("{}", err_msg);
 
                 // Fail Secure: Kill Immediately
                 let _ = child.start_kill();
@@ -345,7 +345,7 @@ impl LifecycleController {
                 return Err(anyhow::anyhow!("Extension blocked startup (Strict Policy)"));
             }
             Err(e) => {
-                tracing::error!("❌ Extension thread panic: {}", e);
+                tracing::error!("Extension thread panic: {}", e);
                 let _ = child.start_kill();
                 let _ = child.wait().await;
                 registry.crashed.insert(id);
@@ -353,7 +353,7 @@ impl LifecycleController {
             }
             Ok(Ok(_)) => {
                 tracing::debug!(
-                    "✅ Extension after_start executed for {} (PID: {})",
+                    "Extension after_start executed for {} (PID: {})",
                     config.name,
                     pid
                 );

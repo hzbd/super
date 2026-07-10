@@ -18,7 +18,7 @@ impl Extension for SaboteurExtension {
     fn after_start(&self, _id: Uuid, _pid: u32, _config: &ProgramConfig) -> anyhow::Result<()> {
         if self.should_fail_after_start {
             // Simulate cgroup mount failure
-            return Err(anyhow!("🔥 Simulated Cgroup Failure!"));
+            return Err(anyhow!("Simulated Cgroup Failure!"));
         }
         Ok(())
     }

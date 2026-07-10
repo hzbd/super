@@ -61,14 +61,14 @@ pub async fn load_with_recovery(path: &Path) -> anyhow::Result<HashMap<Uuid, Pro
     // B. Primary failed; try backup
     let backup_path = path.with_extension("json.bak");
     if backup_path.exists() {
-        tracing::warn!("🔄 Attempting to recover from backup: {:?}", backup_path);
+        tracing::warn!("Attempting to recover from backup: {:?}", backup_path);
         match load_internal(&backup_path).await {
             Ok(data) => {
-                tracing::info!("✅ Successfully recovered state from backup!");
+                tracing::info!("Successfully recovered state from backup!");
                 return Ok(data);
             }
             Err(e) => {
-                tracing::error!("❌ Backup file is also corrupted: {}", e);
+                tracing::error!("Backup file is also corrupted: {}", e);
             }
         }
     }

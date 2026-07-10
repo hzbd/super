@@ -153,7 +153,7 @@ pub fn print_info(info: ProgramInfo) {
     // OTA status display
     // restore_path set means an upgrade verification transaction is active
     if let Some(bak) = &info.config.restore_path {
-        println!("Upgrade:   ⚠️  VERIFYING (Transaction Active)");
+        println!("Upgrade:   VERIFYING (Transaction Active)");
         println!("Backup:    {}", bak);
     }
 

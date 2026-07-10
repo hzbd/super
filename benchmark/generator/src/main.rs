@@ -73,6 +73,6 @@ fn main() -> anyhow::Result<()> {
     let pm2_conf = format!("module.exports = {{\n  apps : [\n{}\n  ]\n}};", pm2_apps.join(",\n"));
     fs::write(args.output_dir.join("ecosystem.config.js"), pm2_conf)?;
 
-    println!("✅ Configs generated in {:?}", args.output_dir);
+    println!("Configs generated in {:?}", args.output_dir);
     Ok(())
 }

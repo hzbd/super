@@ -198,7 +198,7 @@ async fn test_ota_transaction_rollback() {
         "restore_path should be cleared"
     );
 
-    println!("✅ Test Passed: Rollback successful.");
+    println!("Test Passed: Rollback successful.");
 }
 
 #[tokio::test]
@@ -277,5 +277,5 @@ async fn test_ota_transaction_commit() {
         serde_json::from_str(&std::fs::read_to_string(&data_file).unwrap()).unwrap();
     assert!(saved_state.get(&id).unwrap().restore_path.is_none());
 
-    println!("✅ Test Passed: Commit successful.");
+    println!("Test Passed: Commit successful.");
 }

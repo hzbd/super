@@ -17,7 +17,7 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
     let content = match fs::read_to_string(&path) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("{} Failed to read file: {}", "✖".red(), e);
+            eprintln!("Failed to read file: {}", e);
             return Err(e.into());
         }
     };
@@ -25,7 +25,7 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
     let config: ServerConfig = match toml::from_str(&content) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("{} TOML Syntax Error: {}", "✖".red(), e);
+            eprintln!("TOML Syntax Error: {}", e);
             return Err(anyhow::anyhow!("Invalid config format"));
         }
     };
@@ -170,17 +170,17 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
     if !warnings.is_empty() {
         println!("\n{}", "Warnings:".yellow().bold());
         for w in warnings {
-            println!("   {} {}", "⚠️".yellow(), w);
+            println!("   - {}", w);
         }
     }
 
     if errors.is_empty() {
-        println!("\n{}", "✨ Configuration is VALID".green().bold());
+        println!("\n{}", "Configuration is VALID".green().bold());
         Ok(())
     } else {
         println!("\n{}", "Found Errors:".red().bold());
         for e in errors {
-            println!("   {} {}", "✖".red(), e);
+            println!("   - {}", e);
         }
         Err(anyhow::anyhow!("Configuration check failed"))
     }
