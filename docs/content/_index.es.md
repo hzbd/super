@@ -11,7 +11,7 @@ description: "Qué es Project Super y cómo instalarlo y operarlo."
   </section>
 
   <nav class="home-nav">
-    <a href="/docs/">Documentación</a>
+    <a href="/docs/">Resumen</a>
     <a href="/docs/01-getting-started/">Getting Started</a>
     <a href="/docs/02-essentials/">Core Essentials</a>
     <a href="/docs/03-orchestration/">Orchestration</a>

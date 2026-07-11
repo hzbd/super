@@ -11,7 +11,7 @@ description: "Project Super とは何か、インストールと運用方法。"
   </section>
 
   <nav class="home-nav">
-    <a href="/docs/">ドキュメント</a>
+    <a href="/docs/">概要</a>
     <a href="/docs/01-getting-started/">Getting Started</a>
     <a href="/docs/02-essentials/">Core Essentials</a>
     <a href="/docs/03-orchestration/">Orchestration</a>

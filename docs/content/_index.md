@@ -11,7 +11,7 @@ description: "What Project Super is, and how to install and operate it."
   </section>
 
   <nav class="home-nav">
-    <a href="/docs/">Documentation</a>
+    <a href="/docs/">Overview</a>
     <a href="/docs/01-getting-started/">Getting Started</a>
     <a href="/docs/02-essentials/">Core Essentials</a>
     <a href="/docs/03-orchestration/">Orchestration</a>

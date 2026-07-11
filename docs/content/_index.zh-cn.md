@@ -11,7 +11,7 @@ description: "Project Super 是什么，以及如何安装与使用。"
   </section>
 
   <nav class="home-nav">
-    <a href="/docs/">文档中心</a>
+    <a href="/docs/">概览</a>
     <a href="/docs/01-getting-started/">快速开始</a>
     <a href="/docs/02-essentials/">基础</a>
     <a href="/docs/03-orchestration/">编排</a>

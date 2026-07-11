@@ -90,7 +90,7 @@ const OSS_UI_MESSAGE: &str = r#"<!DOCTYPE html>
     <div class="actions">
       <a class="cta-primary" href="https://super.project.sconts.com" rel="noopener noreferrer">Learn about subscriptions</a>
       <a class="cta-secondary" href="http://super.docs.sconts.com/docs/07-editions/feature-matrix" rel="noopener noreferrer">OSS vs licensed</a>
-      <a class="cta-secondary" href="http://super.docs.sconts.com/docs/" rel="noopener noreferrer">Documentation</a>
+      <a class="cta-secondary" href="http://super.docs.sconts.com/docs/" rel="noopener noreferrer">Overview</a>
     </div>
     <p class="muted">Version VERSION_PLACEHOLDER · MIT open-source core</p>
   </div>
