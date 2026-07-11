@@ -27,6 +27,13 @@ pub struct LicenseClaims {
     pub issued_to: String,
     pub issued_at: u64,
     pub major_version: u32,
+    /// Licensed minor line (e.g. `2` for Super 1.2.x). When set, superd minor may be at most
+    /// `minor_version + LICENSE_MAX_MINOR_AHEAD` (no lower bound).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minor_version: Option<u32>,
+    /// Super product version this license was issued for (e.g. `"1.2.0"`). Anchors renewals and upgrades.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issued_super_version: Option<String>,
     /// Authorized plugin IDs (e.g. `security`, `notify`, `isolation`).
     pub plugins: Vec<String>,
     /// Unix timestamp when the license expires. Omitted = no expiration.
@@ -43,6 +50,10 @@ pub struct LicenseInfo {
     pub issued_to: String,
     pub issued_at: u64,
     pub major_version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minor_version: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issued_super_version: Option<String>,
     pub plugins: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<u64>,
@@ -61,6 +72,8 @@ impl From<&LicenseClaims> for LicenseInfo {
             issued_to: claims.issued_to.clone(),
             issued_at: claims.issued_at,
             major_version: claims.major_version,
+            minor_version: claims.minor_version,
+            issued_super_version: claims.issued_super_version.clone(),
             plugins: claims.plugins.clone(),
             expires_at: claims.expires_at,
             license_id: claims.license_id.clone(),
@@ -151,11 +164,142 @@ fn verify_license_with_key(
 
 /// Parse the major version from a semver-like string (e.g. "1.1.9" -> 1).
 pub fn parse_major_version(version: &str) -> u32 {
-    version
-        .split('.')
-        .next()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0)
+    parse_semver(version).map(|(major, _, _)| major).unwrap_or(0)
+}
+
+/// Parse `major.minor.patch` from a semver-like string (missing parts default to 0).
+pub fn parse_semver(version: &str) -> Option<(u32, u32, u32)> {
+    let mut parts = version.split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let patch = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    Some((major, minor, patch))
+}
+
+/// How many minor versions above the licensed line superd may run (upper bound only).
+pub const LICENSE_MAX_MINOR_AHEAD: u32 = 1;
+
+/// Subscription / upgrade page shown when the installed superd exceeds the license.
+pub const LICENSE_UPGRADE_URL: &str = "https://super.project.sconts.com";
+
+/// Minor line used for version cap checks (explicit `minor_version`, else parsed from `issued_super_version`).
+pub fn licensed_minor_line(claims: &LicenseClaims) -> Option<u32> {
+    if let Some(minor) = claims.minor_version {
+        return Some(minor);
+    }
+    claims
+        .issued_super_version
+        .as_deref()
+        .and_then(parse_semver)
+        .map(|(_, minor, _)| minor)
+}
+
+/// Human-readable maximum licensed superd version for logs and UI.
+pub fn licensed_version_span(claims: &LicenseClaims) -> String {
+    if let Some(minor) = licensed_minor_line(claims) {
+        let hi = minor + LICENSE_MAX_MINOR_AHEAD;
+        if let Some(ref ver) = claims.issued_super_version {
+            format!("{ver} (≤ {}.{hi})", claims.major_version)
+        } else {
+            format!("≤ {}.{}", claims.major_version, hi)
+        }
+    } else {
+        format!("{}.x", claims.major_version)
+    }
+}
+
+/// Check whether `superd` semver is within the licensed major and maximum minor (no lower bound).
+pub fn check_superd_version(claims: &LicenseClaims, superd_version: &str) -> Result<(), String> {
+    let (host_major, host_minor, _) =
+        parse_semver(superd_version).ok_or_else(|| format!("Invalid superd version '{superd_version}'"))?;
+
+    if host_major != claims.major_version {
+        return Err(format!(
+            "This license is for Super {}. \
+             You are running superd {superd_version}. \
+             Upgrade your subscription: {LICENSE_UPGRADE_URL}",
+            licensed_version_span(claims),
+        ));
+    }
+
+    let Some(lic_minor) = licensed_minor_line(claims) else {
+        return Ok(());
+    };
+
+    let max_minor = lic_minor + LICENSE_MAX_MINOR_AHEAD;
+    if host_minor > max_minor {
+        return Err(format!(
+            "This license supports superd up to {host_major}.{max_minor}.x. \
+             You are running superd {host_major}.{host_minor}. \
+             Upgrade your subscription to use newer releases: {LICENSE_UPGRADE_URL}",
+        ));
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod semver_tests {
+    use super::*;
+
+    #[test]
+    fn parse_semver_works() {
+        assert_eq!(parse_semver("1.2.0"), Some((1, 2, 0)));
+        assert_eq!(parse_semver("2"), Some((2, 0, 0)));
+    }
+
+    #[test]
+    fn issued_super_version_resolves_minor_when_omitted() {
+        let claims = LicenseClaims {
+            issued_to: "t".into(),
+            issued_at: 1,
+            major_version: 1,
+            minor_version: None,
+            issued_super_version: Some("1.2.0".into()),
+            plugins: vec![],
+            expires_at: None,
+            license_id: None,
+        };
+        assert_eq!(licensed_minor_line(&claims), Some(2));
+        assert!(check_superd_version(&claims, "1.3.0").is_ok());
+        assert!(check_superd_version(&claims, "1.4.0").is_err());
+    }
+
+    #[test]
+    fn max_minor_only_caps_upper_bound() {
+        let claims = LicenseClaims {
+            issued_to: "t".into(),
+            issued_at: 1,
+            major_version: 1,
+            minor_version: Some(2),
+            issued_super_version: Some("1.2.0".into()),
+            plugins: vec![],
+            expires_at: None,
+            license_id: None,
+        };
+        assert!(check_superd_version(&claims, "1.0.0").is_ok());
+        assert!(check_superd_version(&claims, "1.1.9").is_ok());
+        assert!(check_superd_version(&claims, "1.2.0").is_ok());
+        assert!(check_superd_version(&claims, "1.3.0").is_ok());
+        assert!(check_superd_version(&claims, "1.4.0").is_err());
+        assert!(check_superd_version(&claims, "2.2.0").is_err());
+    }
+
+    #[test]
+    fn legacy_license_major_only() {
+        let claims = LicenseClaims {
+            issued_to: "t".into(),
+            issued_at: 1,
+            major_version: 1,
+            minor_version: None,
+            issued_super_version: None,
+            plugins: vec![],
+            expires_at: None,
+            license_id: None,
+        };
+        assert!(check_superd_version(&claims, "1.9.0").is_ok());
+        assert!(check_superd_version(&claims, "2.0.0").is_err());
+    }
 }
 
 #[cfg(test)]
@@ -206,6 +350,8 @@ mod tests {
             issued_to: "expired@example.com".into(),
             issued_at: 1,
             major_version: 1,
+            minor_version: None,
+            issued_super_version: None,
             plugins: vec!["security".into()],
             expires_at: Some(2),
             license_id: Some("lic-test".into()),
@@ -222,6 +368,8 @@ mod tests {
             issued_to: "legacy".into(),
             issued_at: 1,
             major_version: 1,
+            minor_version: None,
+            issued_super_version: None,
             plugins: vec!["security".into()],
             expires_at: None,
             license_id: None,

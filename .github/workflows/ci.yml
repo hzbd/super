@@ -21,11 +21,6 @@ jobs:
       - name: Cache cargo
         uses: swatinem/rust-cache@v2
 
-      - name: Prepare embedded dashboard stub
-        run: |
-          mkdir -p dashboard/dist
-          echo '<!DOCTYPE html><html><body>// __INJECT_CONFIG__</body></html>' > dashboard/dist/index.html
-
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 

@@ -28,6 +28,41 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
 
+/// Merge `resource_limits` from an update request into stored config.
+/// `-1.0` cpu / `0` memory are sentinels that clear the corresponding field.
+fn apply_resource_limits_patch(existing: &mut Option<ResourceLimits>, patch: ResourceLimits) {
+    if let Some(old) = existing {
+        if let Some(c) = patch.cpu_quota {
+            old.cpu_quota = if c <= 0.0 { None } else { Some(c) };
+        }
+        if let Some(m) = patch.memory_limit {
+            old.memory_limit = if m == 0 { None } else { Some(m) };
+        }
+        if old.cpu_quota.is_none() && old.memory_limit.is_none() {
+            *existing = None;
+        }
+    } else {
+        let cpu = patch.cpu_quota.filter(|&c| c > 0.0);
+        let mem = patch.memory_limit.filter(|&m| m > 0);
+        if cpu.is_some() || mem.is_some() {
+            *existing = Some(ResourceLimits {
+                cpu_quota: cpu,
+                memory_limit: mem,
+            });
+        }
+    }
+}
+
+fn validate_resource_limits_patch(limits: &ResourceLimits) -> anyhow::Result<()> {
+    if let Some(cpu) = limits.cpu_quota
+        && cpu <= 0.0
+        && cpu != -1.0
+    {
+        return Err(anyhow::anyhow!("CPU quota must be positive"));
+    }
+    Ok(())
+}
+
 fn warn_if_resource_limits_unenforced(
     extension: &dyn Extension,
     limits: &Option<ResourceLimits>,
@@ -521,21 +556,18 @@ impl Manager {
         }
 
         if let Some(limits) = &req.resource_limits {
-            if let Some(cpu) = limits.cpu_quota
-                && cpu <= 0.0
-            {
-                return Err(anyhow::anyhow!("CPU quota must be positive"));
+            validate_resource_limits_patch(limits)?;
+            let effective = ResourceLimits {
+                cpu_quota: limits.cpu_quota.filter(|&c| c > 0.0),
+                memory_limit: limits.memory_limit.filter(|&m| m > 0),
+            };
+            if effective.cpu_quota.is_some() || effective.memory_limit.is_some() {
+                warn_if_resource_limits_unenforced(
+                    self.extension.as_ref(),
+                    &Some(effective),
+                    "update program",
+                );
             }
-            if let Some(mem) = limits.memory_limit
-                && mem == 0
-            {
-                return Err(anyhow::anyhow!("Memory limit must be greater than 0"));
-            }
-            warn_if_resource_limits_unenforced(
-                self.extension.as_ref(),
-                &req.resource_limits,
-                "update program",
-            );
         }
 
         let pid = self.registry.get_running(&id).map(|s| s.pid);
@@ -546,10 +578,10 @@ impl Manager {
             .ok_or_else(|| anyhow::anyhow!("Program not found"))?
             .clone();
 
-        if let Some(v) = &req.name {
-            if v != &old_config.name {
-                self.ensure_program_name_available(v, Some(id))?;
-            }
+        if let Some(v) = &req.name
+            && v != &old_config.name
+        {
+            self.ensure_program_name_available(v, Some(id))?;
         }
 
         let mut trigger_ota = false;
@@ -653,16 +685,7 @@ impl Manager {
             }
 
             if let Some(new_limits) = req.resource_limits {
-                if let Some(old_limits) = &mut config.resource_limits {
-                    if let Some(c) = new_limits.cpu_quota {
-                        old_limits.cpu_quota = Some(c);
-                    }
-                    if let Some(m) = new_limits.memory_limit {
-                        old_limits.memory_limit = Some(m);
-                    }
-                } else {
-                    config.resource_limits = Some(new_limits);
-                }
+                apply_resource_limits_patch(&mut config.resource_limits, new_limits);
             }
 
             config.updated_at = chrono::Utc::now().timestamp() as u64;
@@ -681,6 +704,9 @@ impl Manager {
         }
 
         self.registry.mark_dirty();
+        if let Err(e) = self.flush_to_disk().await {
+            tracing::error!("Failed to persist program update for {}: {}", _task_name, e);
+        }
         tracing::info!("Program updated: {} ({})", _task_name, id);
 
         if trigger_ota && let Some(ac) = artifact_cfg {
@@ -1117,19 +1143,19 @@ impl Manager {
                 if let Some(detail) = failure_detail {
                     let changed = state.health_error.as_deref() != Some(detail.as_str());
                     state.health_error = Some(detail.clone());
-                    if changed {
-                        if let Some(cfg) = self.registry.programs.get(&id) {
-                            let log_dir = &self.config.storage.log_dir;
-                            crate::logger::emit_superd_line(
-                                id,
-                                &format!("health_check failed: {detail}"),
-                                log_dir,
-                                cfg.stdout_logfile.as_deref(),
-                                cfg.stderr_logfile.as_deref(),
-                                &self.log_tx,
-                            )
-                            .await;
-                        }
+                    if changed
+                        && let Some(cfg) = self.registry.programs.get(&id)
+                    {
+                        let log_dir = &self.config.storage.log_dir;
+                        crate::logger::emit_superd_line(
+                            id,
+                            &format!("health_check failed: {detail}"),
+                            log_dir,
+                            cfg.stdout_logfile.as_deref(),
+                            cfg.stderr_logfile.as_deref(),
+                            &self.log_tx,
+                        )
+                        .await;
                     }
                 }
             } else {
@@ -1312,6 +1338,9 @@ impl Manager {
         }
 
         self.registry.mark_dirty();
+        if let Err(e) = self.flush_to_disk().await {
+            tracing::error!("Failed to persist stack apply: {}", e);
+        }
         Ok(logs)
     }
 
@@ -1513,6 +1542,9 @@ impl Manager {
                 }
             }
             self.registry.mark_dirty();
+            if let Err(e) = self.flush_to_disk().await {
+                tracing::error!("Failed to persist new program(s): {}", e);
+            }
             let _ = reply.send(Ok(created_ids));
         }
     }
@@ -2040,14 +2072,14 @@ impl Manager {
         if name.trim().is_empty() {
             return Err(anyhow::anyhow!("Program name cannot be empty"));
         }
-        if let Some(existing_id) = self.find_program_id_by_name(name) {
-            if except_id != Some(existing_id) {
-                return Err(anyhow::anyhow!(
-                    "Program name '{}' already exists (id: {})",
-                    name,
-                    existing_id
-                ));
-            }
+        if let Some(existing_id) = self.find_program_id_by_name(name)
+            && except_id != Some(existing_id)
+        {
+            return Err(anyhow::anyhow!(
+                "Program name '{}' already exists (id: {})",
+                name,
+                existing_id
+            ));
         }
         Ok(())
     }
@@ -2069,5 +2101,51 @@ impl Manager {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod resource_limits_tests {
+    use super::{apply_resource_limits_patch, validate_resource_limits_patch};
+    use common::ResourceLimits;
+
+    #[test]
+    fn patch_applies_new_limits() {
+        let mut existing = None;
+        apply_resource_limits_patch(
+            &mut existing,
+            ResourceLimits {
+                cpu_quota: Some(50.0),
+                memory_limit: Some(1024),
+            },
+        );
+        let limits = existing.unwrap();
+        assert_eq!(limits.cpu_quota, Some(50.0));
+        assert_eq!(limits.memory_limit, Some(1024));
+    }
+
+    #[test]
+    fn patch_sentinels_clear_fields() {
+        let mut existing = Some(ResourceLimits {
+            cpu_quota: Some(50.0),
+            memory_limit: Some(1024),
+        });
+        apply_resource_limits_patch(
+            &mut existing,
+            ResourceLimits {
+                cpu_quota: Some(-1.0),
+                memory_limit: Some(0),
+            },
+        );
+        assert!(existing.is_none());
+    }
+
+    #[test]
+    fn patch_allows_removal_sentinels_in_validation() {
+        validate_resource_limits_patch(&ResourceLimits {
+            cpu_quota: Some(-1.0),
+            memory_limit: Some(0),
+        })
+        .unwrap();
     }
 }

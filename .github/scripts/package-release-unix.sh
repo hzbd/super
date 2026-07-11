@@ -6,11 +6,6 @@ version="${1:?version required}"
 platform="${2:?platform required (e.g. linux-amd64)}"
 target="${3:-}"
 
-if [[ ! -f dashboard/dist/index.html ]]; then
-  echo "dashboard/dist/index.html missing — build the frontend first" >&2
-  exit 1
-fi
-
 if [[ -n "$target" ]]; then
   cargo build --release --target "$target" -p superd -p super-cli
   bin_dir="target/${target}/release"

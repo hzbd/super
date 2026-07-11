@@ -17,10 +17,10 @@ pub struct Context {
 }
 
 fn api_error_from_body(status: reqwest::StatusCode, body: &str) -> anyhow::Error {
-    if let Ok(v) = serde_json::from_str::<serde_json::Value>(body) {
-        if let Some(msg) = v.get("message").and_then(|m| m.as_str()) {
-            return anyhow::anyhow!("{msg}");
-        }
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(body)
+        && let Some(msg) = v.get("message").and_then(|m| m.as_str())
+    {
+        return anyhow::anyhow!("{msg}");
     }
     anyhow::anyhow!("request failed (HTTP {}): {}", status.as_u16(), body)
 }

@@ -13,13 +13,8 @@
 #   docker run --rm -p 9002:9002 \
 #     -v ./my-conf:/app/super/conf -v ./my-data:/app/super/data \
 #     containerpi/super:latest
-
-FROM node:22-alpine AS frontend
-WORKDIR /build
-COPY dashboard/package.json dashboard/package-lock.json ./dashboard/
-RUN cd dashboard && npm ci
-COPY dashboard/ ./dashboard/
-RUN cd dashboard && VITE_EDITION=oss npm run build
+#
+# OSS image: no embedded dashboard. Load the commercial `ui` plugin for the web UI.
 
 FROM rust:1-trixie AS backend
 WORKDIR /build
@@ -28,7 +23,6 @@ COPY common/ common/
 COPY core/ core/
 COPY cli/ cli/
 COPY superd/ superd/
-COPY --from=frontend /build/dashboard/dist ./dashboard/dist
 RUN cargo build --release -p superd -p super-cli
 
 # tini is not included in distroless; copy from a minimal Debian stage (build-only).

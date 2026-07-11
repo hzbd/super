@@ -62,7 +62,7 @@ docker buildx build --platform linux/amd64 \
 docker run --rm -p 9002:9002 containerpi/super:latest
 ```
 
-Dashboard: http://localhost:9002
+HTTP API / OSS notice: http://localhost:9002 (no embedded dashboard in the OSS image)
 
 ## Configuration
 

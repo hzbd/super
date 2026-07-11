@@ -42,14 +42,13 @@ Project Super ${version} — ${label}
 =========================================
 
 Project Super is an API-first, lightweight process orchestrator for the edge.
-It replaces tools like Supervisor or PM2 with a single Rust binary and an
-embedded web dashboard.
+It replaces tools like Supervisor or PM2 with a single Rust binary.
 
 This archive was built for ${label}.
 
 Contents
 --------
-  ${bin_superd}   Daemon with embedded dashboard (default port 9002)
+  ${bin_superd}   Daemon (default port 9002)
   ${bin_super}    Command-line client
   LICENSE         MIT license (if included)
 
@@ -57,7 +56,9 @@ Quick start
 -----------
 ${quick_start}
 
-Open http://127.0.0.1:9002 for the dashboard.
+Open http://127.0.0.1:9002/ — OSS edition shows an HTML notice (no built-in dashboard).
+Use the \`super\` CLI or /api/* for process management. The commercial \`ui\` plugin
+provides the full web dashboard.
 
 Source & documentation
 ----------------------

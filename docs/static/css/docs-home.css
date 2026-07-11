@@ -324,7 +324,7 @@
   gap: 0.375rem 0.5rem;
 }
 .home-plugin-id {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
   font-size: 0.8125rem;
   font-weight: 600;
   color: #92400e;
@@ -341,7 +341,7 @@
 .home-plugin-file {
   font-size: var(--t-badge);
   color: var(--muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
 }
 
 .home-plugin-linux-note {
@@ -523,6 +523,6 @@
 }
 .home-split-code code {
   color: #d4d4d8;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
   white-space: pre;
 }

@@ -13,34 +13,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: dashboard/package-lock.json
-
-      - name: Build dashboard
-        run: |
-          cd dashboard
-          npm ci
-          VITE_EDITION=oss npm run build
-
-      - name: Upload dashboard dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: dashboard-dist
-          path: dashboard/dist
-          retention-days: 7
-
   build:
-    needs: build-frontend
     strategy:
       fail-fast: false
       matrix:
@@ -74,12 +47,6 @@ jobs:
             echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download dashboard dist
-        uses: actions/download-artifact@v4
-        with:
-          name: dashboard-dist
-          path: dashboard/dist
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -104,7 +71,6 @@ jobs:
           retention-days: 7
 
   build-freebsd:
-    needs: build-frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -119,12 +85,6 @@ jobs:
             echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download dashboard dist
-        uses: actions/download-artifact@v4
-        with:
-          name: dashboard-dist
-          path: dashboard/dist
-
       - name: Build on FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
@@ -137,10 +97,6 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
             . "$HOME/.cargo/env"
             export RUSTFLAGS=""
-            if [ ! -f dashboard/dist/index.html ]; then
-              echo "dashboard/dist missing" >&2
-              exit 1
-            fi
             cargo build --release -p superd -p super-cli
             ver="${{ steps.ver.outputs.version }}"
             root="super-${ver}-freebsd-amd64"

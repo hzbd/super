@@ -2,8 +2,6 @@
 # SuperProcess OSS Build System
 # ==========================================
 
-# Variable Definitions
-FRONTEND_DIR := dashboard
 TARGET_DIR   := target/release
 # Define all OSS binaries (Server 'superd' and CLI 'super')
 BINARIES     := --bin superd --bin super
@@ -24,10 +22,8 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  build       Build OSS binaries (superd + super CLI; no embedded dashboard)"
-	@echo "  frontend    [deprecated] Build legacy OSS dashboard (unused; UI is ui.so plugin)"
-	@echo "  backend     Build only the Rust Backend (assumes frontend is ready)"
-	@echo "  clean       Clean up build artifacts (dist and target)"
+	@echo "  build       Build OSS binaries (superd + super CLI)"
+	@echo "  clean       Clean up build artifacts (target/)"
 	@echo "  check       Run cargo check"
 	@echo "  docker      Build containerpi/super image (native arch, local load)"
 	@echo "  docker-multi  Build and push linux/amd64 image"
@@ -37,26 +33,10 @@ help:
 # Core Build Tasks
 # ==========================================
 
-# 1. Build Frontend
-.PHONY: frontend
-frontend:
-	@echo "$(BLUE)📦 Building Frontend (OSS)...$(NC)"
-	@cd $(FRONTEND_DIR) && npm install
-	@# Explicitly set VITE_EDITION=oss
-	@cd $(FRONTEND_DIR) && VITE_EDITION=oss npm run build
-	@echo "$(GREEN)✅ Frontend build complete.$(NC)"
-
-# 2. Build Backend (Depends on Frontend)
-.PHONY: backend
-backend:
-	@echo "$(BLUE)🦀 Building Rust Binaries (OSS)...$(NC)"
-	@# Build both 'superd' and 'super' (CLI)
-	@cargo build --release $(BINARIES)
-	@echo "$(GREEN)✅ Backend build complete.$(NC)"
-
-# 3. Full Build Workflow (OSS: Rust only; UI is commercial ui.so plugin)
 .PHONY: build
-build: backend
+build:
+	@echo "$(BLUE)🦀 Building Rust Binaries (OSS)...$(NC)"
+	@cargo build --release $(BINARIES)
 	@echo "$(GREEN)🎉 All OSS binaries built successfully!$(NC)"
 	@echo "📂 Locations:"
 	@echo "   - Server: $(TARGET_DIR)/superd"
@@ -66,16 +46,12 @@ build: backend
 # Helper Tasks
 # ==========================================
 
-# Clean build artifacts
 .PHONY: clean
 clean:
 	@echo "$(YELLOW)🧹 Cleaning up...$(NC)"
 	@cargo clean
-	@rm -rf $(FRONTEND_DIR)/dist
-	@rm -rf $(FRONTEND_DIR)/node_modules
 	@echo "$(GREEN)✅ Clean complete.$(NC)"
 
-# Fast check (no build)
 .PHONY: check
 check:
 	@cargo check

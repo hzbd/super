@@ -17,17 +17,83 @@ const OSS_UI_MESSAGE: &str = r#"<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Super Process Manager</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.5; }
-    code { background: #f4f4f5; padding: 0.1rem 0.35rem; border-radius: 0.25rem; }
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 3rem 1.25rem 4rem;
+      line-height: 1.6;
+      color: #18181b;
+      background: #fafafa;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: #fafafa; background: #09090b; }
+      .card { background: #18181b; border-color: #27272a; }
+      code { background: #27272a; }
+      .muted { color: #a1a1aa; }
+      .cta-secondary { background: #27272a; color: #fafafa; border-color: #3f3f46; }
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e4e4e7;
+      border-radius: 1rem;
+      padding: 1.75rem 1.5rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 .5rem; letter-spacing: -0.02em; }
+    .lead { font-size: 1.05rem; margin: 0 0 1rem; color: #3f3f46; }
+    @media (prefers-color-scheme: dark) { .lead { color: #d4d4d8; } }
+    p { margin: 0 0 .85rem; }
+    ul { margin: .5rem 0 1rem; padding-left: 1.25rem; }
+    li { margin: .25rem 0; }
+    code { background: #f4f4f5; padding: .12rem .35rem; border-radius: .25rem; font-size: .92em; }
+    .actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.25rem; }
+    .actions a {
+      display: inline-block;
+      padding: .55rem 1rem;
+      border-radius: .5rem;
+      font-size: .925rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity .15s;
+    }
+    .actions a:hover { opacity: .88; }
+    .cta-primary { background: #4f46e5; color: #fff; }
+    .cta-secondary {
+      background: #f4f4f5;
+      color: #18181b;
+      border: 1px solid #e4e4e7;
+    }
+    .muted { font-size: .85rem; color: #71717a; margin-top: 1.25rem; }
   </style>
 </head>
 <body>
-  <h1>Super Process Manager</h1>
-  <p>OSS edition exposes the HTTP API and CLI only. There is no built-in web dashboard.</p>
-  <p>Use <code>super</code> CLI or <code>/api/*</code> endpoints. Licensed subscriptions include the official <code>ui</code> plugin.</p>
-  <p>Version: VERSION_PLACEHOLDER</p>
+  <div class="card">
+    <h1>Super Process Manager</h1>
+    <p class="lead"><code>superd</code> is up — you're on the open-source build.</p>
+    <p>Everything you need for automation is already here:</p>
+    <ul>
+      <li><code>super</code> CLI for day-to-day operations</li>
+      <li><code>/api/*</code> for integrations and CI/CD</li>
+      <li><code>/metrics</code> for Prometheus monitoring</li>
+    </ul>
+    <p>
+      Prefer a visual control plane? Licensed subscriptions unlock the official
+      <strong>Dashboard</strong> (<code>ui</code> plugin), plus optional
+      <strong>RBAC</strong>, <strong>webhooks</strong>, and <strong>cgroup isolation</strong>
+      — same <code>superd</code> binary, drop in plugins + a license key.
+    </p>
+    <div class="actions">
+      <a class="cta-primary" href="https://super.project.sconts.com" rel="noopener noreferrer">Explore licensed plugins</a>
+      <a class="cta-secondary" href="http://super.docs.sconts.com/docs/07-editions/feature-matrix" rel="noopener noreferrer">OSS vs licensed</a>
+      <a class="cta-secondary" href="http://super.docs.sconts.com/docs/" rel="noopener noreferrer">Documentation</a>
+    </div>
+    <p class="muted">Version VERSION_PLACEHOLDER · MIT open-source core</p>
+  </div>
 </body>
 </html>
 "#;

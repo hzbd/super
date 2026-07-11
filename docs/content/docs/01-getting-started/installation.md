@@ -4,11 +4,11 @@ weight: 1
 description: "Install Super via Docker, GitHub Releases, or build from source."
 ---
 
-Project Super ships as static binaries (`superd`, `super`) with no runtime dependencies on Python or a JVM. Building from source requires Rust and Node.js (dashboard UI).
+Project Super ships as static binaries (`superd`, `super`) with no runtime dependencies on Python or a JVM. Building from source requires Rust only.
 
 ## Method 1: Docker (Recommended)
 
-The official image ships `superd` and `super` with the embedded dashboard.
+The official OSS image ships `superd` and `super` (API + CLI). There is no embedded web dashboard — load the commercial `ui` plugin for the full UI.
 
 ### Pull and run
 
@@ -20,7 +20,7 @@ docker pull containerpi/super:latest
 docker run --rm -p 9002:9002 containerpi/super:latest
 ```
 
-Open **http://localhost:9002** for the dashboard. Add programs via the UI, CLI, or API.
+Open **http://localhost:9002** for the OSS HTML notice and HTTP API. Add programs via the CLI or API (or load the `ui` plugin for the dashboard).
 
 Images are published for **linux/amd64** (Intel/AMD servers and most cloud VMs).
 
@@ -81,7 +81,7 @@ Each archive contains `bin/superd`, `bin/super`, and a `README` with quick-start
 
 > **Windows:** Pre-built Windows binaries are **not published** at this time. Super targets Unix-like servers and edge devices. On Windows, use [Docker](#method-1-docker-recommended) (e.g. with WSL2), or build from source on Linux, macOS, or FreeBSD.
 
-To build locally (requires Rust, Node.js for the dashboard):
+To build locally (requires Rust):
 
 ```bash
 git clone https://github.com/hzbd/super.git

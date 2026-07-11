@@ -283,3 +283,41 @@ async fn test_duplicate_names_in_stack_rejected() {
         "expected stack duplicate error, got: {msg}"
     );
 }
+
+#[tokio::test]
+async fn test_update_resource_limits_persisted_immediately() {
+    use common::{ResourceLimits, UpdateProgramRequest};
+
+    let (handle, tmp, _notify) = setup_manager().await;
+
+    let create = common::CreateProgramRequest {
+        name: Some("limited-worker".to_string()),
+        command: "/bin/sleep".to_string(),
+        args: vec!["3600".to_string()],
+        ..Default::default()
+    };
+    let ids = handle.create_program(create).await.unwrap();
+    let id = ids[0];
+
+    handle
+        .update_program(
+            id,
+            UpdateProgramRequest {
+                resource_limits: Some(ResourceLimits {
+                    cpu_quota: Some(25.0),
+                    memory_limit: Some(64 * 1024 * 1024),
+                }),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let snapshot = tmp.path().join("snapshot.json");
+    let content = tokio::fs::read_to_string(&snapshot).await.unwrap();
+    assert!(
+        content.contains("resource_limits"),
+        "snapshot should contain resource_limits immediately after update"
+    );
+    assert!(content.contains("67108864"), "memory_limit bytes should be persisted");
+}

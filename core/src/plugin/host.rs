@@ -1,6 +1,6 @@
 use crate::plugin::loader::{PluginRuntime, load_authorized_plugins};
 use common::config::resolve_license_key;
-use common::license::{LicenseClaims, parse_major_version, verify_license};
+use common::license::{LicenseClaims, check_superd_version, licensed_version_span, verify_license};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
@@ -46,11 +46,10 @@ pub struct PluginHost {
 impl PluginHost {
     /// Discover plugins under `{root}/plugins/` and validate license in `conf/super.toml`.
     ///
-    /// `superd_version` is used for major-version compatibility checks.
+    /// `superd_version` is checked against signed major/minor claims (upper minor bound when set).
     pub fn discover(root: &Path, superd_version: &str) -> Self {
         let plugins_dir = root.join("plugins");
         let config_file = root.join("conf").join("super.toml");
-        let host_major = parse_major_version(superd_version);
 
         let license_outcome = resolve_license(&config_file);
         let installed_plugins = scan_plugin_files(&plugins_dir);
@@ -92,11 +91,7 @@ impl PluginHost {
                 }
             }
             LicenseOutcome::Valid(claims) => {
-                if claims.major_version != host_major {
-                    let reason = format!(
-                        "License major_version={} incompatible with superd {}.x",
-                        claims.major_version, host_major
-                    );
+                if let Err(reason) = check_superd_version(claims, superd_version) {
                     error!("{}", LICENSE_BANNER);
                     error!("License error: {}", reason);
                     if !installed_plugins.is_empty() {
@@ -116,8 +111,10 @@ impl PluginHost {
                 }
 
                 info!(
-                    "License verified for '{}' (major v{}, plugins: {:?})",
-                    claims.issued_to, claims.major_version, claims.plugins
+                    "License verified for '{}' (superd {}, plugins: {:?})",
+                    claims.issued_to,
+                    licensed_version_span(claims),
+                    claims.plugins
                 );
 
                 let licensed_set: HashSet<&str> =

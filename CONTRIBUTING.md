@@ -5,8 +5,8 @@ Thank you for your interest in contributing to **Project Super** (OSS, MIT).
 ## Getting started
 
 1. Fork [hzbd/super](https://github.com/hzbd/super) and clone your fork.
-2. Install [Rust](https://rust.rust-lang.org/tools/install) (stable) and [Node.js](https://nodejs.org/) (for the dashboard).
-3. Build: `make build` (frontend + `superd` + `super` CLI).
+2. Install [Rust](https://rust.rust-lang.org/tools/install) (stable).
+3. Build: `make build` (`superd` + `super` CLI).
 4. Run tests: `cargo test --workspace` and `cargo clippy --workspace --all-targets -- -D warnings`.
 
 Docs site (optional): `make docs-serve` or `cd docs && hugo server -D --disableFastRender` (requires [Hugo Extended](https://gohugo.io/installation/) and the `hextra` submodule). Open **http://localhost:1313/** — do not open `docs/public/` directly; `hugo.yaml` `baseURL` is for production builds (CI overrides it on deploy).
