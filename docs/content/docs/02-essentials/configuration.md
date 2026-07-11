@@ -82,7 +82,7 @@ depends_on = ["database", "redis"]
 
 ### Plugin-only blocks 💎
 
-The following require **commercial plugins** (`isolation` on Linux for cgroup limits). OSS accepts `resource_limits` in the API schema but does not enforce them without the plugin.
+The following require **subscription plugins** (resource limits on Linux). OSS accepts `resource_limits` in the API schema but does not enforce them without the matching plugin.
 
 ```toml
 [[programs]]

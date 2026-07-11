@@ -36,9 +36,9 @@ superd ── verifies ──► [license].key   signed key from your vendor
 
 **In scope here:** process manager, REST/WS API, plugin host (verify + dlopen + ABIs), `[license]` **verification** only.
 
-**Out of scope here:** plugin implementations, subscription key **issuance**, commercial plugin catalogs, dashboard sources.
+**Out of scope here:** plugin implementations, subscription key signing, plugin SKU catalogs, dashboard sources.
 
-Licensed-plugin fields in config and API are documented with a 💎 marker; see [Feature matrix](/docs/07-editions/feature-matrix/).
+Licensed-plugin fields in config and API are documented with a 💎 marker; see [Feature matrix](/docs/07-editions/feature-matrix/) and [OSS repository boundary](docs/content/docs/06-internals/oss-boundary.md).
 
 ## Questions
 

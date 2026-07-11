@@ -8,7 +8,7 @@ Project Super ships as static binaries (`superd`, `super`) with no runtime depen
 
 ## Method 1: Docker (Recommended)
 
-The official OSS image ships `superd` and `super` (API + CLI). There is no embedded web dashboard — load the commercial `ui` plugin for the full UI.
+The official OSS image ships `superd` and `super` (API + CLI). There is no embedded web dashboard — install the optional UI plugin from your subscription package for the full control plane.
 
 ### Pull and run
 

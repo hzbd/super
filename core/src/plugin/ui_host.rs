@@ -1,4 +1,4 @@
-//! Static UI bridge for the optional commercial `ui` plugin (`super_plugin_ui_v1`).
+//! Static UI bridge for the optional `ui` plugin (`super_plugin_ui_v1`).
 
 use crate::plugin::loader::PluginRuntime;
 use common::plugin_ui_abi::{UI_PLUGIN_API_VERSION, UI_PLUGIN_SYMBOL, SuperPluginUiV1};

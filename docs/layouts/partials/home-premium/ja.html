@@ -14,7 +14,7 @@
       <span class="home-plugin-flow-num">1</span>
       <div>
         <strong>ライセンスを設定</strong>
-        <div class="home-plugin-flow-desc">ベンダー提供のキーを <code>conf/super.toml</code> の <code>[license]</code> に貼り付け — 有効なプラグインと期限を決定</div>
+        <div class="home-plugin-flow-desc">サブスクリプション交付パッケージのファイルを <code>$SUPER_ROOT/plugins/</code> にコピー</div>
       </div>
     </div>
     <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
@@ -22,7 +22,7 @@
       <span class="home-plugin-flow-num">2</span>
       <div>
         <strong>プラグインファイルを配置</strong>
-        <div class="home-plugin-flow-desc">受け取ったプラグインファイルを <code>$SUPER_ROOT/plugins/</code> にコピー（例: <code>security.so</code>、<code>ui.so</code>）</div>
+        <div class="home-plugin-flow-desc">サブスクリプション交付パッケージのファイルを <code>$SUPER_ROOT/plugins/</code> にコピー</div>
       </div>
     </div>
     <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
@@ -30,17 +30,13 @@
       <span class="home-plugin-flow-num">3</span>
       <div>
         <strong>superd を再起動</strong>
-        <div class="home-plugin-flow-desc">起動時にライセンスを検証し、該当機能を有効化 — コアプログラムの差し替えは不要</div>
+        <div class="home-plugin-flow-desc">サブスクリプション交付パッケージのファイルを <code>$SUPER_ROOT/plugins/</code> にコピー</div>
       </div>
     </div>
   </div>
   <div class="home-plugin-grid">
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">security</code>
-        <span class="home-plugin-file">plugins/security.so</span>
-      </div>
-      <h3>セキュリティとガバナンス</h3>
+<h3>セキュリティとガバナンス</h3>
       <ul class="home-plugin-caps">
         <li>API ルートの Bearer トークン認証</li>
         <li>RBAC — admin / operator / viewer</li>
@@ -53,11 +49,7 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">notify</code>
-        <span class="home-plugin-file">plugins/notify.so</span>
-      </div>
-      <h3>イベント通知</h3>
+<h3>イベント通知</h3>
       <ul class="home-plugin-caps">
         <li>Webhook — Slack、钉钉、飞书、カスタム URL</li>
         <li><code>process_fatal</code> 等のシステムイベントをプッシュ</li>
@@ -68,29 +60,21 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">isolation</code>
-        <span class="home-plugin-file">plugins/isolation.so</span>
-      </div>
-      <h3>リソース分離</h3>
+<h3>リソース分離</h3>
       <ul class="home-plugin-caps">
         <li>cgroups v2 による CPU/メモリ上限</li>
         <li>プロセス再起動なしで上限をホット更新</li>
         <li>CLI <code>--cpu</code> / <code>--memory</code> の強制</li>
       </ul>
-      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Linux のみ</strong> — macOS / Windows / FreeBSD では利用不可。<code>isolation.dylib</code> はありません。</p>
+      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Linux のみ</strong> — macOS / Windows / FreeBSD では利用不可。</p>
       <div class="home-plugin-links">
         <a href="/docs/05-advanced-management/resource-isolation">リソース分離</a>
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">ui</code>
-        <span class="home-plugin-file">plugins/ui.so</span>
-      </div>
-      <h3>Web ダッシュボード</h3>
+<h3>Web ダッシュボード</h3>
       <ul class="home-plugin-caps">
-        <li>Vue SPA をプラグインに内蔵</li>
+        <li>UI プラグインが提供するブラウザコンソール</li>
         <li>プロセス概要、ライブログ、起動/停止</li>
         <li>他プラグインと連携した License / メトリクス</li>
       </ul>

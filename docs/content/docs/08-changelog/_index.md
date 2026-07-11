@@ -37,10 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cron scheduled tasks** remain in OSS `superd` (not plugin-gated).
 
 ### Notes
-- Plugin libraries (`security`, `notify`, `isolation`, **`ui`**) ship with subscription delivery; they are not built from this OSS repository.
-- **Dashboard** ships as the commercial **`ui`** plugin (embedded `dashboard/dist`); OSS `superd` has no built-in web UI.
-- Linux **cgroup isolation** QA (`qa-cgroups.sh`) is still required before isolation is production-ready.
-- `license-server` admin console remains deferred.
+- Plugin libraries ship with subscription delivery; they are not built from this OSS repository.
+- **Web dashboard** ships as an optional UI plugin with embedded static assets; OSS `superd` has no built-in web UI.
+- Linux **cgroup isolation** QA remains required before production sign-off.
 
 ---
 

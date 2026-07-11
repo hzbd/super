@@ -1,4 +1,4 @@
-//! Optional static UI assets exported by the commercial `ui` plugin (`super_plugin_ui_v1`).
+//! Optional static UI assets exported by the `ui` plugin (`super_plugin_ui_v1`).
 
 pub const UI_PLUGIN_API_VERSION: u32 = 1;
 pub const UI_PLUGIN_SYMBOL: &[u8] = b"super_plugin_ui_v1";

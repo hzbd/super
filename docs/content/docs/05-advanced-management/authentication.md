@@ -10,14 +10,14 @@ The **default OSS deployment has no API authentication** — bind to `127.0.0.1`
 
 Without the `security` plugin loaded, `superd` behaves like OSS-only (no API auth, localhost warning when bound publicly).
 
-## Enabling Authentication (Commercial)
+## Enabling Authentication (Subscription)
 
-1. Add a valid `[license].key` in `conf/super.toml` that includes the `security` plugin.
-2. Build and deploy `plugins/security.dylib` (or `.so` on Linux).
-3. Set `auth_secret` in `super.toml` (commercial-only field):
+1. Add a valid `[license].key` in `conf/super.toml` that authorizes API authentication.
+2. Install the security plugin library from your subscription delivery package into `$SUPER_ROOT/plugins/`.
+3. Set `auth_secret` in `super.toml` (subscription-only field):
 
 ```toml
-# super.toml (commercial)
+# super.toml (subscription)
 auth_secret = "my-super-secure-root-password"
 ```
 

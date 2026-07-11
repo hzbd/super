@@ -1,8 +1,8 @@
 //! Runtime license verification for `superd` (OSS scope).
 //!
-//! This module verifies Ed25519-signed subscription keys and enforces claims at
-//! runtime. It does **not** implement issuance policy or maintain a commercial
-//! plugin catalog — those concerns live outside this repository.
+//! Verifies Ed25519-signed subscription keys and enforces signed claims at
+//! runtime. Subscription key signing and plugin catalogs are out of scope
+//! for this repository.
 
 mod claims;
 mod verify;

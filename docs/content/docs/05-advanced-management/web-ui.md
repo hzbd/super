@@ -1,7 +1,7 @@
 ---
 title: "Web UI"
 weight: 6
-description: "Dashboard via the commercial ui plugin; OSS is API and CLI only."
+description: "Dashboard via the optional ui plugin; OSS is API and CLI only."
 imageZoom: true
 aliases:
   - /docs/02-essentials/web-ui/
@@ -10,14 +10,14 @@ aliases:
 
 > **Licensed plugin 💎:** The dashboard requires the **`ui`** plugin in `[license].key`. OSS `superd` serves a static notice at `/` instead.
 
-## OSS vs commercial
+## OSS vs subscription
 
 | Edition | Web UI at `/` |
 | :--- | :--- |
 | **OSS** (no plugins) | Static notice — **no dashboard**. Use `super` CLI or `/api/*`. |
-| **Licensed** (`ui` plugin) | Full SPA dashboard embedded in `plugins/ui.{so,dylib}`. |
+| **Licensed** | Full dashboard served by the authorized UI plugin. |
 
-OSS `superd` does **not** embed a dashboard binary. The commercial **`ui`** plugin ships the Vue dashboard via `super_plugin_ui_v1`.
+OSS `superd` does **not** embed a dashboard binary. The optional **`ui`** plugin serves the web dashboard via `super_plugin_ui_v1`.
 
 ## Accessing the dashboard (licensed)
 
@@ -71,7 +71,7 @@ Notification channels and routing when the **`notify`** plugin is licensed (see 
 
 ## Deploy the ui plugin
 
-Install the official **`ui`** plugin library from your subscription delivery package into `$SUPER_ROOT/plugins/` (filename varies by platform, e.g. `ui.dylib` or `ui.so`).
+Install the **`ui`** plugin library from your subscription delivery package into `$SUPER_ROOT/plugins/`.
 
 Restart `superd` after updating plugins.
 

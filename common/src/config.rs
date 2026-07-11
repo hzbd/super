@@ -38,7 +38,7 @@ pub struct LicenseSection {
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct ServerConfig {
-    /// Root API secret for the security plugin (commercial).
+    /// Root API secret for the security plugin (subscription).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth_secret: Option<String>,
 

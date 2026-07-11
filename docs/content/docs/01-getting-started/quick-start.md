@@ -102,9 +102,8 @@ Commercial features use the **same OSS `superd` and `super` binaries** — drop 
 
 ```bash
 $SUPER_ROOT/
-  conf/super.toml           # [license].key + auth_secret (security plugin)
-  plugins/security.dylib    # API auth + RBAC + audit
-  plugins/ui.dylib          # Dashboard (optional; from subscription package)
+  conf/super.toml           # [license].key + auth_secret (when subscribed)
+  plugins/                  # Authorized libraries from subscription package
 ```
 
 **Install licensed plugins** (from your subscription delivery package):

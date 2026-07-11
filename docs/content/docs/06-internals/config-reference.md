@@ -8,7 +8,7 @@ description: "Complete schema for super.toml."
 
 | Mark | Meaning |
 | :--- | :--- |
-| **💎 Commercial** | Requires valid `[license].key` in `conf/super.toml` and matching plugins (e.g. `security`, `isolation`). OSS ignores unknown commercial fields. |
+| **💎 Subscription** | Requires valid `[license].key` in `conf/super.toml` and matching authorized plugin libraries. OSS ignores unknown subscription-only fields. |
 | *(no mark)* | Available in OSS (with or without plugins). |
 
 > **Pre-release:** Licensed plugins are documented for the target architecture. **Subscription delivery is not open yet** — do not treat 💎 fields as production-supported for paying customers until maintainers announce GA.

@@ -14,7 +14,7 @@
 #     -v ./my-conf:/app/super/conf -v ./my-data:/app/super/data \
 #     containerpi/super:latest
 #
-# OSS image: no embedded dashboard. Load the commercial `ui` plugin for the web UI.
+# OSS image: no embedded dashboard. Install the UI plugin from a subscription package for the web control plane.
 
 FROM rust:1-trixie AS backend
 WORKDIR /build

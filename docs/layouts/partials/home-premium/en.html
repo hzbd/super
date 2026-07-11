@@ -1,28 +1,28 @@
 <section class="home-section home-section--premium">
   <div class="home-premium-header">
     <h2 class="home-section-title">
-      Official Plugins
-      <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> Commercial</span>
+      Subscription plugins
+      <span class="home-section-premium-tag"><span aria-hidden="true">💎</span> Licensed</span>
     </h2>
-    <p class="home-section-lead">One <code>superd</code> binary for everyone. Commercial capabilities ship as signed <strong>plugins</strong> — drop authorized <code>plugins/*.so</code> under <code>$SUPER_ROOT</code> and add a valid <code>[license].key</code> to <code>conf/super.toml</code>. Only plugins listed in the license are loaded at runtime.</p>
+    <p class="home-section-lead">One <code>superd</code> binary for everyone. Optional capabilities ship as signed <strong>plugins</strong> — add a vendor-supplied <code>[license].key</code> to <code>conf/super.toml</code> and place authorized libraries under <code>$SUPER_ROOT/plugins/</code>. Only modules named in the key are loaded at runtime.</p>
   </div>
   <div class="home-prerelease-notice">
-    <strong>Pre-release:</strong> The plugin subscription model is under active development and <strong>not offered for customer delivery</strong> yet. Documentation describes the target architecture.
+    <strong>Pre-release:</strong> Subscription delivery is under active development and <strong>not offered to customers yet</strong>. Documentation describes the target model.
   </div>
-  <div class="home-plugin-flow" aria-label="Commercial deployment in three steps">
+  <div class="home-plugin-flow" aria-label="Licensed deployment in three steps">
     <div class="home-plugin-flow-step">
       <span class="home-plugin-flow-num">1</span>
       <div>
         <strong>Configure license</strong>
-        <div class="home-plugin-flow-desc">Paste the vendor-supplied key into <code>[license]</code> in <code>conf/super.toml</code> — defines which plugins are active and when they expire</div>
+        <div class="home-plugin-flow-desc">Paste the vendor-supplied key into <code>[license]</code> in <code>conf/super.toml</code> — defines which modules are active and when they expire</div>
       </div>
     </div>
     <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
     <div class="home-plugin-flow-step">
       <span class="home-plugin-flow-num">2</span>
       <div>
-        <strong>Deploy plugin files</strong>
-        <div class="home-plugin-flow-desc">Copy delivered plugin files into <code>$SUPER_ROOT/plugins/</code> (e.g. <code>security.so</code>, <code>ui.so</code>)</div>
+        <strong>Deploy plugin libraries</strong>
+        <div class="home-plugin-flow-desc">Copy files from your subscription delivery package into <code>$SUPER_ROOT/plugins/</code></div>
       </div>
     </div>
     <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
@@ -30,16 +30,12 @@
       <span class="home-plugin-flow-num">3</span>
       <div>
         <strong>Restart superd</strong>
-        <div class="home-plugin-flow-desc">On startup the service validates the license and enables matching features — no need to replace the core binary</div>
+        <div class="home-plugin-flow-desc">On startup the service validates the key and enables matching features — no need to replace the core binary</div>
       </div>
     </div>
   </div>
   <div class="home-plugin-grid">
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">security</code>
-        <span class="home-plugin-file">plugins/security.so</span>
-      </div>
       <h3>Security &amp; Governance</h3>
       <ul class="home-plugin-caps">
         <li>Bearer token authentication on API routes</li>
@@ -53,10 +49,6 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">notify</code>
-        <span class="home-plugin-file">plugins/notify.so</span>
-      </div>
       <h3>Event Notifications</h3>
       <ul class="home-plugin-caps">
         <li>Webhook channels — Slack, DingTalk, Feishu, custom URLs</li>
@@ -68,29 +60,21 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">isolation</code>
-        <span class="home-plugin-file">plugins/isolation.so</span>
-      </div>
       <h3>Resource Isolation</h3>
       <ul class="home-plugin-caps">
         <li>cgroups v2 CPU and memory limits per program</li>
         <li>Hot-update limits without restarting the process</li>
         <li>CLI <code>--cpu</code> / <code>--memory</code> enforcement</li>
       </ul>
-      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Linux only</strong> — cgroup isolation is not available on macOS, Windows, or FreeBSD. There is no <code>isolation.dylib</code>.</p>
+      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Linux only</strong> — cgroup isolation is not available on macOS, Windows, or FreeBSD.</p>
       <div class="home-plugin-links">
         <a href="/docs/05-advanced-management/resource-isolation">Resource isolation</a>
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">ui</code>
-        <span class="home-plugin-file">plugins/ui.so</span>
-      </div>
       <h3>Web Dashboard</h3>
       <ul class="home-plugin-caps">
-        <li>Vue SPA embedded in the plugin</li>
+        <li>Browser-based control plane served by the UI plugin</li>
         <li>Process overview, live logs, start/stop controls</li>
         <li>License &amp; system metrics when other plugins are active</li>
       </ul>
@@ -99,5 +83,5 @@
       </div>
     </div>
   </div>
-  <p class="home-premium-footnote">Mix and match plugins per license — subscribe only to what you need. See the <a href="/docs/07-editions/feature-matrix">feature matrix</a> for OSS vs licensed comparison.</p>
+  <p class="home-premium-footnote">Mix and match capabilities per license — subscribe only to what you need. See the <a href="/docs/07-editions/feature-matrix">feature matrix</a> for OSS vs licensed comparison.</p>
 </section>

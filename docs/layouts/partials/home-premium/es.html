@@ -14,7 +14,7 @@
       <span class="home-plugin-flow-num">1</span>
       <div>
         <strong>Configurar licencia</strong>
-        <div class="home-plugin-flow-desc">Pegue la clave del proveedor en <code>[license]</code> de <code>conf/super.toml</code> — define qué plugins están activos y cuándo caducan</div>
+        <div class="home-plugin-flow-desc">Copie los archivos del paquete de suscripción en <code>$SUPER_ROOT/plugins/</code></div>
       </div>
     </div>
     <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
@@ -22,7 +22,7 @@
       <span class="home-plugin-flow-num">2</span>
       <div>
         <strong>Desplegar plugins</strong>
-        <div class="home-plugin-flow-desc">Copie los archivos de plugin recibidos en <code>$SUPER_ROOT/plugins/</code> (p. ej. <code>security.so</code>, <code>ui.so</code>)</div>
+        <div class="home-plugin-flow-desc">Copie los archivos del paquete de suscripción en <code>$SUPER_ROOT/plugins/</code></div>
       </div>
     </div>
     <span class="home-plugin-flow-arrow" aria-hidden="true"></span>
@@ -30,17 +30,13 @@
       <span class="home-plugin-flow-num">3</span>
       <div>
         <strong>Reiniciar superd</strong>
-        <div class="home-plugin-flow-desc">Al arrancar, el servicio valida la licencia y activa las funciones correspondientes — no hace falta cambiar el binario principal</div>
+        <div class="home-plugin-flow-desc">Copie los archivos del paquete de suscripción en <code>$SUPER_ROOT/plugins/</code></div>
       </div>
     </div>
   </div>
   <div class="home-plugin-grid">
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">security</code>
-        <span class="home-plugin-file">plugins/security.so</span>
-      </div>
-      <h3>Seguridad y gobernanza</h3>
+<h3>Seguridad y gobernanza</h3>
       <ul class="home-plugin-caps">
         <li>Autenticación Bearer en rutas API</li>
         <li>RBAC — admin, operator, viewer</li>
@@ -53,11 +49,7 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">notify</code>
-        <span class="home-plugin-file">plugins/notify.so</span>
-      </div>
-      <h3>Notificaciones de eventos</h3>
+<h3>Notificaciones de eventos</h3>
       <ul class="home-plugin-caps">
         <li>Webhooks — Slack, DingTalk, Feishu, URLs custom</li>
         <li>Push en <code>process_fatal</code> y otros eventos</li>
@@ -68,29 +60,21 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">isolation</code>
-        <span class="home-plugin-file">plugins/isolation.so</span>
-      </div>
-      <h3>Aislamiento de recursos</h3>
+<h3>Aislamiento de recursos</h3>
       <ul class="home-plugin-caps">
         <li>Límites CPU/memoria con cgroups v2</li>
         <li>Hot-update sin reiniciar el proceso</li>
         <li>CLI <code>--cpu</code> / <code>--memory</code></li>
       </ul>
-      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Solo Linux</strong> — no disponible en macOS, Windows ni FreeBSD. No existe <code>isolation.dylib</code>.</p>
+      <p class="home-plugin-linux-note"><span aria-hidden="true">🐧</span> <strong>Solo Linux</strong> — no disponible en macOS, Windows ni FreeBSD.</p>
       <div class="home-plugin-links">
         <a href="/docs/05-advanced-management/resource-isolation">Aislamiento</a>
       </div>
     </div>
     <div class="home-plugin-card">
-      <div class="home-plugin-card-head">
-        <code class="home-plugin-id">ui</code>
-        <span class="home-plugin-file">plugins/ui.so</span>
-      </div>
-      <h3>Panel web</h3>
+<h3>Panel web</h3>
       <ul class="home-plugin-caps">
-        <li>Vue SPA embebido en el plugin</li>
+        <li>Panel web en el navegador servido por el plugin UI</li>
         <li>Resumen de procesos, logs en vivo, controles start/stop</li>
         <li>License y métricas con otros plugins activos</li>
       </ul>

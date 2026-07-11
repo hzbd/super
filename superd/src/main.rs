@@ -82,13 +82,13 @@ const OSS_UI_MESSAGE: &str = r#"<!DOCTYPE html>
       <li><code>/metrics</code> for Prometheus monitoring</li>
     </ul>
     <p>
-      Prefer a visual control plane? Licensed subscriptions unlock the official
-      <strong>Dashboard</strong> (<code>ui</code> plugin), plus optional
-      <strong>RBAC</strong>, <strong>webhooks</strong>, and <strong>cgroup isolation</strong>
-      — same <code>superd</code> binary, drop in plugins + a license key.
+      Prefer a visual control plane? A valid subscription key and authorized plugin
+      libraries can unlock a <strong>dashboard</strong>, plus optional
+      <strong>API authentication</strong>, <strong>notifications</strong>, and
+      <strong>resource limits</strong> — same <code>superd</code> binary.
     </p>
     <div class="actions">
-      <a class="cta-primary" href="https://super.project.sconts.com" rel="noopener noreferrer">Explore licensed plugins</a>
+      <a class="cta-primary" href="https://super.project.sconts.com" rel="noopener noreferrer">Learn about subscriptions</a>
       <a class="cta-secondary" href="http://super.docs.sconts.com/docs/07-editions/feature-matrix" rel="noopener noreferrer">OSS vs licensed</a>
       <a class="cta-secondary" href="http://super.docs.sconts.com/docs/" rel="noopener noreferrer">Documentation</a>
     </div>
@@ -154,7 +154,7 @@ fn serve_ui_asset(
 
 fn inject_ui_config(raw_html: &[u8], auth_required: bool, is_licensed: bool) -> bytes::Bytes {
     let html_str = String::from_utf8_lossy(raw_html);
-    let edition = if is_licensed { "premium" } else { "oss" };
+    let edition = if is_licensed { "licensed" } else { "oss" };
     let config_js = format!(
         "window.__SUPER_CONFIG__ = {{ edition: '{edition}', auth_required: {auth_required}, version: '{VERSION}' }};",
         auth_required = auth_required,
