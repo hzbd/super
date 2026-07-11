@@ -19,8 +19,7 @@ pub use paths::resolve_super_root;
 
 pub use auth::{AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole};
 pub use license::{
-    LicenseClaims, LicenseExpiryStatus, LicenseInfo, LICENSED_PLUGIN_IDS,
-    LICENSE_UPGRADE_URL, license_expiry_status, plugins_to_features, validate_licensed_plugins,
+    LicenseClaims, LicenseExpiryStatus, LicenseInfo, LICENSE_UPGRADE_URL, license_expiry_status,
     verify_license, verify_license_for_superd,
 };
 pub use plugin_abi::{PLUGIN_API_VERSION, PLUGIN_SYMBOL, SuperPluginV1, read_plugin_version};

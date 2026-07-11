@@ -17,7 +17,7 @@ aliases:
 | **OSS** (no plugins) | Static notice — **no dashboard**. Use `super` CLI or `/api/*`. |
 | **Licensed** (`ui` plugin) | Full SPA dashboard embedded in `plugins/ui.{so,dylib}`. |
 
-OSS `superd` does **not** embed a dashboard binary. The commercial **`ui`** plugin ships the Vue dashboard (`super-plugins/dashboard`) via `super_plugin_ui_v1`.
+OSS `superd` does **not** embed a dashboard binary. The commercial **`ui`** plugin ships the Vue dashboard via `super_plugin_ui_v1`.
 
 ## Accessing the dashboard (licensed)
 
@@ -69,16 +69,9 @@ Notification channels and routing when the **`notify`** plugin is licensed (see 
 
 {{< /tabs >}}
 
-## Build & deploy the ui plugin
+## Deploy the ui plugin
 
-Dashboard assets are built in the private **`super-plugins`** repo:
-
-```bash
-cd super-plugins
-make frontend    # dashboard/dist
-make plugins     # → dist/plugins/ui.dylib (or .so)
-cp dist/plugins/ui.* "$SUPER_ROOT/plugins/"
-```
+Install the official **`ui`** plugin library from your subscription delivery package into `$SUPER_ROOT/plugins/` (filename varies by platform, e.g. `ui.dylib` or `ui.so`).
 
 Restart `superd` after updating plugins.
 

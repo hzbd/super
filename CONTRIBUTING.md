@@ -20,7 +20,25 @@ Docs site (optional): `make docs-serve` or `cd docs && hugo server -D --disableF
 
 ## Scope
 
-This repository is the **open-source core** (`superd`, `super`, MIT). Commercial capabilities (auth, license verification, notify, audit, cgroups enforcement) ship as **optional runtime plugins** in a separate product repository and are out of scope for most OSS PRs.
+This repository is the **open-source core** (`superd`, `super`, MIT). Optional subscription capabilities (API auth, notifications, cgroup limits, dashboard UI) are loaded at **runtime** from signed plugin libraries — they are **not built from this repo** and are out of scope for most OSS PRs.
+
+## OSS vs subscription runtime
+
+Same `superd` binary; subscription unlocks features via config + plugin files:
+
+```
+super (this repo, MIT)              subscription delivery (separate)
+────────────────────────            ─────────────────────────────────
+superd ── verifies ──► [license].key   signed key from your vendor
+       ── dlopen ───► plugins/*.so     official plugin libraries
+       ── OSS API ──► process control   optional: auth, UI, notify, …
+```
+
+**In scope here:** process manager, REST/WS API, plugin host (verify + dlopen + ABIs), `[license]` **verification** only.
+
+**Out of scope here:** plugin implementations, subscription key **issuance**, commercial plugin catalogs, dashboard sources.
+
+Licensed-plugin fields in config and API are documented with a 💎 marker; see [Feature matrix](/docs/07-editions/feature-matrix/).
 
 ## Questions
 

@@ -104,23 +104,17 @@ Commercial features use the **same OSS `superd` and `super` binaries** — drop 
 $SUPER_ROOT/
   conf/super.toml           # [license].key + auth_secret (security plugin)
   plugins/security.dylib    # API auth + RBAC + audit
-  plugins/ui.dylib          # Dashboard (optional; build from super-plugins)
+  plugins/ui.dylib          # Dashboard (optional; from subscription package)
 ```
 
-**Build & run:**
+**Install licensed plugins** (from your subscription delivery package):
 
 ```bash
-# OSS daemon (from super repo)
-cd super
-cargo build --release -p superd -p super-cli
-export SUPER_ROOT=/path/to/instance
-./target/release/superd
-
-# Commercial plugins + dashboard (from super-plugins repo)
-cd super-plugins
-make build-all
-cp dist/plugins/* "$SUPER_ROOT/plugins/"
+# Copy official plugin libraries into the instance
+cp /path/to/subscription/plugins/* "$SUPER_ROOT/plugins/"
 ```
+
+Restart `superd` after updating plugins or the subscription key.
 
 **API authentication** (requires `security` plugin + `auth_secret`):
 

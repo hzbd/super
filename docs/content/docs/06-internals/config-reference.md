@@ -18,7 +18,7 @@ description: "Complete schema for super.toml."
 | Location | Keys / file |
 | :--- | :--- |
 | Root (`super.toml`) | `auth_secret` 💎 |
-| `[license]` | `key` 💎 — Ed25519-signed subscription token from `gen_license` |
+| `[license]` | `key` 💎 — Ed25519-signed subscription token from your vendor |
 | `[[programs]]` | `[programs.resource_limits]` (`cpu_quota`, `memory_limit`) 💎 |
 | `conf/notify.toml` *(separate file)* | `[[channels]]` 💎 — see [Event Notifications](/docs/05-advanced-management/event-notifications) |
 
@@ -51,7 +51,7 @@ Optional section in `conf/super.toml`. When present and valid, `superd` loads au
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `key` 💎 | string | — | Base64-encoded signed license from `gen_license`. Overrides: `SUPER_LICENSE` env (same format). |
+| `key` 💎 | string | — | Base64-encoded signed subscription key (Ed25519). Obtain from your subscription vendor. Override: `SUPER_LICENSE` env (same format). |
 
 ```toml
 [license]

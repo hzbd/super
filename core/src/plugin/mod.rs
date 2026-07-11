@@ -1,4 +1,8 @@
-//! Plugin host: license verification, `plugins/*.so` discovery, and load orchestration.
+//! Plugin host: optional subscription runtime (license verify + `plugins/*` dlopen).
+//!
+//! OSS scope: discover plugin libraries, verify signed `[license].key` claims, and
+//! bridge HTTP/UI ABIs. Plugin implementations and issuance tooling are not in
+//! this repository.
 
 mod abi;
 mod adapter;

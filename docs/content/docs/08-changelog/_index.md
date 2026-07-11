@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2026-07-10 — **Pre-release (not for production or customer delivery)**
 
 > **Status:** Runtime plugin architecture is merged and testable in development monorepos.  
-> **Licensed plugins are not offered for subscription delivery yet** — readiness gates are tracked in the private `super-plugins` repo (`docs/todo.md`).
+> **Licensed plugins are not offered for subscription delivery yet** — readiness is tracked internally before GA.
 
 ### Added
 - **Runtime plugin host** — `superd` discovers `plugins/*.{so,dylib}`, verifies Ed25519 license, and dlopens authorized plugins.
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cron scheduled tasks** remain in OSS `superd` (not plugin-gated).
 
 ### Notes
-- Plugin crates (`security`, `notify`, `isolation`, **`ui`**) live in the **`super-plugins`** repository.
+- Plugin libraries (`security`, `notify`, `isolation`, **`ui`**) ship with subscription delivery; they are not built from this OSS repository.
 - **Dashboard** ships as the commercial **`ui`** plugin (embedded `dashboard/dist`); OSS `superd` has no built-in web UI.
 - Linux **cgroup isolation** QA (`qa-cgroups.sh`) is still required before isolation is production-ready.
 - `license-server` admin console remains deferred.

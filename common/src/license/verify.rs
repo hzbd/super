@@ -1,98 +1,28 @@
+use super::claims::{LicenseClaims, LicenseInfo};
 use anyhow::Context;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use utoipa::ToSchema;
 
-pub const PUBLIC_KEY_BYTES: &[u8] = include_bytes!("../keys/public.key");
+pub const PUBLIC_KEY_BYTES: &[u8] = include_bytes!("../../keys/public.key");
 
-/// Official commercial plugin IDs allowed in signed licenses.
-pub const LICENSED_PLUGIN_IDS: &[&str] = &["security", "isolation", "notify", "ui"];
+/// Subscription / upgrade page shown when the installed superd exceeds the license.
+pub const LICENSE_UPGRADE_URL: &str = "https://super.project.sconts.com";
 
-/// Reject unknown plugin IDs before signing a license.
-pub fn validate_licensed_plugins(plugins: &[String]) -> anyhow::Result<()> {
-    for id in plugins {
-        if !LICENSED_PLUGIN_IDS.contains(&id.as_str()) {
-            anyhow::bail!("Unknown plugin ID '{id}'. Allowed: {LICENSED_PLUGIN_IDS:?}");
-        }
-    }
-    Ok(())
+#[derive(Debug, Serialize, Deserialize)]
+struct LicenseContainer {
+    claims: LicenseClaims,
+    signature: Vec<u8>,
 }
 
-/// Signed license claims. The entire struct is covered by Ed25519 signature.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
-pub struct LicenseClaims {
-    pub issued_to: String,
-    pub issued_at: u64,
-    pub major_version: u32,
-    /// Licensed minor line at issuance (e.g. `2` for Super 1.2.x).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub minor_version: Option<u32>,
-    /// Highest allowed semver **minor** within `major_version` (cap = `{major}.{max_super_minor}.*`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_super_minor: Option<u32>,
-    /// Legacy signed delta above `minor_version`; prefer `max_super_minor` in new keys.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub minor_ahead: Option<u32>,
-    /// Super product version this license was issued for (e.g. `"1.2.0"`). Anchors renewals and upgrades.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub issued_super_version: Option<String>,
-    /// Authorized plugin IDs (e.g. `security`, `notify`, `isolation`).
-    pub plugins: Vec<String>,
-    /// Unix timestamp when the license expires. Omitted = no expiration.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<u64>,
-    /// When `false`, superd rejects expired keys at runtime. Omitted/`true` = keep plugins offline.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub retain_plugins_after_expiry: Option<bool>,
-    /// Stable identifier for support / renewal tracking (optional in legacy licenses).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub license_id: Option<String>,
-}
-
-/// API / dashboard view derived from verified claims.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
-pub struct LicenseInfo {
-    pub issued_to: String,
-    pub issued_at: u64,
-    pub major_version: u32,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub minor_version: Option<u32>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub issued_super_version: Option<String>,
-    pub plugins: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub license_id: Option<String>,
-    /// UI feature codes mapped from authorized plugins.
-    pub features: Vec<String>,
-    /// Loaded plugin release versions (runtime; not part of signed claims).
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub plugin_versions: HashMap<String, String>,
-    /// `active`, `expired`, or `perpetual` — expired keys keep existing plugins offline.
-    pub subscription_status: String,
-    /// Product version when the license was issued (e.g. `1.2.0`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub issued_for_version: Option<String>,
-    /// Highest superd release permanently allowed after subscription ends (e.g. `1.3.x`).
-    pub max_superd_version: String,
-    /// Deprecated alias for `max_superd_version` (older dashboards).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub supported_super_version: String,
-    /// Running superd version (runtime).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub superd_version: Option<String>,
-    /// Whether the running superd is within `max_superd_version` (runtime).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version_in_range: Option<bool>,
-    /// Renewal / upgrade page.
-    pub upgrade_url: String,
-    /// Highest allowed semver minor within `major_version` (from signed claims).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub max_super_minor: Option<u32>,
+/// Subscription expiry derived from signed claims and local clock.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LicenseExpiryStatus {
+    Active,
+    Expired,
+    Perpetual,
 }
 
 impl From<&LicenseClaims> for LicenseInfo {
@@ -113,7 +43,7 @@ impl From<&LicenseClaims> for LicenseInfo {
             plugins: claims.plugins.clone(),
             expires_at: claims.expires_at,
             license_id: claims.license_id.clone(),
-            features: plugins_to_features(&claims.plugins),
+            features: Vec::new(),
             plugin_versions: HashMap::new(),
             subscription_status: subscription_status.to_string(),
             issued_for_version: license_issued_for_version(claims),
@@ -149,32 +79,6 @@ pub fn superd_within_license(claims: &LicenseClaims, superd_version: &str) -> bo
     check_superd_version(claims, superd_version).is_ok()
 }
 
-/// Map plugin IDs to dashboard feature codes.
-pub fn plugins_to_features(plugins: &[String]) -> Vec<String> {
-    let mut features = Vec::new();
-    for plugin in plugins {
-        match plugin.as_str() {
-            "security" => {
-                features.push("rbac".into());
-                features.push("audit".into());
-            }
-            "notify" => features.push("notify".into()),
-            "isolation" => features.push("cgroups".into()),
-            "ui" => features.push("dashboard".into()),
-            other => features.push(other.to_string()),
-        }
-    }
-    features.sort();
-    features.dedup();
-    features
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct LicenseContainer {
-    claims: LicenseClaims,
-    signature: Vec<u8>,
-}
-
 fn current_unix_secs() -> anyhow::Result<u64> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs())
 }
@@ -187,14 +91,6 @@ fn ensure_not_expired(claims: &LicenseClaims) -> anyhow::Result<()> {
         anyhow::bail!("License expired at {expires_at} (current time {now})");
     }
     Ok(())
-}
-
-/// Subscription expiry derived from signed claims and local clock.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LicenseExpiryStatus {
-    Active,
-    Expired,
-    Perpetual,
 }
 
 pub fn license_expiry_status(claims: &LicenseClaims) -> anyhow::Result<LicenseExpiryStatus> {
@@ -290,9 +186,6 @@ pub fn parse_semver(version: &str) -> Option<(u32, u32, u32)> {
     Some((major, minor, patch))
 }
 
-/// Subscription / upgrade page shown when the installed superd exceeds the license.
-pub const LICENSE_UPGRADE_URL: &str = "https://super.project.sconts.com";
-
 /// Minor line used for version cap checks (explicit `minor_version`, else parsed from `issued_super_version`).
 pub fn licensed_minor_line(claims: &LicenseClaims) -> Option<u32> {
     if let Some(minor) = claims.minor_version {
@@ -358,6 +251,7 @@ pub fn check_superd_version(claims: &LicenseClaims, superd_version: &str) -> Res
 #[cfg(test)]
 mod semver_tests {
     use super::*;
+    use crate::license::claims::LicenseClaims;
 
     #[test]
     fn version_labels_are_explicit() {
@@ -474,6 +368,7 @@ mod semver_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::license::claims::LicenseClaims;
     use ed25519_dalek::{Signer, SigningKey};
     use rand::rngs::OsRng;
 
@@ -491,24 +386,6 @@ mod tests {
     fn parse_major_version_works() {
         assert_eq!(parse_major_version("1.1.9"), 1);
         assert_eq!(parse_major_version("2.0.0"), 2);
-    }
-
-    #[test]
-    fn plugins_to_features_maps_security_and_isolation() {
-        let features = plugins_to_features(&[
-            "security".into(),
-            "isolation".into(),
-            "notify".into(),
-        ]);
-        assert!(features.contains(&"rbac".to_string()));
-        assert!(features.contains(&"audit".to_string()));
-        assert!(features.contains(&"cgroups".to_string()));
-        assert!(features.contains(&"notify".to_string()));
-    }
-
-    #[test]
-    fn validate_licensed_plugins_accepts_ui() {
-        validate_licensed_plugins(&["ui".into()]).unwrap();
     }
 
     #[test]
