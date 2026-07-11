@@ -4,7 +4,7 @@ weight: 5
 description: "Run local scripts on system events with structured JSON on stdin."
 ---
 
-Event hooks let you react to [System Events](./system-events) by running shell commands on the **same machine** as `superd`. This is the OSS equivalent of Supervisor's `[eventlistener]` — distinct from licensed [Event Notifications](/docs/05-advanced-management/event-notifications) (`notify` plugin), which POST to external IM/webhook URLs.
+Event hooks let you react to [System Events](/docs/03-orchestration/system-events) by running shell commands on the **same machine** as `superd`. This is the OSS equivalent of Supervisor's `[eventlistener]` — distinct from licensed [Event Notifications](/docs/05-advanced-management/event-notifications) (`notify` plugin), which POST to external IM/webhook URLs.
 
 ## Configuration
 
@@ -92,6 +92,6 @@ You can use both: licensed notify for on-call alerts, event hooks for local auto
 
 ## Related
 
-* [System Events](./system-events) — full event catalog
-* [Lifecycle Hooks](./lifecycle-hooks) — per-program start/stop scripts
+* [System Events](/docs/03-orchestration/system-events) — full event catalog
+* [Lifecycle Hooks](/docs/03-orchestration/lifecycle-hooks) — per-program start/stop scripts
 * [Config Reference](/docs/06-internals/config-reference#event_hooks-oss)

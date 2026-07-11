@@ -49,9 +49,9 @@ Licensed webhook envelopes wrap this in a richer outer object (`summary`, `markd
 
 | Mechanism | Config location | Scope | Requires | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Lifecycle hooks** | `[[programs]]` → `[programs.hooks]` | Per program, tied to start/stop flow | OSS | ✅ Implemented — see [Lifecycle Hooks](./lifecycle-hooks) |
+| **Lifecycle hooks** | `[[programs]]` → `[programs.hooks]` | Per program, tied to start/stop flow | OSS | ✅ Implemented — see [Lifecycle Hooks](/docs/03-orchestration/lifecycle-hooks) |
 | **Webhook notifications** | `conf/notify.toml` → `[[channels]]` | Global channels, filter by `triggers` | 💎 `notify` plugin | ✅ Implemented |
-| **Event hooks** | `super.toml` → `[[event_hooks]]` | Global, filter by `events` + `programs` | OSS | ✅ Implemented — see [Event Hooks](./event-hooks) |
+| **Event hooks** | `super.toml` → `[[event_hooks]]` | Global, filter by `events` + `programs` | OSS | ✅ Implemented — see [Event Hooks](/docs/03-orchestration/event-hooks) |
 | **`[webhook]` in `super.toml`** | `[webhook]` | — | — | ⚠️ **Parsed only, not wired** — see [Config Reference](/docs/06-internals/config-reference#webhook--reserved-not-active) |
 | **Rust `Extension::on_event`** | Compile-time or licensed plugin | Global | Plugin / custom build | ✅ Implemented |
 

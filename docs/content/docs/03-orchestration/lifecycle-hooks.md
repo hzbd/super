@@ -6,7 +6,7 @@ description: "Inject custom scripts at various stages of the process lifecycle."
 
 Lifecycle hooks run **shell commands** at fixed points in a **single program's** start/stop pipeline. They are configured **per program**, not globally.
 
-For reacting to **system-wide events** (crashes, recovery, daemon startup), see [System Events](./system-events) — those use a different configuration model (`notify.toml` with the `notify` plugin; `[[event_hooks]]` in OSS).
+For reacting to **system-wide events** (crashes, recovery, daemon startup), see [System Events](/docs/03-orchestration/system-events) — those use a different configuration model (`notify.toml` with the `notify` plugin; `[[event_hooks]]` in OSS).
 
 ## Hook catalog
 
@@ -91,6 +91,6 @@ The managed **child process** also receives `SUPER_ID`, `SUPER_NAME`, `SUPER_HOS
 
 ## Related
 
-* [System Events](./system-events) — full event catalog
+* [System Events](/docs/03-orchestration/system-events) — full event catalog
 * [Config Reference — programs.hooks](/docs/06-internals/config-reference#programshooks)
 * [Custom Extensions](/docs/04-production-scenarios/extensibility/custom-extensions) — Rust `Extension` trait and licensed plugins (cgroups, notify, audit)

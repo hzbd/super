@@ -29,7 +29,7 @@ With the `ui` plugin loaded and authorized in `[license].key`:
   Assuming `port = 9002` in your config
 {{< /callout >}}
 
-Log in with your `auth_secret` when the **`security`** plugin is enabled (`super login <secret>`). See [Authentication](./authentication).
+Log in with your `auth_secret` when the **`security`** plugin is enabled (`super login <secret>`). See [Authentication](/docs/05-advanced-management/authentication).
 
 ## Dashboard tour
 
@@ -62,7 +62,7 @@ Reload plugin or dashboard assets without a full daemon restart (development wor
   {{< /tab >}}
 
   {{< tab name="Notifications" icon="bell" >}}
-Notification channels and routing when the **`notify`** plugin is licensed (see [Event notifications](./event-notifications)).
+Notification channels and routing when the **`notify`** plugin is licensed (see [Event notifications](/docs/05-advanced-management/event-notifications)).
 
 {{< ui-screenshot src="/images/notify.png" alt="Notification settings" >}}
   {{< /tab >}}
@@ -90,6 +90,6 @@ The dashboard also includes create/edit forms, a [declarative stack editor](/doc
 
 **OSS (no `security` plugin):** The API and any static page at `/` are reachable without authentication — restrict network access.
 
-**With `security` plugin:** Token authentication and RBAC apply to the API and dashboard. Log in via `super login <auth_secret>` or create API tokens. See [Access control](./access-control) and [Authentication](./authentication).
+**With `security` plugin:** Token authentication and RBAC apply to the API and dashboard. Log in via `super login <auth_secret>` or create API tokens. See [Access control](/docs/05-advanced-management/access-control) and [Authentication](/docs/05-advanced-management/authentication).
 
 > **Security tip:** When exposing beyond localhost, load the **`security`** plugin and set a strong `auth_secret` in `conf/super.toml`.
