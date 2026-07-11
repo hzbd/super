@@ -1,1 +1,48 @@
 /* Site-wide Hextra overrides (keep minimal). Homepage: static/css/docs-home.css */
+
+/* Dashboard doc screenshots (web-ui page) */
+.ui-screenshot {
+  margin: 0.5rem 0 0;
+  text-align: center;
+}
+
+.ui-screenshot__img {
+  display: inline-block;
+  max-width: min(640px, 100%);
+  width: 100%;
+  height: auto;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  cursor: zoom-in;
+  transition: box-shadow 0.15s ease;
+}
+
+.ui-screenshot__img:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+
+.dark .ui-screenshot__img {
+  border-color: rgb(64 64 64);
+}
+
+.ui-screenshot__caption {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: rgb(107 114 128);
+}
+
+.dark .ui-screenshot__caption {
+  color: rgb(163 163 163);
+}
+
+.ui-screenshot__caption--hint {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.hextra-tabs-panel .ui-screenshot:first-child {
+  margin-top: 0.25rem;
+}
+

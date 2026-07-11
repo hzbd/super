@@ -80,7 +80,7 @@ curl http://127.0.0.1:8080
 
 Open **[http://127.0.0.1:9002](http://127.0.0.1:9002)**.
 
-**OSS only:** You will see a short HTML notice — there is **no built-in dashboard**. Manage processes with the `super` CLI or `/api/*` (see [Web UI](/docs/02-essentials/web-ui)).
+**OSS only:** You will see a short HTML notice — there is **no built-in dashboard**. Manage processes with the `super` CLI or `/api/*` (see [Web UI](/docs/05-advanced-management/web-ui)).
 
 **With the `ui` plugin:** The full dashboard (process list, logs, controls) is served from `plugins/ui.{so,dylib}`.
 

@@ -16,7 +16,7 @@ If you are new to Project Super, start with the basics to get your daemon up and
 
 {{< cards >}}
   {{< card link="/docs/01-getting-started" title="Getting Started" subtitle="Installation, Quick Start, and first-time setup." >}}
-  {{< card link="/docs/02-essentials" title="Core Essentials" subtitle="Configuration (TOML), Logging, Web UI, and Process Control." >}}
+  {{< card link="/docs/02-essentials" title="Core Essentials" subtitle="Configuration (TOML), Logging, and Process Control." >}}
 {{< /cards >}}
 
 ---
@@ -27,7 +27,7 @@ Unlock the full potential of Super with advanced orchestration and dependency ma
 
 {{< cards >}}
   {{< card link="/docs/03-orchestration" title="Orchestration" subtitle="Manage dependencies, health checks, and Atomic OTA updates." >}}
-  {{< card link="/docs/05-advanced-management" title="Advanced Management" subtitle="Security, Authentication, RBAC, and Audit Logging." >}}
+  {{< card link="/docs/05-advanced-management" title="Advanced Management" subtitle="Web UI, Security, Authentication, RBAC, and Audit Logging." >}}
 {{< /cards >}}
 
 ---

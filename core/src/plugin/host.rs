@@ -1,6 +1,9 @@
 use crate::plugin::loader::{PluginRuntime, load_authorized_plugins};
 use common::config::resolve_license_key;
-use common::license::{LicenseClaims, check_superd_version, licensed_version_span, verify_license};
+use common::license::{
+    LicenseClaims, LicenseExpiryStatus, check_superd_version, licensed_version_span,
+    verify_license_for_superd, LICENSE_UPGRADE_URL,
+};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{error, info, warn};
@@ -46,7 +49,7 @@ pub struct PluginHost {
 impl PluginHost {
     /// Discover plugins under `{root}/plugins/` and validate license in `conf/super.toml`.
     ///
-    /// `superd_version` is checked against signed major/minor claims (upper minor bound when set).
+    /// `superd_version` is checked against signed major/minor policy in the license claims.
     pub fn discover(root: &Path, superd_version: &str) -> Self {
         let plugins_dir = root.join("plugins");
         let config_file = root.join("conf").join("super.toml");
@@ -181,8 +184,16 @@ fn resolve_license(config_file: &Path) -> LicenseOutcome {
         return LicenseOutcome::Missing;
     };
 
-    match verify_license(&key) {
-        Ok(claims) => LicenseOutcome::Valid(claims),
+    match verify_license_for_superd(&key) {
+        Ok((claims, expiry)) => {
+            if expiry == LicenseExpiryStatus::Expired {
+                warn!(
+                    "License subscription expired; licensed plugins remain available offline. \
+                     Renew for newer superd releases: {LICENSE_UPGRADE_URL}"
+                );
+            }
+            LicenseOutcome::Valid(claims)
+        }
         Err(e) => LicenseOutcome::Invalid {
             reason: e.to_string(),
         },

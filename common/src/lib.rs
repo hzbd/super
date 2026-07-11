@@ -18,7 +18,11 @@ pub mod resources;
 pub use paths::resolve_super_root;
 
 pub use auth::{AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole};
-pub use license::{LicenseClaims, LicenseInfo, LICENSED_PLUGIN_IDS, plugins_to_features, validate_licensed_plugins, verify_license};
+pub use license::{
+    LicenseClaims, LicenseExpiryStatus, LicenseInfo, LICENSED_PLUGIN_IDS,
+    LICENSE_UPGRADE_URL, license_expiry_status, plugins_to_features, validate_licensed_plugins,
+    verify_license, verify_license_for_superd,
+};
 pub use plugin_abi::{PLUGIN_API_VERSION, PLUGIN_SYMBOL, SuperPluginV1, read_plugin_version};
 pub use plugin_error::{set_last_plugin_error, take_last_plugin_error};
 pub use plugin_http_abi::{HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL, SuperPluginHttpV1};

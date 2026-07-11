@@ -1,0 +1,27 @@
+{{- $src := .Get "src" -}}
+{{- if not $src -}}
+  {{- errorf "ui-screenshot: src is required" -}}
+{{- end -}}
+{{- $alt := .Get "alt" | default "Dashboard screenshot" -}}
+{{- $caption := .Get "caption" -}}
+{{- $enableZoom := .Page.Params.imageZoom | default (.Page.Site.Params.imageZoom.enable | default false) -}}
+{{- if $enableZoom -}}
+  {{- .Page.Store.Set "hasImageZoom" true -}}
+{{- end -}}
+{{- $dest := $src -}}
+{{- if hasPrefix $src "/" -}}
+  {{- $dest = relURL (strings.TrimPrefix "/" $src) -}}
+{{- end -}}
+<figure class="ui-screenshot">
+  <img
+    src="{{ $dest | safeURL }}"
+    alt="{{ $alt }}"
+    class="ui-screenshot__img"
+    loading="lazy"{{ if $enableZoom }} data-zoomable{{ end }}
+  />
+  {{- if $caption -}}
+    <figcaption class="ui-screenshot__caption">{{ $caption }}</figcaption>
+  {{- else if $enableZoom -}}
+    <figcaption class="ui-screenshot__caption ui-screenshot__caption--hint">Click image to enlarge</figcaption>
+  {{- end -}}
+</figure>

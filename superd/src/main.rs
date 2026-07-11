@@ -3,7 +3,7 @@ use axum::{
     http::{HeaderValue, StatusCode, Uri, header},
     response::{IntoResponse, Response},
 };
-use common::license::LicenseInfo;
+use common::license::{LicenseInfo, superd_within_license};
 use super_core::{
     ManagerHandle, api, bootstrap,
     plugin::{PluginHost, attach_http_plugins, load_ui_plugin, normalize_ui_path},
@@ -240,6 +240,8 @@ async fn main() -> anyhow::Result<()> {
     let license_info = plugin_host.claims.as_ref().map(|claims| {
         let mut info = LicenseInfo::from(claims);
         info.plugin_versions = plugin_runtime.plugin_versions.clone();
+        info.superd_version = Some(VERSION.to_string());
+        info.version_in_range = Some(superd_within_license(claims, VERSION));
         info
     });
     if license_info.is_some() {
