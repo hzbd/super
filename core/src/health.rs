@@ -1,4 +1,5 @@
 use common::HealthCheck;
+use std::process::Stdio;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -18,26 +19,49 @@ fn get_http_client() -> &'static reqwest::Client {
     })
 }
 
-/// Run one health check. Returns true if healthy.
-pub async fn perform_check(check: &HealthCheck) -> bool {
+/// Result of a single health probe, with a human-readable failure reason when unhealthy.
+#[derive(Debug, Clone)]
+pub struct CheckOutcome {
+    pub healthy: bool,
+    pub detail: Option<String>,
+}
+
+impl CheckOutcome {
+    pub fn ok() -> Self {
+        Self {
+            healthy: true,
+            detail: None,
+        }
+    }
+
+    pub fn fail(detail: impl Into<String>) -> Self {
+        Self {
+            healthy: false,
+            detail: Some(detail.into()),
+        }
+    }
+}
+
+/// Run one health check.
+pub async fn perform_check(check: &HealthCheck) -> CheckOutcome {
     match check {
         HealthCheck::Tcp { host, port } => check_tcp(host, *port).await,
         HealthCheck::Http { url, method } => check_http(url, method.as_deref()).await,
         HealthCheck::Exec { command } => check_exec(command).await,
-
-        HealthCheck::Disabled => true,
+        HealthCheck::Disabled => CheckOutcome::ok(),
     }
 }
 
-async fn check_tcp(host: &str, port: u16) -> bool {
+async fn check_tcp(host: &str, port: u16) -> CheckOutcome {
     let addr = format!("{}:{}", host, port);
-    matches!(
-        tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(&addr)).await,
-        Ok(Ok(_))
-    )
+    match tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(&addr)).await {
+        Ok(Ok(_)) => CheckOutcome::ok(),
+        Ok(Err(e)) => CheckOutcome::fail(format!("TCP {}: connection failed: {}", addr, e)),
+        Err(_) => CheckOutcome::fail(format!("TCP {}: connection timed out", addr)),
+    }
 }
 
-async fn check_http(url: &str, method: Option<&str>) -> bool {
+async fn check_http(url: &str, method: Option<&str>) -> CheckOutcome {
     let client = get_http_client();
 
     let method_str = method.unwrap_or("GET");
@@ -48,34 +72,50 @@ async fn check_http(url: &str, method: Option<&str>) -> bool {
         _ => reqwest::Method::GET,
     };
 
-    match client.request(method, url).send().await {
-        Ok(resp) => resp.status().is_success(), // 2xx
-        Err(_) => false,
+    match client.request(method.clone(), url).send().await {
+        Ok(resp) if resp.status().is_success() => CheckOutcome::ok(),
+        Ok(resp) => CheckOutcome::fail(format!(
+            "HTTP {} {} returned {}",
+            method_str,
+            url,
+            resp.status()
+        )),
+        Err(e) => CheckOutcome::fail(format!("HTTP {} {} failed: {}", method_str, url, e)),
     }
 }
 
-async fn check_exec(command: &str) -> bool {
-    // Timeout so a stuck script cannot hang the health checker
-    // sh -c supports pipes/redirects (most portable option)
+async fn check_exec(command: &str) -> CheckOutcome {
     let check_future = async {
         match tokio::process::Command::new("sh")
             .arg("-c")
             .arg(command)
-            .kill_on_drop(true) // kill child if future is dropped on timeout
-            .status()
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true)
+            .output()
             .await
         {
-            Ok(status) => status.success(),
-            Err(_) => false,
+            Ok(output) if output.status.success() => CheckOutcome::ok(),
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let trimmed = stderr.trim();
+                if !trimmed.is_empty() {
+                    CheckOutcome::fail(format!("exec {:?}: {}", command, trimmed))
+                } else {
+                    CheckOutcome::fail(format!(
+                        "exec {:?} exited with code {:?}",
+                        command,
+                        output.status.code()
+                    ))
+                }
+            }
+            Err(e) => CheckOutcome::fail(format!("exec {:?}: spawn failed: {}", command, e)),
         }
     };
 
-    // 7s timeout
     match tokio::time::timeout(Duration::from_secs(7), check_future).await {
-        Ok(result) => result,
-        Err(_) => {
-            tracing::warn!("Health check exec timed out: '{}'", command);
-            false
-        }
+        Ok(outcome) => outcome,
+        Err(_) => CheckOutcome::fail(format!("exec {:?}: timed out after 7s", command)),
     }
 }

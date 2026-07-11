@@ -397,12 +397,12 @@ impl LifecycleController {
                 // Wait briefly for process to stabilize
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                 loop {
-                    let result = health::perform_check(&check).await;
-                    // Send internal command to update health status
+                    let outcome = health::perform_check(&check).await;
                     if tx
                         .send(Command::InternalHealthUpdate {
                             id,
-                            is_healthy: result,
+                            is_healthy: outcome.healthy,
+                            failure_detail: outcome.detail,
                         })
                         .await
                         .is_err()
@@ -425,6 +425,7 @@ impl LifecycleController {
                     .send(Command::InternalHealthUpdate {
                         id,
                         is_healthy: true,
+                        failure_detail: None,
                     })
                     .await;
             });
@@ -440,6 +441,7 @@ impl LifecycleController {
                 stopping: false,
                 restart_requested: false,
                 is_healthy,
+                health_error: None,
                 health_task,
                 alert_pending_recovery: retry_count > 0,
                 cpu_usage: 0.0,

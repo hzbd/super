@@ -16,6 +16,15 @@ pub struct Context {
     pub auth_token: Option<String>,
 }
 
+fn api_error_from_body(status: reqwest::StatusCode, body: &str) -> anyhow::Error {
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(body) {
+        if let Some(msg) = v.get("message").and_then(|m| m.as_str()) {
+            return anyhow::anyhow!("{msg}");
+        }
+    }
+    anyhow::anyhow!("request failed (HTTP {}): {}", status.as_u16(), body)
+}
+
 fn parse_autorestart(s: &str) -> anyhow::Result<AutorestartPolicy> {
     match s.to_lowercase().as_str() {
         "unexpected" => Ok(AutorestartPolicy::Unexpected),
@@ -388,9 +397,15 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
 
         let url = format!("{}/api/programs", ctx.base_url);
         let resp = ctx.client.post(&url).json(&payload).send().await?;
+        let status = resp.status();
 
-        if resp.status().is_success() {
+        if status.is_success() {
             let ids: Vec<Uuid> = resp.json().await?;
+            if ids.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "No program was created. Program name may already exist — run `super list` to verify."
+                ));
+            }
             if ids.len() == 1 {
                 println!("Program created: {}", ids[0]);
             } else {
@@ -400,7 +415,8 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
                 }
             }
         } else {
-            eprintln!("Error: {}", resp.text().await?);
+            let body = resp.text().await?;
+            return Err(api_error_from_body(status, &body));
         }
     }
     Ok(())
@@ -665,15 +681,17 @@ pub async fn handle_apply(ctx: &Context, file: &std::path::PathBuf) -> anyhow::R
     println!("Applying stack from {:?}...", file);
     let url = format!("{}/api/stack", ctx.base_url);
     let resp = ctx.client.put(&url).json(&request).send().await?;
+    let status = resp.status();
 
-    if resp.status().is_success() {
+    if status.is_success() {
         let logs: Vec<String> = resp.json().await?;
         for log in logs {
             println!("- {}", log);
         }
         println!("Stack applied successfully.");
     } else {
-        eprintln!("Error: Failed to apply stack: {}", resp.text().await?);
+        let body = resp.text().await?;
+        return Err(api_error_from_body(status, &body));
     }
     Ok(())
 }

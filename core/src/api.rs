@@ -53,6 +53,15 @@ impl IntoResponse for AppError {
     }
 }
 
+fn map_program_mutation_error(default: StatusCode, err: anyhow::Error) -> AppError {
+    let msg = err.to_string();
+    if msg.contains("already exists") || msg.contains("Duplicate program name") {
+        AppError(StatusCode::CONFLICT, err)
+    } else {
+        AppError(default, err)
+    }
+}
+
 #[derive(Deserialize, IntoParams)]
 struct StopParams {
     force: Option<bool>,
@@ -287,7 +296,13 @@ async fn create_program(
         .manager
         .create_program(payload)
         .await
-        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| map_program_mutation_error(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    if ids.is_empty() {
+        return Err(map_program_mutation_error(
+            StatusCode::CONFLICT,
+            anyhow::anyhow!("No program was created"),
+        ));
+    }
     Ok((StatusCode::CREATED, Json(ids)))
 }
 
@@ -428,7 +443,7 @@ async fn update_program(
         .manager
         .update_program(id, payload)
         .await
-        .map_err(|e| AppError(StatusCode::BAD_REQUEST, e))?;
+        .map_err(|e| map_program_mutation_error(StatusCode::BAD_REQUEST, e))?;
     Ok(StatusCode::OK)
 }
 
@@ -709,7 +724,7 @@ async fn apply_stack(
         .manager
         .apply_stack(payload)
         .await
-        .map_err(|e| AppError(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| map_program_mutation_error(StatusCode::BAD_REQUEST, e))?;
     Ok(Json(logs))
 }
 

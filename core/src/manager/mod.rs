@@ -414,8 +414,13 @@ impl Manager {
                     let res = self.handle_health_check().await;
                     let _ = reply.send(res);
                 }
-                Command::InternalHealthUpdate { id, is_healthy } => {
-                    self.handle_health_update(id, is_healthy).await;
+                Command::InternalHealthUpdate {
+                    id,
+                    is_healthy,
+                    failure_detail,
+                } => {
+                    self.handle_health_update(id, is_healthy, failure_detail)
+                        .await;
                 }
                 Command::ApplyStack { request, reply } => {
                     let res = self.handle_apply_stack(request).await;
@@ -540,6 +545,12 @@ impl Manager {
             .get_config(&id)
             .ok_or_else(|| anyhow::anyhow!("Program not found"))?
             .clone();
+
+        if let Some(v) = &req.name {
+            if v != &old_config.name {
+                self.ensure_program_name_available(v, Some(id))?;
+            }
+        }
 
         let mut trigger_ota = false;
         let mut artifact_cfg = None;
@@ -1089,12 +1100,40 @@ impl Manager {
     }
 
     // Health Check Commit
-    async fn handle_health_update(&mut self, id: Uuid, is_healthy: bool) {
+    async fn handle_health_update(
+        &mut self,
+        id: Uuid,
+        is_healthy: bool,
+        failure_detail: Option<String>,
+    ) {
         if let Some(state) = self.registry.running.get_mut(&id) {
             // Ignore health updates while stopping
             // Prevents Stop -> Stopping -> (health race) -> Healthy
             if state.stopping {
                 return;
+            }
+
+            if !is_healthy {
+                if let Some(detail) = failure_detail {
+                    let changed = state.health_error.as_deref() != Some(detail.as_str());
+                    state.health_error = Some(detail.clone());
+                    if changed {
+                        if let Some(cfg) = self.registry.programs.get(&id) {
+                            let log_dir = &self.config.storage.log_dir;
+                            crate::logger::emit_superd_line(
+                                id,
+                                &format!("health_check failed: {detail}"),
+                                log_dir,
+                                cfg.stdout_logfile.as_deref(),
+                                cfg.stderr_logfile.as_deref(),
+                                &self.log_tx,
+                            )
+                            .await;
+                        }
+                    }
+                }
+            } else {
+                state.health_error = None;
             }
 
             if state.is_healthy != is_healthy {
@@ -1167,6 +1206,8 @@ impl Manager {
     async fn handle_apply_stack(&mut self, req: StackApplyRequest) -> anyhow::Result<Vec<String>> {
         let mut logs = Vec::new();
         let mut touched_programs = HashSet::new();
+
+        self.validate_stack_service_names(&req.services)?;
 
         for service_req in &req.services {
             for config in self.expand_request(service_req) {
@@ -1439,21 +1480,16 @@ impl Manager {
             tracing::warn!("CreateProgram validation failed: {}", e);
             let _ = reply.send(Err(e));
         } else {
+            for cfg in &configs {
+                if let Err(e) = self.ensure_program_name_available(&cfg.name, None) {
+                    tracing::warn!("CreateProgram name conflict: {}", e);
+                    let _ = reply.send(Err(e));
+                    return;
+                }
+            }
+
             let mut created_ids = Vec::new();
             for config in configs {
-                if self
-                    .registry
-                    .programs
-                    .values()
-                    .any(|p| p.name == config.name)
-                {
-                    tracing::warn!(
-                        "Program '{}' already exists, skipping creation.",
-                        config.name
-                    );
-                    continue;
-                }
-
                 let id = Uuid::new_v4();
                 let should_start = config.autostart;
                 let name = config.name.clone();
@@ -1557,9 +1593,15 @@ impl Manager {
                 uptime_sec: uptime,
                 updated_at: config.updated_at,
                 last_error: self.registry.startup_errors.get(id).cloned(),
+                health_error: self
+                    .registry
+                    .running
+                    .get(id)
+                    .and_then(|s| s.health_error.clone()),
                 cpu_usage: cpu,
                 mem_usage: mem,
                 depends_on: config.depends_on.clone(),
+                resource_limits: config.resource_limits.clone(),
             });
         }
         list
@@ -1597,6 +1639,11 @@ impl Manager {
             pid,
             config: config.clone(),
             last_error: self.registry.startup_errors.get(&id).cloned(),
+            health_error: self
+                .registry
+                .running
+                .get(&id)
+                .and_then(|s| s.health_error.clone()),
         })
     }
 
@@ -1973,6 +2020,53 @@ impl Manager {
             && cron::Schedule::from_str(c).is_err()
         {
             return Err(anyhow::anyhow!("Invalid cron: {}", c));
+        }
+        Ok(())
+    }
+
+    fn find_program_id_by_name(&self, name: &str) -> Option<Uuid> {
+        self.registry
+            .programs
+            .iter()
+            .find(|(_, cfg)| cfg.name == name)
+            .map(|(id, _)| *id)
+    }
+
+    fn ensure_program_name_available(
+        &self,
+        name: &str,
+        except_id: Option<Uuid>,
+    ) -> anyhow::Result<()> {
+        if name.trim().is_empty() {
+            return Err(anyhow::anyhow!("Program name cannot be empty"));
+        }
+        if let Some(existing_id) = self.find_program_id_by_name(name) {
+            if except_id != Some(existing_id) {
+                return Err(anyhow::anyhow!(
+                    "Program name '{}' already exists (id: {})",
+                    name,
+                    existing_id
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_stack_service_names(&self, services: &[CreateProgramRequest]) -> anyhow::Result<()> {
+        let mut counts: HashMap<String, u32> = HashMap::new();
+        for service_req in services {
+            for config in self.expand_request(service_req) {
+                *counts.entry(config.name).or_insert(0) += 1;
+            }
+        }
+        for (name, count) in counts {
+            if count > 1 {
+                return Err(anyhow::anyhow!(
+                    "Duplicate program name '{}' in stack (appears {} times)",
+                    name,
+                    count
+                ));
+            }
         }
         Ok(())
     }

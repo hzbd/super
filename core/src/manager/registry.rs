@@ -13,6 +13,8 @@ pub struct RuntimeState {
 
     // Current health status
     pub is_healthy: bool,
+    /// Latest health_check failure (cleared when healthy again).
+    pub health_error: Option<String>,
     // Background health check task handle
     pub health_task: Option<JoinHandle<()>>,
 

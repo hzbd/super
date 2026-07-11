@@ -55,6 +55,7 @@ fn test_registry_crud() {
             stopping: false,
             restart_requested: false,
             is_healthy: true,
+            health_error: None,
             health_task: None,
             alert_pending_recovery: false,
             cpu_usage: 0.0,

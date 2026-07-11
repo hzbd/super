@@ -287,6 +287,40 @@ pub fn capture_stderr(
     spawn_log_consumer(id, LogSource::Stderr, stream, config, tx);
 }
 
+/// Append a superd-attributed diagnostic line to the program stderr log and broadcast over WS.
+pub async fn emit_superd_line(
+    id: Uuid,
+    line: &str,
+    log_dir: &Path,
+    stdout_logfile: Option<&str>,
+    stderr_logfile: Option<&str>,
+    tx: &broadcast::Sender<WsMessage>,
+) {
+    let prefixed = format!("[superd] {}", line);
+    let path = log_file_path(log_dir, id, LogSource::Stderr, stdout_logfile, stderr_logfile);
+
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent).await;
+    }
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .await
+    {
+        let _ = file
+            .write_all(format!("{prefixed}\n").as_bytes())
+            .await;
+        let _ = file.flush().await;
+    }
+
+    let _ = tx.send(WsMessage::Log {
+        id,
+        source: "superd".to_string(),
+        line: prefixed,
+    });
+}
+
 /// Read last N lines from a log file (historical log API).
 pub async fn read_log_lines(
     log_dir: &Path,

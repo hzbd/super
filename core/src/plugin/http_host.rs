@@ -94,6 +94,13 @@ impl HttpPluginHandle {
     }
 }
 
+fn is_core_reserved_route(method: &str, path: &str) -> bool {
+    matches!(
+        (method.to_uppercase().as_str(), path),
+        ("GET", "/api/system/license")
+    )
+}
+
 fn load_http_vtable(library: &Library) -> Option<SuperPluginHttpV1> {
     // SAFETY: symbol must match `SuperPluginHttpV1` ABI when present.
     unsafe {
@@ -161,6 +168,13 @@ pub fn attach_http_plugins(
         }
 
         for route in routes {
+            if is_core_reserved_route(&route.method, &route.path) {
+                warn!(
+                    "Skipping plugin route {} {} (handled by super-core)",
+                    route.method, route.path
+                );
+                continue;
+            }
             plugin_routes.push((route, handle.clone()));
         }
     }
@@ -197,9 +211,8 @@ pub fn attach_http_plugins(
         plugin_router = plugin_router.route(&path, method_router.with_state(handle));
     }
 
-    // Core OSS routes take precedence over plugin-registered paths (e.g. legacy
-    // `/api/system/license` on security.so must not override the native handler).
-    let mut router = plugin_router.merge(router);
+    // Core routes registered first; plugins only add non-conflicting paths.
+    let mut router = router.merge(plugin_router);
 
     if let Some(handle) = auth_plugin.clone() {
         router = router

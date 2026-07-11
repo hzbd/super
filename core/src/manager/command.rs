@@ -97,10 +97,11 @@ pub enum Command {
         reply: oneshot::Sender<HealthResponse>,
     },
 
-    // Internal health status update (id, is_healthy)
+    // Internal health status update (id, is_healthy, optional failure detail)
     InternalHealthUpdate {
         id: Uuid,
         is_healthy: bool,
+        failure_detail: Option<String>,
     },
 
     // Declarative stack deployment

@@ -231,3 +231,55 @@ async fn test_fatal_alert() {
         "Should have triggered process_fatal event"
     );
 }
+
+#[tokio::test]
+async fn test_duplicate_program_name_rejected() {
+    let (handle, _tmp, _notify) = setup_manager().await;
+
+    let req = common::CreateProgramRequest {
+        name: Some("worker-a".to_string()),
+        command: "/bin/sleep".to_string(),
+        args: vec!["10".to_string()],
+        autostart: false,
+        ..Default::default()
+    };
+
+    handle.create_program(req.clone()).await.unwrap();
+
+    let err = handle.create_program(req).await.unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("already exists"),
+        "expected name conflict error, got: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_duplicate_names_in_stack_rejected() {
+    let (handle, _tmp, _notify) = setup_manager().await;
+
+    let stack = common::StackApplyRequest {
+        services: vec![
+            common::CreateProgramRequest {
+                name: Some("dup".to_string()),
+                command: "/bin/sleep".to_string(),
+                args: vec!["1".to_string()],
+                ..Default::default()
+            },
+            common::CreateProgramRequest {
+                name: Some("dup".to_string()),
+                command: "/bin/sleep".to_string(),
+                args: vec!["2".to_string()],
+                ..Default::default()
+            },
+        ],
+        prune: false,
+    };
+
+    let err = handle.apply_stack(stack).await.unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("Duplicate program name"),
+        "expected stack duplicate error, got: {msg}"
+    );
+}

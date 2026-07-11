@@ -335,8 +335,15 @@ pub struct ProgramSummary {
     pub mem_usage: Option<u64>,
     pub last_error: Option<String>,
 
+    /// Latest health_check failure while running (not yet Healthy).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health_error: Option<String>,
+
     #[serde(default)]
     pub depends_on: Vec<String>,
+
+    #[serde(default)]
+    pub resource_limits: Option<ResourceLimits>,
 }
 
 /// API response: program details
@@ -347,6 +354,10 @@ pub struct ProgramInfo {
     pub pid: Option<u32>,
     pub config: ProgramConfig,
     pub last_error: Option<String>,
+
+    /// Latest health_check failure while running (not yet Healthy).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health_error: Option<String>,
 }
 
 /// WebSocket message protocol
