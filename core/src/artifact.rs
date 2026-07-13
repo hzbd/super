@@ -1,4 +1,5 @@
 use common::ArtifactConfig;
+use common::security::{FetchUrlPolicy, validate_outbound_url};
 use futures_util::StreamExt;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
@@ -14,6 +15,8 @@ pub async fn download_to_staging(
     config: &ArtifactConfig,
     timeout_secs: u64,
 ) -> anyhow::Result<PathBuf> {
+    validate_outbound_url(&config.source, FetchUrlPolicy::OtaArtifact)?;
+
     let target_path = PathBuf::from(&config.destination);
 
     // Ensure parent directory exists

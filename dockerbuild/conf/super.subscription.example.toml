@@ -1,0 +1,44 @@
+# =============================================================================
+# Project Super — subscription / licensed deployment example (NOT baked into image)
+# =============================================================================
+# Copy to super.toml when mounting a custom conf/ volume alongside:
+#   - plugins/security.so (+ ui, notify, … per your license)
+#   - a valid [license].key from your vendor
+#
+# Unlike the OSS Docker default, do NOT set allow_insecure_public_bind — API auth
+# is provided by the bundled security plugin.
+# =============================================================================
+
+auth_secret = "CHANGE-ME-strong-random-secret"
+
+[license]
+key = "PASTE-BASE64-LICENSE-KEY"
+
+[server]
+# 0.0.0.0 is OK when security plugin is loaded (Bearer auth on API).
+host = "0.0.0.0"
+port = 9002
+allow_insecure_public_bind = false
+shutdown_timeout = 10
+download_timeout = 86400
+flapping_window = 60
+flapping_threshold = 5
+enable_docs = false
+
+[storage]
+data_file = "data/snapshot.json"
+log_dir = "logs"
+
+[logging]
+log_level = "info"
+log_max_mb = 50
+log_backups = 5
+
+[child_logging]
+driver = "file"
+max_size_mb = 10
+max_backups = 5
+max_line_size_kb = 64
+
+[include]
+files = ["conf/conf.d/*.json"]

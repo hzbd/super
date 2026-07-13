@@ -36,7 +36,10 @@
   </div>
   <div class="home-plugin-grid">
     <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
 <h3>セキュリティとガバナンス</h3>
+        <span class="home-plugin-file">plugins/security.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>API ルートの Bearer トークン認証</li>
         <li>RBAC — admin / operator / viewer</li>
@@ -49,7 +52,10 @@
       </div>
     </div>
     <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
 <h3>イベント通知</h3>
+        <span class="home-plugin-file">plugins/notify.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>Webhook — Slack、钉钉、飞书、カスタム URL</li>
         <li><code>process_fatal</code> 等のシステムイベントをプッシュ</li>
@@ -60,7 +66,10 @@
       </div>
     </div>
     <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
 <h3>リソース分離</h3>
+        <span class="home-plugin-file">plugins/isolation.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>cgroups v2 による CPU/メモリ上限</li>
         <li>プロセス再起動なしで上限をホット更新</li>
@@ -72,7 +81,10 @@
       </div>
     </div>
     <div class="home-plugin-card">
+      <div class="home-plugin-card-head">
 <h3>Web ダッシュボード</h3>
+        <span class="home-plugin-file">plugins/ui.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>UI プラグインが提供するブラウザコンソール</li>
         <li>プロセス概要、ライブログ、起動/停止</li>

@@ -13,8 +13,12 @@ The `[server]` section controls the `superd` daemon itself.
 ```toml
 [server]
 # The IP and port for the API and Web UI
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = 9002
+
+# OSS has no API auth. superd refuses non-loopback bind unless you opt in here
+# or load the security plugin. Shipped example configs set this to false explicitly.
+allow_insecure_public_bind = false
 
 # Graceful shutdown timeout (seconds)
 shutdown_timeout = 10
@@ -28,7 +32,24 @@ flapping_threshold = 5
 log_level = "info"
 ```
 
-> **OSS security:** Pre-built OSS builds default to `127.0.0.1`. Use `0.0.0.0` only when you intend to expose the API and dashboard — protect the port with a firewall or reverse proxy, or load the **`security` plugin** for built-in auth.
+> **OSS security:** OSS builds ship with `host = "127.0.0.1"` and `allow_insecure_public_bind = false`. To bind on `0.0.0.0` or another non-loopback address you must either set `allow_insecure_public_bind = true` (acknowledging that the API is open to the network) or load the **`security` plugin** for token-based auth. Protect the port with a firewall or reverse proxy in either case.
+
+### OSS security defaults (fail-closed)
+
+Super defaults to **restrictive, fail-closed** behaviour in OSS. You can opt into broader exposure, but the daemon will not silently widen the attack surface:
+
+| Area | Default behaviour | How to change (if you accept the risk) |
+| :--- | :--- | :--- |
+| **API bind** | Refuses non-loopback `host` unless auth is active | OSS: `allow_insecure_public_bind = true`, or load **`security`** (N/A for licensed — security is mandatory) |
+| **Custom log paths** | `stdout_logfile` / `stderr_logfile` must resolve under `storage.log_dir` | Use paths inside `log_dir` (relative paths are joined there) |
+| **OTA downloads** | Remote URLs must be **HTTPS**; cloud metadata endpoints blocked | Use HTTPS release URLs; loopback HTTP allowed for local dev only |
+| **Health HTTP probes** | `http://` and `https://` only; no file or exotic schemes | Point probes at your service URLs |
+| **Plugin libraries** | Loaded only from `$SUPER_ROOT/plugins/` after license verification | Ship authorized `.so` / `.dylib` from your subscription package |
+| **Include stacks** | `[include].files` globs outside `SUPER_ROOT` are skipped | Keep stack JSON under your install root |
+| **API responses** | Env keys matching `SECRET`, `PASSWORD`, `TOKEN`, `KEY`, `CREDENTIAL` are masked | See [Environment & Secrets](/docs/02-essentials/environment-secrets) |
+| **Swagger UI** | Off by default (`enable_docs = false`) | Set `enable_docs = true` only on trusted localhost setups |
+
+See [Authentication](/docs/05-advanced-management/authentication#licensed-deployments-require-security) and [SECURITY.md](https://github.com/hzbd/super/blob/master/SECURITY.md) for the full OSS security model.
 
 ## Program Configuration
 

@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Stricter defaults for network exposure and configuration validation in OSS deployments.
+- Improved validation for user-supplied paths and outbound fetch URLs.
+- Reduced sensitive data exposure in API and export responses.
+
 ### Changed
 - Docker Hub image CI publishes **`linux/amd64` only** (removed arm64 manifest from workflow to speed up builds).
 - Open-source edition license changed from **GPL-3.0** to **MIT**.
@@ -24,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > **Licensed plugins are not offered for subscription delivery yet** — readiness is tracked internally before GA.
 
 ### Added
-- **Runtime plugin host** — `superd` discovers `plugins/*.{so,dylib}`, verifies Ed25519 license, and dlopens authorized plugins.
+- **Runtime plugin host** — `superd` discovers `plugins/*.{so,dylib}`, verifies the signed license key, and dlopens authorized plugins.
 - **HTTP plugin ABI** — generic `attach_http_plugins()` in OSS core; plugins register routes and auth middleware without linking `super-core`.
 - **Lifecycle plugin ABI** — `on_event`, `after_stop`, metrics, and manager hooks via `ExtensionStack`.
 - **`[license].key` in `conf/super.toml`** — replaces legacy `license.key` file; `SUPER_LICENSE` env override supported.

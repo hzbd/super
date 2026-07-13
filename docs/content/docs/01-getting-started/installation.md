@@ -12,7 +12,7 @@ The official OSS image ships `superd` and `super` (API + CLI). There is no embed
 
 ### Pull and run
 
-The image ships with a default config at `/app/super/conf/super.toml` (`host = "0.0.0.0"`, port `9002`). No volume mount is required for a first try.
+The image ships with a default config at `/app/super/conf/super.toml` (`host = "0.0.0.0"`, port `9002`, and `allow_insecure_public_bind = true` so the container can listen on all interfaces). No volume mount is required for a first try.
 
 ```bash
 docker pull containerpi/super:latest
@@ -35,7 +35,16 @@ docker run --rm -p 9002:9002 \
   containerpi/super:latest
 ```
 
-Place `super.toml` under `/path/to/conf/`. Drop JSON stack files into `conf/conf.d/*.json` to seed programs on startup — see `dockerbuild/conf/` in the repository for the image defaults and an example stack template.
+Place `super.toml` under `/path/to/conf/`. Reference profiles in `dockerbuild/conf/`:
+
+- **`super.toml`** — OSS default baked into the image (`allow_insecure_public_bind = true` for container networking).
+- **`super.subscription.example.toml`** — subscription template with `[license].key`, `auth_secret`, and security plugin expectations.
+
+Drop JSON stack files into `conf/conf.d/*.json` to seed programs on startup.
+
+If you bind to `0.0.0.0` or another non-loopback address, set `allow_insecure_public_bind = true` in `[server]` (or load the **`security` plugin`). The repo's `example/conf/super.toml` sets this to `false` for local-only deployments.
+
+If you add licensed plugins, **`security.so` and `auth_secret` are required** for startup — security is included with every subscription. See [Licensed deployments require security](/docs/05-advanced-management/authentication#licensed-deployments-require-security).
 
 ### Build from this repository
 

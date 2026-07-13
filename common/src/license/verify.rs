@@ -108,9 +108,18 @@ pub fn license_expiry_status(claims: &LicenseClaims) -> anyhow::Result<LicenseEx
 }
 
 fn verify_signature(license_str: &str, verifying_key: &VerifyingKey) -> anyhow::Result<LicenseClaims> {
+    let trimmed = license_str.trim();
+    if trimmed.len() > crate::security::MAX_LICENSE_B64_LEN {
+        anyhow::bail!("License key too large");
+    }
+
     let json_bytes = BASE64
-        .decode(license_str.trim())
+        .decode(trimmed)
         .context("Invalid license format (Base64 decode failed)")?;
+
+    if json_bytes.len() > crate::security::MAX_LICENSE_JSON_LEN {
+        anyhow::bail!("License payload too large");
+    }
 
     let container: LicenseContainer =
         serde_json::from_slice(&json_bytes).context("Invalid license structure")?;
@@ -125,6 +134,8 @@ fn verify_signature(license_str: &str, verifying_key: &VerifyingKey) -> anyhow::
         .map_err(|_| {
             anyhow::anyhow!("License signature verification failed (invalid or tampered)")
         })?;
+
+    crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
 
     Ok(container.claims)
 }

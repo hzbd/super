@@ -17,7 +17,7 @@ use self::registry::ProcessRegistry;
 use common::{
     BatchAction, BatchProgramRequest, BatchProgramResponse, CreateProgramRequest, HealthResponse,
     ProcessStatus, ProgramConfig, ProgramInfo, ProgramSummary, ResourceLimits, StackApplyRequest,
-    UpdateProgramRequest, WsMessage,
+    UpdateProgramRequest, WsMessage, resolve_confined_log_path,
 };
 use glob::glob;
 use nix::sys::signal::Signal;
@@ -59,6 +59,20 @@ fn validate_resource_limits_patch(limits: &ResourceLimits) -> anyhow::Result<()>
         && cpu != -1.0
     {
         return Err(anyhow::anyhow!("CPU quota must be positive"));
+    }
+    Ok(())
+}
+
+fn validate_program_log_paths(
+    log_dir: &Path,
+    stdout_logfile: Option<&str>,
+    stderr_logfile: Option<&str>,
+) -> anyhow::Result<()> {
+    if let Some(path) = stdout_logfile.filter(|s| !s.trim().is_empty()) {
+        resolve_confined_log_path(log_dir, path)?;
+    }
+    if let Some(path) = stderr_logfile.filter(|s| !s.trim().is_empty()) {
+        resolve_confined_log_path(log_dir, path)?;
     }
     Ok(())
 }
@@ -663,10 +677,18 @@ impl Manager {
                 config.priority = v;
             }
             if let Some(v) = req.stdout_logfile {
-                config.stdout_logfile = if v.trim().is_empty() { None } else { Some(v) };
+                let new_val = if v.trim().is_empty() { None } else { Some(v) };
+                if let Some(ref path) = new_val {
+                    resolve_confined_log_path(&self.config.storage.log_dir, path)?;
+                }
+                config.stdout_logfile = new_val;
             }
             if let Some(v) = req.stderr_logfile {
-                config.stderr_logfile = if v.trim().is_empty() { None } else { Some(v) };
+                let new_val = if v.trim().is_empty() { None } else { Some(v) };
+                if let Some(ref path) = new_val {
+                    resolve_confined_log_path(&self.config.storage.log_dir, path)?;
+                }
+                config.stderr_logfile = new_val;
             }
 
             if let Some(v) = req.depends_on {
@@ -1238,6 +1260,11 @@ impl Manager {
         for service_req in &req.services {
             for config in self.expand_request(service_req) {
                 self.validate_parameters(config.cron.as_deref())?;
+                validate_program_log_paths(
+                    &self.config.storage.log_dir,
+                    config.stdout_logfile.as_deref(),
+                    config.stderr_logfile.as_deref(),
+                )?;
             }
         }
 
@@ -1480,6 +1507,15 @@ impl Manager {
         let mut validation_error = None;
         for cfg in &configs {
             if let Err(e) = self.validate_parameters(cfg.cron.as_deref()) {
+                validation_error = Some(e);
+                break;
+            }
+
+            if let Err(e) = validate_program_log_paths(
+                &self.config.storage.log_dir,
+                cfg.stdout_logfile.as_deref(),
+                cfg.stderr_logfile.as_deref(),
+            ) {
                 validation_error = Some(e);
                 break;
             }
@@ -1748,8 +1784,14 @@ impl Manager {
             let pattern_path = std::path::Path::new(&pattern);
             let full_pattern = if pattern_path.is_relative() {
                 root.join(pattern).to_string_lossy().to_string()
-            } else {
+            } else if pattern_path.starts_with(&root) {
                 pattern
+            } else {
+                tracing::warn!(
+                    "Skipping include pattern outside SUPER_ROOT: {}",
+                    pattern
+                );
+                continue;
             };
             if let Ok(paths) = glob(&full_pattern) {
                 for entry in paths.flatten() {

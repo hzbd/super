@@ -95,6 +95,10 @@ pub struct ServerSection {
     // Enable API docs
     #[serde(default = "default_enable_docs")] // dev: true, production: false
     pub enable_docs: bool,
+
+    /// Allow binding to a non-loopback address without the security plugin (OSS only).
+    #[serde(default)]
+    pub allow_insecure_public_bind: bool,
 }
 
 // Manual Default impl using helper functions above
@@ -108,6 +112,7 @@ impl Default for ServerSection {
             flapping_window: default_flapping_window(),
             flapping_threshold: default_flapping_threshold(),
             enable_docs: default_enable_docs(),
+            allow_insecure_public_bind: false,
         }
     }
 }

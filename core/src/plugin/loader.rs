@@ -1,5 +1,6 @@
 use crate::extension::{Extension, ExtensionStack, NoOpExtension};
 use crate::plugin::adapter::PluginExtensionAdapter;
+use common::security::resolve_plugin_library;
 use common::plugin_abi::{PLUGIN_SYMBOL, SuperPluginV1, read_plugin_version};
 use libloading::Library;
 use std::collections::HashMap;
@@ -44,7 +45,7 @@ pub fn load_authorized_plugins(plugins_dir: &Path, authorized_ids: &[String]) ->
     let mut plugin_versions = HashMap::new();
 
     for id in authorized_ids {
-        let Some(lib_path) = resolve_plugin_path(plugins_dir, id) else {
+        let Some(lib_path) = resolve_plugin_library(plugins_dir, id) else {
             continue;
         };
 
@@ -102,16 +103,5 @@ fn try_load_plugin(
 
 /// Resolve `plugins/{id}.so` (Linux) or `plugins/{id}.dylib` (macOS).
 pub fn resolve_plugin_path(plugins_dir: &Path, id: &str) -> Option<PathBuf> {
-    #[cfg(target_os = "macos")]
-    let extensions = ["dylib", "so"];
-    #[cfg(not(target_os = "macos"))]
-    let extensions = ["so", "dylib"];
-
-    for ext in extensions {
-        let path = plugins_dir.join(format!("{id}.{ext}"));
-        if path.is_file() {
-            return Some(path);
-        }
-    }
-    None
+    resolve_plugin_library(plugins_dir, id)
 }

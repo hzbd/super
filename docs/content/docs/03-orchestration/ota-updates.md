@@ -100,7 +100,7 @@ super restart my-app    # required to run the new command
 
 | Field | Required | Description |
 | :--- | :--- | :--- |
-| `source` | Yes | HTTPS (or HTTP) URL to download |
+| `source` | Yes | Download URL. **Remote hosts must use HTTPS** (HTTP allowed on loopback for dev). Cloud metadata endpoints are blocked. |
 | `checksum` | Yes | SHA256 hex of the artifact |
 | `destination` | Yes | Absolute path of the binary on disk |
 | `extract` | Yes | `false` for a single binary; `true` for archives |

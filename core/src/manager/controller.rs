@@ -1,7 +1,6 @@
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use uuid::Uuid;
@@ -461,9 +460,21 @@ impl LifecycleController {
         };
 
         let mut stdout_log_config = base_log_config.clone();
-        stdout_log_config.custom_path = config.stdout_logfile.as_ref().map(PathBuf::from);
+        stdout_log_config.custom_path = match config.stdout_logfile.as_deref() {
+            None => None,
+            Some(path) => Some(common::resolve_confined_log_path(
+                &self.config.storage.log_dir,
+                path,
+            )?),
+        };
         let mut stderr_log_config = base_log_config;
-        stderr_log_config.custom_path = config.stderr_logfile.as_ref().map(PathBuf::from);
+        stderr_log_config.custom_path = match config.stderr_logfile.as_deref() {
+            None => None,
+            Some(path) => Some(common::resolve_confined_log_path(
+                &self.config.storage.log_dir,
+                path,
+            )?),
+        };
 
         if let Some(stdout) = child.stdout.take() {
             logger::capture_stdout(id, stdout, stdout_log_config, self.log_tx.clone());

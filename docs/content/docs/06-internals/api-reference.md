@@ -8,9 +8,11 @@ Super exposes a RESTful API on port `9002` (default). All responses are in JSON 
 
 ## Authentication
 
-**Without `security` plugin**: No API authentication. The API is open on the bind address. Default bind is `127.0.0.1`.
+**Without `security` plugin loaded** (OSS only): No API authentication. The API is open on the bind address. OSS ships with `host = "127.0.0.1"` and `allow_insecure_public_bind = false`; `superd` **refuses startup** on a non-loopback bind unless you set that flag to `true`. See [Configuration — OSS security defaults](/docs/02-essentials/configuration#oss-security-defaults-fail-closed).
 
-**With `security` plugin loaded**: All API requests require `Authorization: Bearer <token>` (except health/docs whitelist). See [Authentication](/docs/05-advanced-management/authentication).
+**Licensed (`[license].key` valid):** `security` is bundled with every subscription and **must load** — otherwise `superd` refuses startup. API auth is always active when licensed. See [Authentication — Licensed deployments require security](/docs/05-advanced-management/authentication#licensed-deployments-require-security).
+
+**With `security` plugin loaded**: All API requests require `Authorization: Bearer <token>` (except health/docs whitelist). Public bind is allowed because auth middleware is active. See [Authentication](/docs/05-advanced-management/authentication).
 
 ## Programs
 
@@ -88,7 +90,7 @@ Partially update an existing program. Only fields present in the body are change
 | `env`, `env_file` | Environment (`env_file` = `""` clears) |
 | `autostart`, `retry_limit`, `autorestart`, `exitcodes`, `startsecs`, `stopsecs`, `priority` | Restart / stop behaviour |
 | `depends_on`, `health_check`, `hooks` | Orchestration |
-| `stdout_logfile`, `stderr_logfile` | Custom log paths |
+| `stdout_logfile`, `stderr_logfile` | Custom log paths (must resolve under `storage.log_dir`) |
 | `artifact` | OTA binary update — see below |
 | `cron` | Cron expression — see [Scheduled Tasks](/docs/02-essentials/scheduled-tasks). |
 | `resource_limits` | 💎 Requires `isolation` plugin on Linux — stored in config always; enforced only when plugin is loaded |

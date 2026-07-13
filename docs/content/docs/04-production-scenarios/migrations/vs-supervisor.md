@@ -117,8 +117,8 @@ Supervisor and Super use different configuration models. Use this table when mig
 | :--- | :--- |
 | `stopwaitsecs` | `stopsecs` (optional; else `[server].shutdown_timeout`) |
 | `priority` | `priority` (lower starts first; complements `depends_on`) |
-| `stdout_logfile` | `stdout_logfile` |
-| `stderr_logfile` | `stderr_logfile` |
+| `stdout_logfile` | `stdout_logfile` (must resolve under `storage.log_dir`) |
+| `stderr_logfile` | `stderr_logfile` (must resolve under `storage.log_dir`) |
 | `startretries` | `retry_limit` |
 | `autorestart=unexpected` | `autorestart = "unexpected"` + `exitcodes` |
 

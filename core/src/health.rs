@@ -1,4 +1,5 @@
 use common::HealthCheck;
+use common::security::{FetchUrlPolicy, validate_outbound_url};
 use std::process::Stdio;
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -62,6 +63,10 @@ async fn check_tcp(host: &str, port: u16) -> CheckOutcome {
 }
 
 async fn check_http(url: &str, method: Option<&str>) -> CheckOutcome {
+    if let Err(e) = validate_outbound_url(url, FetchUrlPolicy::HealthCheck) {
+        return CheckOutcome::fail(format!("Health check URL rejected: {e}"));
+    }
+
     let client = get_http_client();
 
     let method_str = method.unwrap_or("GET");

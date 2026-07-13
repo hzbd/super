@@ -4,17 +4,35 @@ weight: 1
 description: "Securing the Daemon with Access Tokens."
 ---
 
-The **default OSS deployment has no API authentication** — bind to `127.0.0.1` or firewall the API port. Loading the optional **`security` plugin** adds token-based auth for shared or public-facing deployments.
+The **default OSS deployment has no API authentication**. By default, `superd` binds to loopback and **refuses to start** on a non-loopback address unless you explicitly set `allow_insecure_public_bind = true` in `[server]` or load the optional **`security` plugin** for token-based auth.
 
 > **Pre-release:** Licensed plugins are **not ready for production or customer delivery**. The steps below are for development and integration testing only.
 
-Without the `security` plugin loaded, `superd` behaves like OSS-only (no API auth, localhost warning when bound publicly).
+OSS deployments without a valid `[license].key` have no API auth; public bind requires explicit opt-in via `allow_insecure_public_bind` as described above.
+
+## Licensed deployments require `security`
+
+**Every subscription includes the `security` plugin at no extra charge.** If `[license].key` verifies successfully, `superd` **refuses to start** unless:
+
+1. **`security` is listed in the signed license claims** (re-issue legacy keys that omit it).
+2. **`security.so` / `security.dylib` loads successfully** from `$SUPER_ROOT/plugins/`.
+3. **`auth_secret` is set** in `conf/super.toml` (root secret for token bootstrap).
+4. **HTTP auth middleware is active** (the security plugin exports `authenticate`).
+
+Other licensed plugins (`ui`, `notify`, `isolation`, …) load only after these checks pass. OSS deployments (no valid license) are unchanged.
+
+| Mode | API auth | Startup if `security` missing |
+| :--- | :--- | :--- |
+| OSS | ❌ Open (loopback-first) | N/A — runs without plugins |
+| **Licensed** | ✅ Required (via `security`) | **Hard fail** |
+
+> **Legacy keys** without `security` in claims must be re-issued. **Partial installs** (license OK, `ui.so` present, `security.so` missing) also fail fast with an actionable error.
 
 ## Enabling Authentication (Subscription)
 
-1. Add a valid `[license].key` in `conf/super.toml` that authorizes API authentication.
-2. Install the security plugin library from your subscription delivery package into `$SUPER_ROOT/plugins/`.
-3. Set `auth_secret` in `super.toml` (subscription-only field):
+1. Add a valid `[license].key` in `conf/super.toml` (must authorize `security` — included with every subscription).
+2. Install **`security.so`** from your subscription delivery package into `$SUPER_ROOT/plugins/` (required for startup).
+3. Set `auth_secret` in `super.toml` (required for startup):
 
 ```toml
 # super.toml (subscription)

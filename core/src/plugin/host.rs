@@ -1,3 +1,4 @@
+use anyhow::Context;
 use crate::plugin::loader::{PluginRuntime, load_authorized_plugins};
 use common::config::resolve_license_key;
 use common::license::{
@@ -170,6 +171,65 @@ impl PluginHost {
     }
 }
 
+/// Licensed mode requires the bundled `security` plugin and a configured root secret.
+pub fn validate_licensed_security(
+    mode: RunMode,
+    claims: Option<&LicenseClaims>,
+    loaded_plugins: &[String],
+    installed_plugins: &[String],
+    plugins_dir: &Path,
+) -> anyhow::Result<()> {
+    if mode != RunMode::Licensed {
+        return Ok(());
+    }
+
+    let claims = claims.context("licensed mode requires license claims")?;
+
+    if !claims.plugins.iter().any(|p| p == "security") {
+        anyhow::bail!(
+            "Licensed deployment requires the security plugin in your subscription key. \
+             Re-issue or renew your license — security is included with every subscription."
+        );
+    }
+
+    if !loaded_plugins.iter().any(|p| p == "security") {
+        if installed_plugins.iter().any(|p| p == "security") {
+            anyhow::bail!(
+                "security plugin is present under {} but failed to load. \
+                 Check superd logs for dlopen errors.",
+                plugins_dir.display()
+            );
+        }
+        anyhow::bail!(
+            "Licensed deployment requires security.so (or security.dylib) under {}. \
+             The security plugin is included with every subscription.",
+            plugins_dir.display()
+        );
+    }
+
+    Ok(())
+}
+
+/// Require `auth_secret` once the security plugin is loaded for a licensed deployment.
+pub fn validate_licensed_auth_secret(
+    mode: RunMode,
+    loaded_plugins: &[String],
+    auth_secret: Option<&str>,
+) -> anyhow::Result<()> {
+    if mode != RunMode::Licensed {
+        return Ok(());
+    }
+    if !loaded_plugins.iter().any(|p| p == "security") {
+        return Ok(());
+    }
+    if auth_secret.is_some_and(|s| !s.trim().is_empty()) {
+        return Ok(());
+    }
+    anyhow::bail!(
+        "Licensed deployment requires auth_secret in conf/super.toml for the security plugin."
+    );
+}
+
 fn resolve_license(config_file: &Path) -> LicenseOutcome {
     let key = match resolve_license_key(config_file) {
         Ok(k) => k,
@@ -227,6 +287,7 @@ fn scan_plugin_files(plugins_dir: &Path) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
     use tempfile::TempDir;
 
     #[test]
@@ -278,5 +339,74 @@ mod tests {
         let host = PluginHost::discover(tmp.path(), "1.1.9");
         assert_eq!(host.mode, RunMode::Oss);
         assert!(host.loaded_plugins.is_empty());
+    }
+
+    #[test]
+    fn licensed_requires_security_in_claims() {
+        let claims = LicenseClaims {
+            issued_to: "acme".into(),
+            issued_at: 0,
+            major_version: 1,
+            minor_version: None,
+            max_super_minor: None,
+            minor_ahead: None,
+            issued_super_version: None,
+            plugins: vec!["ui".into()],
+            expires_at: None,
+            retain_plugins_after_expiry: None,
+            license_id: None,
+        };
+        let err = validate_licensed_security(
+            RunMode::Licensed,
+            Some(&claims),
+            &[],
+            &[],
+            Path::new("/tmp/plugins"),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("security plugin"));
+    }
+
+    #[test]
+    fn licensed_requires_security_on_disk() {
+        let claims = LicenseClaims {
+            issued_to: "acme".into(),
+            issued_at: 0,
+            major_version: 1,
+            minor_version: None,
+            max_super_minor: None,
+            minor_ahead: None,
+            issued_super_version: None,
+            plugins: vec!["security".into(), "ui".into()],
+            expires_at: None,
+            retain_plugins_after_expiry: None,
+            license_id: None,
+        };
+        let err = validate_licensed_security(
+            RunMode::Licensed,
+            Some(&claims),
+            &[],
+            &[],
+            Path::new("/tmp/plugins"),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("security.so"));
+    }
+
+    #[test]
+    fn licensed_requires_auth_secret() {
+        let err = validate_licensed_auth_secret(
+            RunMode::Licensed,
+            &["security".into()],
+            None,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("auth_secret"));
+    }
+
+    #[test]
+    fn oss_skips_licensed_security_checks() {
+        validate_licensed_security(RunMode::Oss, None, &[], &[], Path::new(".")).unwrap();
+        validate_licensed_auth_secret(RunMode::Oss, &[], None).unwrap();
     }
 }

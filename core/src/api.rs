@@ -4,7 +4,7 @@ use axum::response::Response;
 use axum::{
     Json, Router,
     extract::{
-        Path, Query, State, WebSocketUpgrade,
+        DefaultBodyLimit, Path, Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
     http::StatusCode,
@@ -16,7 +16,7 @@ use common::{
     ArtifactConfig, BatchAction, BatchProgramRequest, BatchProgramResponse, CreateProgramRequest,
     HealthCheck, HealthResponse, LicenseInfo, ProcessStatus, ProgramConfig, ProgramHooks,
     ProgramInfo, ProgramLogFile, ProgramLogsResponse, ProgramSummary, SignalProgramRequest,
-    StackApplyRequest, SystemStats, UpdateProgramRequest, WsMessage,
+    StackApplyRequest, SystemStats, UpdateProgramRequest, WsMessage, mask_env_map,
 };
 
 use crate::logger::{self, LogSource};
@@ -28,6 +28,9 @@ use uuid::Uuid;
 
 use utoipa::{IntoParams, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
+
+/// Maximum JSON body size for mutating API routes (4 MiB).
+const API_BODY_LIMIT: usize = 4 * 1024 * 1024;
 
 // App State
 #[derive(Clone)]
@@ -185,6 +188,7 @@ pub fn make_api_router(
         .route("/api/system/license", get(system_license))
         .route("/ws", get(ws_handler))
         .route("/metrics", get(metrics_handler))
+        .layer(DefaultBodyLimit::max(API_BODY_LIMIT))
         .with_state(state);
 
     // 2. Merge routes
@@ -323,11 +327,12 @@ async fn get_program_info(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ProgramInfo>, AppError> {
-    let info = state
+    let mut info = state
         .manager
         .get_program(id)
         .await
         .map_err(|e| AppError(StatusCode::NOT_FOUND, e))?;
+    info.config.env = mask_env_map(&info.config.env);
     Ok(Json(info))
 }
 
@@ -752,7 +757,7 @@ async fn export_stack(State(state): State<AppState>) -> Result<Json<StackApplyRe
                 name: Some(c.name),
                 command: c.command,
                 args: c.args,
-                env: c.env,
+                env: mask_env_map(&c.env),
                 env_file: c.env_file,
                 cwd: c.cwd,
                 user: c.user,

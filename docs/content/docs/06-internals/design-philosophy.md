@@ -1,12 +1,93 @@
 ---
 title: "Design Philosophy"
 weight: 1
-description: "Actor Model, Crash Safety, Defensive Programming, and Zero-Cost Abstractions."
+description: "System architecture overview, Actor Model, crash safety, and defensive defaults."
 ---
 
 Project Super was built to solve specific architectural shortcomings in existing process managers like Supervisor (Python) and PM2 (Node.js). We don't just manage processes; we engineer for edge cases, memory constraints, and high-concurrency storms.
 
 Here is an inside look at the architectural decisions that make Super fundamentally different.
+
+## System architecture (overview)
+
+Super is a **single static binary** (`superd`) that runs on your server or container. You configure it with `super.toml`, manage programs through the **CLI** or **HTTP API**, and optionally unlock subscription features by adding a signed license key and official plugin libraries — no separate “enterprise” build.
+
+```mermaid
+flowchart TB
+  subgraph operators["Operators & automation"]
+    CLI["super CLI"]
+    CI["CI / scripts"]
+    Browser["Browser optional"]
+  end
+
+  subgraph superd["superd (OSS core)"]
+    API["REST API /api/*"]
+    WS["WebSocket /ws logs"]
+    MET["/metrics Prometheus"]
+    MGR["Process Manager\nActor + registry"]
+    API --> MGR
+    WS --> MGR
+    MET --> MGR
+  end
+
+  subgraph optional["Optional plugins runtime"]
+    SEC["security\nAPI auth · RBAC"]
+    UI["ui\nDashboard"]
+    NOT["notify\nWebhooks"]
+    ISO["isolation\ncgroups Linux"]
+  end
+
+  subgraph data["On disk SUPER_ROOT"]
+    CONF["conf/super.toml"]
+    SNAP["data/snapshot.json"]
+    LOGS["logs/"]
+    PLUG["plugins/*.so"]
+  end
+
+  subgraph workloads["Managed programs"]
+    P1["app A"]
+    P2["app B"]
+    P3["cron / worker"]
+  end
+
+  CLI --> API
+  CI --> API
+  Browser --> API
+  Browser --> UI
+
+  CONF --> superd
+  SNAP --> MGR
+  LOGS --> MGR
+  PLUG --> optional
+  optional --> superd
+
+  MGR --> P1
+  MGR --> P2
+  MGR --> P3
+  P1 --> LOGS
+  P2 --> LOGS
+```
+
+### How the pieces fit together
+
+| Component | Role |
+| :--- | :--- |
+| **`superd`** | Long-running daemon: spawns processes, health checks, OTA updates, persistence, API. |
+| **`super` CLI** | Local or remote control against the API (create/start/logs/stack). |
+| **REST + WebSocket** | Declarative control and live log streaming for automation. |
+| **`/metrics`** | Prometheus scrape endpoint (OSS). |
+| **`conf/super.toml`** | Daemon settings, optional `[license].key`, `auth_secret` when subscribed. |
+| **`data/snapshot.json`** | Durable program registry (atomic writes). |
+| **`logs/`** | Daemon and child process logs (rotation configurable). |
+| **Plugins** | Optional `.so` / `.dylib` loaded at runtime after license verification. |
+
+**OSS (default):** loopback-first bind, no built-in dashboard, API open only on the bind address you configure. See [Configuration — OSS security defaults](/docs/02-essentials/configuration#oss-security-defaults-fail-closed).
+
+**Subscription:** same `superd` binary; add `[license].key`, deploy plugin libraries under `plugins/`, and set `auth_secret`. The **`security` plugin is included with every subscription** and is required for licensed startup — API token auth and RBAC then protect the control plane. See [Authentication](/docs/05-advanced-management/authentication#licensed-deployments-require-security) and the [Feature matrix](/docs/07-editions/feature-matrix/).
+
+**Typical control flow:** an operator or pipeline sends `POST /api/programs` (or `super add`) → the Manager validates config → spawns the child in its own **process group** → streams stdout/stderr to disk and WebSocket → health probes and dependency rules decide when downstream services start. Shutdown and OTA paths use the same Manager mailbox so state stays consistent under load.
+
+For day-to-day configuration rather than internals, start with [Configuration](/docs/02-essentials/configuration) and [Quick Start](/docs/01-getting-started/quick-start/).
 
 ## 1. Why Rust?
 
@@ -55,7 +136,7 @@ When saving state to `snapshot.json`, Super writes to a `.tmp` file, calls `fs::
 ### Secret Mounting & Display Masking
 We **do not** use master-key encryption for secrets, as rotating the key would permanently destroy configurations (Crypto-shredding). Instead, we use a **Reference & Masking** architecture:
 1. Super allows mounting `.env` files dynamically. The secrets never touch `snapshot.json`.
-2. When accessed via CLI or API, any environment variable containing `PASSWORD`, `SECRET`, or `TOKEN` is automatically masked as `********` to prevent shoulder-surfing.
+2. When accessed via CLI or API, environment variables whose keys contain `PASSWORD`, `SECRET`, `TOKEN`, `KEY`, or `CREDENTIAL` are automatically masked as `********` to prevent shoulder-surfing.
 3. As a final fallback, Super forces `0600` file permissions on `snapshot.json`, ensuring only the `root` user can read the underlying configuration.
 
 ## 5. Defensive Programming: Beating OOM Attacks

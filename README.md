@@ -12,7 +12,7 @@ Super is a modern replacement for tools like [Supervisor](https://supervisord.or
 
 ## Core Features
 
-* **Single binary** — Rust `superd` process manager; TOML or REST config; CLI, web UI, and HTTP API
+* **Single binary** — Rust `superd` process manager; TOML or REST config; CLI and HTTP API (Dashboard via optional `ui` plugin)
 * **Declarative orchestration** — stacks, dependencies, health checks
 * **Lifecycle hooks** — `pre_start`, `post_start`, `post_stop`, and global event hooks
 * **Observability** — WebSocket logs, historical logs API, system metrics

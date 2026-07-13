@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
 
-/// Signed license claims. The entire struct is covered by Ed25519 signature.
+/// Signed license claims. The entire struct is covered by the license signature.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct LicenseClaims {
     pub issued_to: String,

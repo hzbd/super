@@ -343,6 +343,14 @@
   color: var(--muted);
   font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
 }
+.home-plugin-card-head .home-plugin-file {
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
 
 .home-plugin-linux-note {
   margin: 0.375rem 0 0;
@@ -397,6 +405,10 @@
   color: var(--fg) !important;
   opacity: 0.72;
   text-decoration: none !important;
+}
+.home-plugin-links a::after {
+  content: ' →';
+  opacity: 0.85;
 }
 .home-plugin-links a:hover { opacity: 1; }
 

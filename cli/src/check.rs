@@ -1,5 +1,8 @@
 use colored::Colorize;
-use common::config::ServerConfig;
+use common::config::{resolve_license_key, ServerConfig};
+use common::is_loopback_bind_host;
+use common::verify_license_for_superd;
+use common::resolve_super_root;
 use std::fs;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -65,6 +68,20 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
         }
     }
     println!();
+
+    let licensed_ready = check_licensed_deployment(&path, &config, &mut errors, &mut warnings);
+
+    if !licensed_ready
+        && !is_loopback_bind_host(&config.server.host)
+        && !config.server.allow_insecure_public_bind
+    {
+        errors.push(format!(
+            "Server binds to {} without loopback isolation. \
+             Set allow_insecure_public_bind = true, bind to 127.0.0.1, \
+             or load the security plugin at runtime.",
+            config.server.host
+        ));
+    }
 
     // 4. Check log directory (write permission)
     let log_dir = &config.storage.log_dir;
@@ -240,4 +257,65 @@ fn resolve_config_path(user_path: Option<PathBuf>) -> anyhow::Result<PathBuf> {
     Err(anyhow::anyhow!(
         "Config file not found. Please specify with --file"
     ))
+}
+
+/// When a valid license is configured, mirror superd startup requirements.
+/// Returns `true` when licensed mode is expected to start successfully (security + auth).
+fn check_licensed_deployment(
+    config_path: &Path,
+    config: &ServerConfig,
+    errors: &mut Vec<String>,
+    warnings: &mut Vec<String>,
+) -> bool {
+    let Ok(Some(license_key)) = resolve_license_key(config_path) else {
+        return false;
+    };
+
+    let Ok((claims, _status)) = verify_license_for_superd(&license_key) else {
+        warnings.push(
+            "License key present but verification failed — superd will run in OSS mode".into(),
+        );
+        return false;
+    };
+
+    let mut ok = true;
+
+    if !claims.plugins.iter().any(|p| p == "security") {
+        errors.push(
+            "Licensed deployment requires 'security' in license claims (included with every subscription).".into(),
+        );
+        ok = false;
+    }
+
+    let plugins_dir = resolve_super_root().join("plugins");
+    let has_security = ["security.so", "security.dylib"]
+        .iter()
+        .any(|name| plugins_dir.join(name).is_file());
+    if !has_security {
+        errors.push(format!(
+            "Licensed deployment requires {}/security.so (or security.dylib)",
+            plugins_dir.display()
+        ));
+        ok = false;
+    }
+
+    if config
+        .auth_secret
+        .as_ref()
+        .is_none_or(|s| s.trim().is_empty())
+    {
+        errors.push(
+            "Licensed deployment requires auth_secret in super.toml (or via environment).".into(),
+        );
+        ok = false;
+    }
+
+    if config.server.allow_insecure_public_bind {
+        errors.push(
+            "allow_insecure_public_bind is not used when a valid license is configured — remove it or use OSS mode without a license key.".into(),
+        );
+        ok = false;
+    }
+
+    ok
 }

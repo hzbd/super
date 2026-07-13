@@ -19,6 +19,25 @@ We aim to acknowledge reports within **72 hours** and will coordinate disclosure
 
 ## OSS security model
 
-The Community Edition (`superd`) does **not** implement API authentication by default. Bind to `127.0.0.1` or protect the API port with a firewall. For token-based auth and RBAC, load the authorized **security** plugin from your subscription package together with a valid `[license].key` in `conf/super.toml`.
+The Community Edition (`superd`) does **not** implement API authentication by default. Shipped example configs use `host = "127.0.0.1"` and **`allow_insecure_public_bind = false`**, so the daemon **refuses startup** on a non-loopback bind unless you explicitly opt in or load the **security** plugin.
+
+To bind on `0.0.0.0` or another network-facing address without the security plugin, set `allow_insecure_public_bind = true` and accept that the REST API is open to anyone who can reach the port (OSS only). **Licensed deployments must load the bundled `security` plugin** — startup fails otherwise. For token-based auth and RBAC, use `auth_secret` with the **security** plugin and a valid `[license].key` in `conf/super.toml`.
+
+### Built-in safeguards (OSS)
+
+Super applies defensive defaults even when no plugins are loaded:
+
+| Safeguard | Behaviour |
+| :--- | :--- |
+| **Bind policy** | Fail-closed on non-loopback unless `allow_insecure_public_bind = true` or `security` plugin auth is active |
+| **Log path confinement** | Custom program log paths must stay under `storage.log_dir` |
+| **OTA fetch policy** | Remote artifact URLs must use HTTPS; link-local / metadata targets blocked |
+| **Health probes** | HTTP(S) URLs only for outbound health checks |
+| **Plugin loading** | Only files under `$SUPER_ROOT/plugins/` matching the signed license |
+| **Stack includes** | `[include].files` outside `SUPER_ROOT` ignored |
+| **Secret display** | API/CLI mask env values whose keys look sensitive |
+| **Docs surface** | Swagger UI disabled by default (`enable_docs = false`) |
+
+Full user-facing detail: [Configuration — OSS security defaults](http://super.docs.sconts.com/docs/02-essentials/configuration/#oss-security-defaults-fail-closed).
 
 > **Licensed plugins (v1.2.0):** Pre-release — not offered for subscription delivery yet. Do not expose plugin-gated deployments as production-ready without maintainer sign-off.

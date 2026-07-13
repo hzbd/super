@@ -44,3 +44,23 @@ async fn test_read_log_lines_custom_path() {
     .unwrap();
     assert_eq!(tail.trim(), "custom-log-line");
 }
+
+#[tokio::test]
+async fn test_read_log_lines_rejects_path_outside_log_dir() {
+    let dir = tempfile::tempdir().unwrap();
+    let id = Uuid::new_v4();
+    let outside = std::env::temp_dir().join(format!("super-outside-{}.log", id));
+    tokio::fs::write(&outside, "secret\n").await.unwrap();
+
+    let tail = logger::read_log_lines(
+        dir.path(),
+        id,
+        LogSource::Stdout,
+        10,
+        Some(outside.to_str().unwrap()),
+        None,
+    )
+    .await;
+    assert!(tail.is_none());
+    let _ = tokio::fs::remove_file(outside).await;
+}

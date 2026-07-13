@@ -66,14 +66,37 @@ HTTP API / OSS notice: http://localhost:9002 (no embedded dashboard in the OSS i
 
 ## Configuration
 
+Two reference profiles ship under `dockerbuild/conf/`:
+
+| File | Profile | Baked into image? |
+| :--- | :--- | :---: |
+| `super.toml` | **OSS** — `0.0.0.0` + `allow_insecure_public_bind = true`, no license | Yes (default) |
+| `super.subscription.example.toml` | **Subscription** — `[license].key`, `auth_secret`, security plugin required | No — copy when mounting custom `conf/` |
+
 | Path in container | Purpose |
 | :--- | :--- |
-| `/app/super/conf/super.toml` | Daemon settings (shipped default) |
+| `/app/super/conf/super.toml` | Daemon settings (OSS default in image) |
 | `/app/super/conf/conf.d/*.json` | Optional program stacks on startup |
 | `/app/super/data/` | Persisted program registry (`snapshot.json`) |
 | `/app/super/logs/` | superd and child process logs |
 
 Copy and edit defaults from `dockerbuild/conf/`:
+
+```bash
+# OSS — tweak baked-in settings
+cp -r dockerbuild/conf ./my-super-conf
+
+# Subscription — start from the licensed example, add plugins/ + license key
+cp dockerbuild/conf/super.subscription.example.toml ./my-super-conf/super.toml
+# copy plugins/*.so into ./my-super-plugins/ and mount as /app/super/plugins
+docker run --rm -p 9002:9002 \
+  -v ./my-super-conf:/app/super/conf \
+  -v ./my-super-plugins:/app/super/plugins \
+  -v ./my-super-data:/app/super/data \
+  containerpi/super:latest
+```
+
+Minimal OSS mount (config only):
 
 ```bash
 cp -r dockerbuild/conf ./my-super-conf

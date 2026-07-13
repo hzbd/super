@@ -18,9 +18,12 @@ Create a file named `super.toml`. We only need to configure the server port.
 [server]
 host = "127.0.0.1"
 port = 9002
+# OSS has no API auth. superd refuses non-loopback bind unless you opt in here
+# or load the security plugin. Keep false for local-only deployments.
+allow_insecure_public_bind = false
 ```
 
-> **Note**: OSS has no API authentication. The default bind is `127.0.0.1`. Use a firewall if you expose another address. Commercial auth requires the `security` plugin — see [Authentication](/docs/05-advanced-management/authentication).
+> **Note**: OSS has no API authentication. The default bind is `127.0.0.1` with `allow_insecure_public_bind = false`, so `superd` will **not** start on a public address (e.g. `0.0.0.0`) unless you deliberately set that flag to `true` or load the **`security` plugin** — see [Authentication](/docs/05-advanced-management/authentication). Use a firewall or reverse proxy if you expose the API another way.
 
 If you use the repo's [example config](https://github.com/hzbd/super/blob/master/example/conf/super.toml), it also binds to port **9002** — keep CLI/API URLs in sync with your `super.toml`.
 

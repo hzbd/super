@@ -26,7 +26,7 @@ port = 8080
 
 ### 2. HTTP Check
 
-Performs an HTTP request. Succeeds if the response status code is `200-299`.
+Performs an HTTP request. Succeeds if the response status code is `200-299`. Only `http://` and `https://` URLs are accepted for outbound probes.
 
 ```toml
 [programs.health_check]

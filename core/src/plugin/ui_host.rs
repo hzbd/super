@@ -119,12 +119,7 @@ pub fn load_ui_plugin(runtime: &PluginRuntime) -> Option<Arc<UiPluginHandle>> {
 
 /// Normalize a request path into a plugin asset key (`index.html`, `assets/app.js`, …).
 pub fn normalize_ui_path(uri_path: &str) -> String {
-    let path = uri_path.trim_start_matches('/');
-    if path.is_empty() {
-        "index.html".to_string()
-    } else {
-        path.to_string()
-    }
+    common::security::sanitize_ui_asset_path(uri_path).unwrap_or_else(|| "index.html".to_string())
 }
 
 #[cfg(test)]
@@ -136,5 +131,6 @@ mod tests {
         assert_eq!(normalize_ui_path("/"), "index.html");
         assert_eq!(normalize_ui_path(""), "index.html");
         assert_eq!(normalize_ui_path("/assets/app.js"), "assets/app.js");
+        assert_eq!(normalize_ui_path("/../etc/passwd"), "index.html");
     }
 }

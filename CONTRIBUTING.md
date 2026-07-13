@@ -38,7 +38,20 @@ superd ── verifies ──► [license].key   signed key from your vendor
 
 **Out of scope here:** plugin implementations, subscription key signing, plugin SKU catalogs, dashboard sources.
 
-Licensed-plugin fields in config and API are documented with a 💎 marker; see [Feature matrix](/docs/07-editions/feature-matrix/) and [OSS repository boundary](docs/content/docs/06-internals/oss-boundary.md).
+Licensed-plugin fields in config and API are documented with a 💎 marker; see the public [Feature matrix](https://super.docs.sconts.com/docs/07-editions/feature-matrix/) on the docs site.
+
+## Public docs vs this repo
+
+The Hugo site under `docs/content/docs/` is **customer-facing**. Do not add contributor runbooks, internal repository boundaries, signing workflows, or “what not to publish” checklists there — keep those in this file or in the private plugins repository.
+
+When updating public docs:
+
+- Describe OSS and licensed **runtime behaviour** only (what users configure and what `superd` does).
+- Use vendor-neutral wording: “subscription delivery package”, “your vendor”, “authorized plugin libraries”.
+- Do not link to or name private repositories, signing tools, or internal monorepo paths.
+- Use the 💎 marker only for fields that require a verified subscription at runtime.
+
+Before opening a PR that touches docs or license-related code, confirm the change does not require documenting private trees or issuance policy internals.
 
 ## Questions
 

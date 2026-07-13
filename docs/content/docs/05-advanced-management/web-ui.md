@@ -88,8 +88,10 @@ The dashboard also includes create/edit forms, a [declarative stack editor](/doc
 
 ## Security
 
-**OSS (no `security` plugin):** The API and any static page at `/` are reachable without authentication — restrict network access.
+**Without `security` plugin (OSS only):** The API and dashboard static assets are reachable without authentication on the bind address. OSS defaults to loopback-only startup (`allow_insecure_public_bind = false`).
 
-**With `security` plugin:** Token authentication and RBAC apply to the API and dashboard. Log in via `super login <auth_secret>` or create API tokens. See [Access control](/docs/05-advanced-management/access-control) and [Authentication](/docs/05-advanced-management/authentication).
+**Licensed:** `security` is bundled and **must load** — startup fails otherwise. Dashboard and API require token auth.
 
-> **Security tip:** When exposing beyond localhost, load the **`security`** plugin and set a strong `auth_secret` in `conf/super.toml`.
+**With `security` plugin loaded:** Token authentication and RBAC apply to the API and dashboard. Log in via `super login <auth_secret>` or create API tokens. See [Access control](/docs/05-advanced-management/access-control) and [Authentication](/docs/05-advanced-management/authentication).
+
+> **Security tip:** OSS exposure beyond localhost requires explicit `allow_insecure_public_bind = true` or the **`security` plugin**. Licensed deployments always load `security`.

@@ -36,7 +36,10 @@
   </div>
   <div class="home-plugin-grid">
     <div class="home-plugin-card">
-      <h3>Security &amp; Governance</h3>
+      <div class="home-plugin-card-head">
+        <h3>Security &amp; Governance</h3>
+        <span class="home-plugin-file">plugins/security.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>Bearer token authentication on API routes</li>
         <li>RBAC roles — admin, operator, viewer</li>
@@ -49,7 +52,10 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <h3>Event Notifications</h3>
+      <div class="home-plugin-card-head">
+        <h3>Event Notifications</h3>
+        <span class="home-plugin-file">plugins/notify.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>Webhook channels — Slack, DingTalk, Feishu, custom URLs</li>
         <li>Push on <code>process_fatal</code> and other system events</li>
@@ -60,7 +66,10 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <h3>Resource Isolation</h3>
+      <div class="home-plugin-card-head">
+        <h3>Resource Isolation</h3>
+        <span class="home-plugin-file">plugins/isolation.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>cgroups v2 CPU and memory limits per program</li>
         <li>Hot-update limits without restarting the process</li>
@@ -72,7 +81,10 @@
       </div>
     </div>
     <div class="home-plugin-card">
-      <h3>Web Dashboard</h3>
+      <div class="home-plugin-card-head">
+        <h3>Web Dashboard</h3>
+        <span class="home-plugin-file">plugins/ui.so</span>
+      </div>
       <ul class="home-plugin-caps">
         <li>Browser-based control plane served by the UI plugin</li>
         <li>Process overview, live logs, start/stop controls</li>

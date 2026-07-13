@@ -1,6 +1,6 @@
 //! Runtime license verification for `superd` (OSS scope).
 //!
-//! Verifies Ed25519-signed subscription keys and enforces signed claims at
+//! Verifies cryptographically signed subscription keys and enforces signed claims at
 //! runtime. Subscription key signing and plugin catalogs are out of scope
 //! for this repository.
 

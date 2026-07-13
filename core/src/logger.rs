@@ -48,6 +48,25 @@ pub struct LogConfig {
 }
 
 /// Resolve on-disk log path for a program (custom path or default UUID file).
+/// Custom paths must canonicalize under `log_dir`.
+pub fn resolve_log_file_path(
+    log_dir: &Path,
+    id: Uuid,
+    source: LogSource,
+    stdout_logfile: Option<&str>,
+    stderr_logfile: Option<&str>,
+) -> anyhow::Result<PathBuf> {
+    let custom = match source {
+        LogSource::Stdout => stdout_logfile,
+        LogSource::Stderr => stderr_logfile,
+    };
+    match custom.filter(|s| !s.trim().is_empty()) {
+        None => Ok(log_dir.join(format!("{}.{}", id, source.extension()))),
+        Some(path) => common::resolve_confined_log_path(log_dir, path),
+    }
+}
+
+/// Resolve on-disk log path for a program (custom path or default UUID file).
 pub fn log_file_path(
     log_dir: &Path,
     id: Uuid,
@@ -55,13 +74,8 @@ pub fn log_file_path(
     stdout_logfile: Option<&str>,
     stderr_logfile: Option<&str>,
 ) -> PathBuf {
-    let custom = match source {
-        LogSource::Stdout => stdout_logfile,
-        LogSource::Stderr => stderr_logfile,
-    };
-    custom
-        .map(PathBuf::from)
-        .unwrap_or_else(|| log_dir.join(format!("{}.{}", id, source.extension())))
+    resolve_log_file_path(log_dir, id, source, stdout_logfile, stderr_logfile)
+        .unwrap_or_else(|_| log_dir.join(format!("{}.{}", id, source.extension())))
 }
 
 /// Read pipe stream, write to file, and broadcast over WebSocket.
@@ -297,7 +311,19 @@ pub async fn emit_superd_line(
     tx: &broadcast::Sender<WsMessage>,
 ) {
     let prefixed = format!("[superd] {}", line);
-    let path = log_file_path(log_dir, id, LogSource::Stderr, stdout_logfile, stderr_logfile);
+    let path = match resolve_log_file_path(
+        log_dir,
+        id,
+        LogSource::Stderr,
+        stdout_logfile,
+        stderr_logfile,
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::warn!("Refusing to write stderr log for {}: {}", id, e);
+            return;
+        }
+    };
 
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent).await;
@@ -330,7 +356,7 @@ pub async fn read_log_lines(
     stdout_logfile: Option<&str>,
     stderr_logfile: Option<&str>,
 ) -> Option<String> {
-    let path = log_file_path(log_dir, id, source, stdout_logfile, stderr_logfile);
+    let path = resolve_log_file_path(log_dir, id, source, stdout_logfile, stderr_logfile).ok()?;
     if !path.exists() {
         return None;
     }
@@ -355,7 +381,7 @@ pub async fn read_log_tail(
     stdout_logfile: Option<&str>,
     stderr_logfile: Option<&str>,
 ) -> Option<String> {
-    let path = log_file_path(log_dir, id, source, stdout_logfile, stderr_logfile);
+    let path = resolve_log_file_path(log_dir, id, source, stdout_logfile, stderr_logfile).ok()?;
 
     if !path.exists() {
         return None;

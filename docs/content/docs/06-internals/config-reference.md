@@ -18,11 +18,13 @@ description: "Complete schema for super.toml."
 | Location | Keys / file |
 | :--- | :--- |
 | Root (`super.toml`) | `auth_secret` 💎 |
-| `[license]` | `key` 💎 — Ed25519-signed subscription token from your vendor |
+| `[license]` | `key` 💎 — cryptographically signed subscription token from your vendor |
 | `[[programs]]` | `[programs.resource_limits]` (`cpu_quota`, `memory_limit`) 💎 |
 | `conf/notify.toml` *(separate file)* | `[[channels]]` 💎 — see [Event Notifications](/docs/05-advanced-management/event-notifications) |
 
 > **Not licensed-only:** `[webhook]` in `super.toml` is parsed but **not wired** at runtime. `[programs.hooks]` and `[[event_hooks]]` work in OSS.
+
+> **OSS security:** See [Configuration — OSS security defaults](/docs/02-essentials/configuration#oss-security-defaults-fail-closed) for fail-closed bind, log path confinement, and other defensive defaults.
 
 ## `[server]`
 
@@ -32,6 +34,7 @@ Global settings for the daemon.
 | :--- | :--- | :--- | :--- |
 | `host` | string | `127.0.0.1` | Bind address for API/Web UI. |
 | `port` | int | `9002` | Bind port. |
+| `allow_insecure_public_bind` | bool | `false` | Explicit opt-in to bind on a non-loopback address without the `security` plugin. OSS **refuses startup** when `host` is not loopback and this is `false`. **Licensed deployments always load `security`** — this flag applies to OSS only. |
 | `shutdown_timeout` | int | `10` | Seconds to wait for SIGTERM before SIGKILL during shutdown. |
 | `flapping_window` | int | `60` | Time window (seconds) to detect restart loops. |
 | `flapping_threshold` | int | `5` | Max restarts allowed within the window. |
@@ -47,11 +50,11 @@ Top-level fields in `super.toml` (sibling to `[server]`, not inside it):
 
 ## `[license]` — subscription key (Licensed 💎)
 
-Optional section in `conf/super.toml`. When present and valid, `superd` loads authorized plugins from `plugins/`.
+Optional section in `conf/super.toml`. When present and valid, `superd` loads authorized plugins from `plugins/` and **requires the bundled `security` plugin** (`security.so` + `auth_secret`) or refuses startup. See [Licensed deployments require security](/docs/05-advanced-management/authentication#licensed-deployments-require-security).
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `key` 💎 | string | — | Base64-encoded signed subscription key (Ed25519). Obtain from your subscription vendor. Override: `SUPER_LICENSE` env (same format). |
+| `key` 💎 | string | — | Base64-encoded signed subscription key. Obtain from your subscription vendor. Override: `SUPER_LICENSE` env (same format). |
 
 ```toml
 [license]
@@ -117,8 +120,8 @@ Example: `autostart = false` with `autorestart = "true"` gives a manually starte
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `stdout_logfile` | string | `{log_dir}/{uuid}.out` | Custom stdout log path. |
-| `stderr_logfile` | string | `{log_dir}/{uuid}.err` | Custom stderr log path. |
+| `stdout_logfile` | string | `{log_dir}/{uuid}.out` | Custom stdout log path (must resolve under `storage.log_dir`). |
+| `stderr_logfile` | string | `{log_dir}/{uuid}.err` | Custom stderr log path (must resolve under `storage.log_dir`). |
 
 ### Orchestration
 

@@ -1,5 +1,10 @@
 # =============================================================================
-# Project Super — default configuration for containerpi/super Docker image
+# Project Super — OSS default for containerpi/super Docker image
+# =============================================================================
+# Profile: OSS (no license). API has no authentication — allow_insecure_public_bind
+# is required for 0.0.0.0 inside the container.
+#
+# For subscription deployments, see super.subscription.example.toml in this folder.
 # =============================================================================
 # Layout (SUPER_ROOT=/app/super):
 #   conf/super.toml       — this file (daemon settings)
@@ -16,6 +21,9 @@
 host = "0.0.0.0"
 port = 9002
 
+# OSS has no API auth — must opt in when binding beyond loopback (required for 0.0.0.0).
+allow_insecure_public_bind = true
+
 # Graceful shutdown: seconds to wait after SIGTERM before SIGKILL.
 shutdown_timeout = 10
 
@@ -26,8 +34,8 @@ download_timeout = 86400
 flapping_window = 60
 flapping_threshold = 5
 
-# Swagger UI at /swagger-ui (when built with docs feature).
-enable_docs = true
+# Swagger UI at /swagger-ui (requires docs feature). Keep false when API is exposed.
+enable_docs = false
 
 # Paths below mirror SUPER_ROOT layout. Bootstrap always resolves state/logs
 # under /app/super/data and /app/super/logs at runtime.
