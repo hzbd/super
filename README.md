@@ -18,9 +18,7 @@ Super is a modern replacement for tools like [Supervisor](https://supervisord.or
 * **Observability** — WebSocket logs, historical logs API, system metrics
 * **Auto-recovery** — Supervisor-compatible `autorestart`, `exitcodes`, `startsecs`
 
-Licensed under the **[MIT License](LICENSE)**. Optional **licensed plugins** (`.so` / `.dylib` under `$SUPER_ROOT/plugins/`) add API auth, RBAC, notifications, and cgroup limits — same `superd` binary, no separate commercial build.
-
-> **Licensed plugins (v1.2.0):** The runtime plugin model is in **pre-release** and **not available for subscription delivery** yet. OSS `superd` without plugins remains the supported path for self-hosted use. See the [changelog](https://super.docs.sconts.com/docs/08-changelog/).
+Licensed under the **[MIT License](LICENSE)**. Optional **licensed plugins** (`.so` / `.dylib` under `$SUPER_ROOT/plugins/`) add API auth, RBAC, notifications, and cgroup limits — same `superd` binary, no separate commercial build. Subscription delivery is separate from this OSS repo; see the [editions / feature matrix](https://super.docs.sconts.com/docs/07-editions/feature-matrix/).
 
 ## Quick Start
 
@@ -62,7 +60,7 @@ super logs <id> --tail
 | Getting started | [Docs](https://super.docs.sconts.com/docs/01-getting-started/) |
 | Configuration | [Config reference](https://super.docs.sconts.com/docs/06-internals/config-reference/) |
 | API | [API reference](https://super.docs.sconts.com/docs/06-internals/api-reference/) |
-| Changelog | [v1.2.0 pre-release](https://super.docs.sconts.com/docs/08-changelog/) |
+| Changelog | [v1.2.0](https://super.docs.sconts.com/docs/08-changelog/) |
 
 ## Contributing
 

@@ -65,3 +65,27 @@ jobs:
             echo '::error::Built docs still reference super.project.sconts.com'
             exit 1
           fi
+
+      - name: Rebuild with site-relative baseURL for link check
+        working-directory: ./docs
+        env:
+          # Absolute production URLs cannot be resolved offline; rebuild once for local crawl.
+          HUGO_BASEURL: /
+        run: |
+          rm -rf public
+          hugo --minify
+
+      - name: Check internal HTML links (offline)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Prefer --root-dir (site root for absolute /… links). Do not use --base /
+          # --base-url here: relative hrefs would resolve against the site root and
+          # false-positive as 404s (lychee ≥0.24).
+          args: >-
+            --offline
+            --no-progress
+            --root-dir ${{ github.workspace }}/docs/public
+            --exclude-path ${{ github.workspace }}/docs/public/js
+            --exclude-path ${{ github.workspace }}/docs/public/css
+            'docs/public/**/*.html'
+          fail: true

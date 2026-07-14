@@ -405,6 +405,32 @@ mod tests {
     }
 
     #[test]
+    fn licensed_reports_security_dlopen_failure() {
+        let claims = LicenseClaims {
+            issued_to: "acme".into(),
+            issued_at: 0,
+            major_version: 1,
+            minor_version: None,
+            max_super_minor: None,
+            minor_ahead: None,
+            issued_super_version: None,
+            plugins: vec!["security".into()],
+            expires_at: None,
+            retain_plugins_after_expiry: None,
+            license_id: None,
+        };
+        let err = validate_licensed_security(
+            RunMode::Licensed,
+            Some(&claims),
+            &[],
+            &["security".into()],
+            Path::new("/tmp/plugins"),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("failed to load"));
+    }
+
+    #[test]
     fn oss_skips_licensed_security_checks() {
         validate_licensed_security(RunMode::Oss, None, &[], &[], Path::new(".")).unwrap();
         validate_licensed_auth_secret(RunMode::Oss, &[], None).unwrap();
