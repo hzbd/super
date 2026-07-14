@@ -38,6 +38,6 @@ Super applies defensive defaults even when no plugins are loaded:
 | **Secret display** | API/CLI mask env values whose keys look sensitive |
 | **Docs surface** | Swagger UI disabled by default (`enable_docs = false`) |
 
-Full user-facing detail: [Configuration — OSS security defaults](http://super.docs.sconts.com/docs/02-essentials/configuration/#oss-security-defaults-fail-closed).
+Full user-facing detail: [Configuration — OSS security defaults](https://super.docs.sconts.com/docs/02-essentials/configuration/#oss-security-defaults-fail-closed).
 
 > **Licensed plugins (v1.2.0):** Pre-release — not offered for subscription delivery yet. Do not expose plugin-gated deployments as production-ready without maintainer sign-off.

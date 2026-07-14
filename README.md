@@ -8,7 +8,7 @@ Super is a modern replacement for tools like [Supervisor](https://supervisord.or
 >
 > Project Super is still under intensive testing. **Please do not run it in production environments** for now. We are actively hardening stability, edge cases, and operational behavior — production-grade reliability is the goal before we recommend real-world deployments.
 
-> **Documentation:** [http://super.docs.sconts.com/docs/](http://super.docs.sconts.com/docs/)
+> **Documentation:** [https://super.docs.sconts.com/docs/](https://super.docs.sconts.com/docs/)
 
 ## Core Features
 
@@ -20,7 +20,7 @@ Super is a modern replacement for tools like [Supervisor](https://supervisord.or
 
 Licensed under the **[MIT License](LICENSE)**. Optional **licensed plugins** (`.so` / `.dylib` under `$SUPER_ROOT/plugins/`) add API auth, RBAC, notifications, and cgroup limits — same `superd` binary, no separate commercial build.
 
-> **Licensed plugins (v1.2.0):** The runtime plugin model is in **pre-release** and **not available for subscription delivery** yet. OSS `superd` without plugins remains the supported path for self-hosted use. See the [changelog](http://super.docs.sconts.com/docs/08-changelog/).
+> **Licensed plugins (v1.2.0):** The runtime plugin model is in **pre-release** and **not available for subscription delivery** yet. OSS `superd` without plugins remains the supported path for self-hosted use. See the [changelog](https://super.docs.sconts.com/docs/08-changelog/).
 
 ## Quick Start
 
@@ -59,10 +59,10 @@ super logs <id> --tail
 
 | Topic | Link |
 |-------|------|
-| Getting started | [Docs](http://super.docs.sconts.com/docs/01-getting-started/) |
-| Configuration | [Config reference](http://super.docs.sconts.com/docs/06-internals/config-reference/) |
-| API | [API reference](http://super.docs.sconts.com/docs/06-internals/api-reference/) |
-| Changelog | [v1.2.0 pre-release](http://super.docs.sconts.com/docs/08-changelog/) |
+| Getting started | [Docs](https://super.docs.sconts.com/docs/01-getting-started/) |
+| Configuration | [Config reference](https://super.docs.sconts.com/docs/06-internals/config-reference/) |
+| API | [API reference](https://super.docs.sconts.com/docs/06-internals/api-reference/) |
+| Changelog | [v1.2.0 pre-release](https://super.docs.sconts.com/docs/08-changelog/) |
 
 ## Contributing
 

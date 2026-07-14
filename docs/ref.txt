@@ -38,7 +38,7 @@ make docs-serve
 
 Open http://localhost:1313/ (home: `/`, translations: `/zh-cn/`, `/ja/`, `/es/`, `/ru/`).
 
-- `hugo.yaml` → `baseURL` is the **production** site URL (`http://super.docs.sconts.com/`). CI sets `HUGO_BASEURL` when publishing.
+- `hugo.yaml` → `baseURL` is the **production** site URL (`https://super.docs.sconts.com/`). CI sets `HUGO_BASEURL` when publishing.
 - Do **not** open `docs/public/*.html` in the browser (`file://`) or serve `public/` under a subpath — absolute `/css/...` links will 404.
 - `hugo server` rewrites asset URLs for localhost; no extra dev config needed.
 

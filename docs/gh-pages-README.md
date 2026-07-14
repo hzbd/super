@@ -4,7 +4,7 @@ This folder holds the **published documentation** for [Project Super](https://gi
 
 | | |
 | :--- | :--- |
-| **Live site** | http://super.docs.sconts.com/ |
+| **Live site** | https://super.docs.sconts.com/ |
 | **Source** | [`docs/`](https://github.com/hzbd/super/tree/master/docs) on the `master` branch |
 | **Deploy workflow** | [`.github/workflows/deploy-docs.yml`](https://github.com/hzbd/super/blob/master/.github/workflows/deploy-docs.yml) (GitHub Actions → Pages) |
 
