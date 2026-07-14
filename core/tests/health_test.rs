@@ -22,7 +22,10 @@ async fn test_tcp_health_check() {
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     let outcome = health::perform_check(&check).await;
-    assert!(!outcome.healthy, "TCP check should fail when port is closed");
+    assert!(
+        !outcome.healthy,
+        "TCP check should fail when port is closed"
+    );
     assert!(outcome.detail.is_some());
 }
 

@@ -319,5 +319,8 @@ async fn test_update_resource_limits_persisted_immediately() {
         content.contains("resource_limits"),
         "snapshot should contain resource_limits immediately after update"
     );
-    assert!(content.contains("67108864"), "memory_limit bytes should be persisted");
+    assert!(
+        content.contains("67108864"),
+        "memory_limit bytes should be persisted"
+    );
 }

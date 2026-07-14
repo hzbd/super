@@ -1165,9 +1165,7 @@ impl Manager {
                 if let Some(detail) = failure_detail {
                     let changed = state.health_error.as_deref() != Some(detail.as_str());
                     state.health_error = Some(detail.clone());
-                    if changed
-                        && let Some(cfg) = self.registry.programs.get(&id)
-                    {
+                    if changed && let Some(cfg) = self.registry.programs.get(&id) {
                         let log_dir = &self.config.storage.log_dir;
                         crate::logger::emit_superd_line(
                             id,
@@ -1787,10 +1785,7 @@ impl Manager {
             } else if pattern_path.starts_with(&root) {
                 pattern
             } else {
-                tracing::warn!(
-                    "Skipping include pattern outside SUPER_ROOT: {}",
-                    pattern
-                );
+                tracing::warn!("Skipping include pattern outside SUPER_ROOT: {}", pattern);
                 continue;
             };
             if let Ok(paths) = glob(&full_pattern) {
@@ -2126,7 +2121,10 @@ impl Manager {
         Ok(())
     }
 
-    fn validate_stack_service_names(&self, services: &[CreateProgramRequest]) -> anyhow::Result<()> {
+    fn validate_stack_service_names(
+        &self,
+        services: &[CreateProgramRequest],
+    ) -> anyhow::Result<()> {
         let mut counts: HashMap<String, u32> = HashMap::new();
         for service_req in services {
             for config in self.expand_request(service_req) {

@@ -100,10 +100,7 @@ pub fn validate_outbound_url(url: &str, policy: FetchUrlPolicy) -> anyhow::Resul
         _ => bail!("URL scheme is not allowed for this operation"),
     }
 
-    if policy == FetchUrlPolicy::OtaArtifact
-        && !loopback
-        && host_is_private_or_link_local(host)?
-    {
+    if policy == FetchUrlPolicy::OtaArtifact && !loopback && host_is_private_or_link_local(host)? {
         bail!("OTA artifact URL must not target private, link-local, or loopback addresses");
     }
 
@@ -183,11 +180,13 @@ pub fn resolve_confined_log_path(log_dir: &Path, custom: &str) -> anyhow::Result
 
 fn canonicalize_or_create_dir(dir: &Path) -> anyhow::Result<PathBuf> {
     if dir.exists() {
-        std::fs::canonicalize(dir).with_context(|| format!("canonicalize log_dir {}", dir.display()))
+        std::fs::canonicalize(dir)
+            .with_context(|| format!("canonicalize log_dir {}", dir.display()))
     } else {
         std::fs::create_dir_all(dir)
             .with_context(|| format!("create log_dir {}", dir.display()))?;
-        std::fs::canonicalize(dir).with_context(|| format!("canonicalize log_dir {}", dir.display()))
+        std::fs::canonicalize(dir)
+            .with_context(|| format!("canonicalize log_dir {}", dir.display()))
     }
 }
 
@@ -207,7 +206,9 @@ fn host_is_private_or_link_local(host: &str) -> anyhow::Result<bool> {
 
 fn is_non_public_ip(ip: &IpAddr) -> bool {
     match ip {
-        IpAddr::V4(v4) => v4.is_private() || v4.is_link_local() || v4.is_loopback() || v4.is_unspecified(),
+        IpAddr::V4(v4) => {
+            v4.is_private() || v4.is_link_local() || v4.is_loopback() || v4.is_unspecified()
+        }
         IpAddr::V6(v6) => {
             v6.is_loopback()
                 || v6.is_unspecified()
@@ -252,7 +253,7 @@ pub fn sanitize_ui_asset_path(path: &str) -> Option<String> {
     if path.contains("..") || path.contains('\\') || path.contains('\0') {
         return None;
     }
-    if path.split('/').any(|seg| seg.is_empty() || seg == "." ) {
+    if path.split('/').any(|seg| seg.is_empty() || seg == ".") {
         return None;
     }
     Some(path.to_string())
@@ -278,30 +279,32 @@ mod tests {
 
     #[test]
     fn ota_blocks_metadata_and_http() {
-        assert!(validate_outbound_url(
-            "http://cdn.example/app.tar.gz",
-            FetchUrlPolicy::OtaArtifact
-        )
-        .is_err());
-        assert!(validate_outbound_url(
-            "https://169.254.169.254/latest/meta-data",
-            FetchUrlPolicy::OtaArtifact
-        )
-        .is_err());
-        assert!(validate_outbound_url(
-            "https://releases.example.com/app.tar.gz",
-            FetchUrlPolicy::OtaArtifact
-        )
-        .is_ok());
+        assert!(
+            validate_outbound_url("http://cdn.example/app.tar.gz", FetchUrlPolicy::OtaArtifact)
+                .is_err()
+        );
+        assert!(
+            validate_outbound_url(
+                "https://169.254.169.254/latest/meta-data",
+                FetchUrlPolicy::OtaArtifact
+            )
+            .is_err()
+        );
+        assert!(
+            validate_outbound_url(
+                "https://releases.example.com/app.tar.gz",
+                FetchUrlPolicy::OtaArtifact
+            )
+            .is_ok()
+        );
     }
 
     #[test]
     fn health_allows_loopback() {
-        assert!(validate_outbound_url(
-            "http://127.0.0.1:8080/health",
-            FetchUrlPolicy::HealthCheck
-        )
-        .is_ok());
+        assert!(
+            validate_outbound_url("http://127.0.0.1:8080/health", FetchUrlPolicy::HealthCheck)
+                .is_ok()
+        );
     }
 
     #[test]
@@ -332,8 +335,7 @@ mod tests {
         std::fs::create_dir_all(nested.parent().unwrap()).unwrap();
         std::fs::write(&nested, "").unwrap();
 
-        let resolved =
-            resolve_confined_log_path(&log_dir, "apps/out.log").expect("relative path");
+        let resolved = resolve_confined_log_path(&log_dir, "apps/out.log").expect("relative path");
         assert!(resolved.starts_with(std::fs::canonicalize(&log_dir).unwrap()));
 
         assert!(resolve_confined_log_path(&log_dir, "../outside.log").is_err());

@@ -107,7 +107,10 @@ pub fn license_expiry_status(claims: &LicenseClaims) -> anyhow::Result<LicenseEx
     }
 }
 
-fn verify_signature(license_str: &str, verifying_key: &VerifyingKey) -> anyhow::Result<LicenseClaims> {
+fn verify_signature(
+    license_str: &str,
+    verifying_key: &VerifyingKey,
+) -> anyhow::Result<LicenseClaims> {
     let trimmed = license_str.trim();
     if trimmed.len() > crate::security::MAX_LICENSE_B64_LEN {
         anyhow::bail!("License key too large");
@@ -160,7 +163,9 @@ fn verify_license_with_key(
 }
 
 /// Verify signature for superd runtime (honours signed `retain_plugins_after_expiry` when set).
-pub fn verify_license_for_superd(license_str: &str) -> anyhow::Result<(LicenseClaims, LicenseExpiryStatus)> {
+pub fn verify_license_for_superd(
+    license_str: &str,
+) -> anyhow::Result<(LicenseClaims, LicenseExpiryStatus)> {
     let key_array: [u8; 32] = PUBLIC_KEY_BYTES
         .try_into()
         .expect("Embedded public key has incorrect size");
@@ -185,7 +190,9 @@ fn verify_license_for_superd_with_key(
 
 /// Parse the major version from a semver-like string (e.g. "1.1.9" -> 1).
 pub fn parse_major_version(version: &str) -> u32 {
-    parse_semver(version).map(|(major, _, _)| major).unwrap_or(0)
+    parse_semver(version)
+        .map(|(major, _, _)| major)
+        .unwrap_or(0)
 }
 
 /// Parse `major.minor.patch` from a semver-like string (missing parts default to 0).
@@ -231,8 +238,8 @@ pub fn licensed_version_span(claims: &LicenseClaims) -> String {
 
 /// Check whether `superd` semver is within the signed major/minor policy.
 pub fn check_superd_version(claims: &LicenseClaims, superd_version: &str) -> Result<(), String> {
-    let (host_major, host_minor, _) =
-        parse_semver(superd_version).ok_or_else(|| format!("Invalid superd version '{superd_version}'"))?;
+    let (host_major, host_minor, _) = parse_semver(superd_version)
+        .ok_or_else(|| format!("Invalid superd version '{superd_version}'"))?;
 
     if host_major != claims.major_version {
         return Err(format!(
@@ -279,7 +286,10 @@ mod semver_tests {
             retain_plugins_after_expiry: None,
             license_id: None,
         };
-        assert_eq!(license_issued_for_version(&claims).as_deref(), Some("1.2.0"));
+        assert_eq!(
+            license_issued_for_version(&claims).as_deref(),
+            Some("1.2.0")
+        );
         assert_eq!(license_max_superd_version(&claims), "1.4.x");
         assert!(superd_within_license(&claims, "1.2.0"));
         assert!(superd_within_license(&claims, "1.4.9"));
@@ -417,8 +427,8 @@ mod tests {
         };
         let token = sign_claims(&signing_key, &claims);
         let verifying_key = signing_key.verifying_key();
-        let (verified, status) =
-            verify_license_for_superd_with_key(&token, &verifying_key).expect("superd accepts expired");
+        let (verified, status) = verify_license_for_superd_with_key(&token, &verifying_key)
+            .expect("superd accepts expired");
         assert_eq!(status, LicenseExpiryStatus::Expired);
         assert_eq!(verified.issued_to, "expired@example.com");
     }

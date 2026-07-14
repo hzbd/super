@@ -1,5 +1,5 @@
 use colored::Colorize;
-use common::config::{resolve_license_key, ServerConfig};
+use common::config::{ServerConfig, resolve_license_key};
 use common::is_loopback_bind_host;
 use common::resolve_super_root_for_config;
 use common::verify_license_for_superd;
@@ -370,7 +370,9 @@ mod tests {
 
         let errors = licensed_requirement_errors(&["ui".into()], &plugins, Some("  "), true);
         assert!(
-            errors.iter().any(|e| e.contains("security' in license claims")),
+            errors
+                .iter()
+                .any(|e| e.contains("security' in license claims")),
             "{errors:?}"
         );
         assert!(

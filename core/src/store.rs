@@ -50,11 +50,7 @@ pub async fn load_with_recovery(path: &Path) -> anyhow::Result<HashMap<Uuid, Pro
                 tracing::warn!("No snapshot at {:?}; starting with empty state", path);
                 return Ok(HashMap::new());
             }
-            tracing::error!(
-                "Failed to load primary config {:?}: {}",
-                path,
-                e
-            );
+            tracing::error!("Failed to load primary config {:?}: {}", path, e);
         }
     }
 

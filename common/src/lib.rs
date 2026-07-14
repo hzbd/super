@@ -5,7 +5,6 @@ use uuid::Uuid;
 use utoipa::ToSchema;
 
 pub mod auth;
-pub mod security;
 pub mod config;
 pub mod license;
 pub mod paths;
@@ -15,23 +14,24 @@ pub mod plugin_error;
 pub mod plugin_http_abi;
 pub mod plugin_ui_abi;
 pub mod resources;
+pub mod security;
 
 pub use paths::{resolve_super_root, resolve_super_root_for_config};
 pub use security::{
     FetchUrlPolicy, MAX_LICENSE_B64_LEN, MAX_LICENSE_JSON_LEN, is_loopback_bind_host, mask_env_map,
-    mask_secret_value, resolve_confined_log_path, resolve_plugin_library,
-    sanitize_ui_asset_path, validate_license_plugin_ids, validate_outbound_url,
+    mask_secret_value, resolve_confined_log_path, resolve_plugin_library, sanitize_ui_asset_path,
+    validate_license_plugin_ids, validate_outbound_url,
 };
 
 pub use auth::{AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole};
 pub use license::{
-    LicenseClaims, LicenseExpiryStatus, LicenseInfo, LICENSE_UPGRADE_URL, license_expiry_status,
+    LICENSE_UPGRADE_URL, LicenseClaims, LicenseExpiryStatus, LicenseInfo, license_expiry_status,
     verify_license, verify_license_for_superd,
 };
 pub use plugin_abi::{PLUGIN_API_VERSION, PLUGIN_SYMBOL, SuperPluginV1, read_plugin_version};
 pub use plugin_error::{set_last_plugin_error, take_last_plugin_error};
 pub use plugin_http_abi::{HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL, SuperPluginHttpV1};
-pub use plugin_ui_abi::{UI_PLUGIN_API_VERSION, UI_PLUGIN_SYMBOL, SuperPluginUiV1};
+pub use plugin_ui_abi::{SuperPluginUiV1, UI_PLUGIN_API_VERSION, UI_PLUGIN_SYMBOL};
 pub use resources::ResourceLimits;
 
 // Helpers

@@ -334,9 +334,7 @@ pub async fn emit_superd_line(
         .open(&path)
         .await
     {
-        let _ = file
-            .write_all(format!("{prefixed}\n").as_bytes())
-            .await;
+        let _ = file.write_all(format!("{prefixed}\n").as_bytes()).await;
         let _ = file.flush().await;
     }
 

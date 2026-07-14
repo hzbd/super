@@ -6,7 +6,10 @@ use axum::{
 use common::license::{LicenseInfo, superd_within_license};
 use super_core::{
     ManagerHandle, api, bootstrap,
-    plugin::{PluginHost, attach_http_plugins, load_ui_plugin, normalize_ui_path, validate_licensed_auth_secret, validate_licensed_security, RunMode},
+    plugin::{
+        PluginHost, RunMode, attach_http_plugins, load_ui_plugin, normalize_ui_path,
+        validate_licensed_auth_secret, validate_licensed_security,
+    },
     resolve_root,
 };
 use tokio::signal;
@@ -114,8 +117,14 @@ async fn ui_fallback_handler(
         return html_response(&html);
     };
 
-    serve_ui_asset(&ui, &normalize_ui_path(path), auth_required, is_licensed, false)
-        .unwrap_or_else(|| spa_fallback(&ui, auth_required, is_licensed))
+    serve_ui_asset(
+        &ui,
+        &normalize_ui_path(path),
+        auth_required,
+        is_licensed,
+        false,
+    )
+    .unwrap_or_else(|| spa_fallback(&ui, auth_required, is_licensed))
 }
 
 fn spa_fallback(
@@ -144,9 +153,8 @@ fn serve_ui_asset(
     let mut headers = axum::http::HeaderMap::new();
     headers.insert(
         header::CONTENT_TYPE,
-        HeaderValue::from_str(asset.mime).unwrap_or_else(|_| {
-            HeaderValue::from_static("application/octet-stream")
-        }),
+        HeaderValue::from_str(asset.mime)
+            .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream")),
     );
 
     Some((headers, body).into_response())
@@ -159,8 +167,7 @@ fn inject_ui_config(raw_html: &[u8], auth_required: bool, is_licensed: bool) -> 
         "window.__SUPER_CONFIG__ = {{ edition: '{edition}', auth_required: {auth_required}, version: '{VERSION}' }};",
         auth_required = auth_required,
     );
-    let mut injected =
-        html_str.replace("window.__SUPER_CONFIG__ = defaultConfig;", &config_js);
+    let mut injected = html_str.replace("window.__SUPER_CONFIG__ = defaultConfig;", &config_js);
     if injected == html_str {
         injected = html_str.replace("// __INJECT_CONFIG__", &config_js);
     }
@@ -289,9 +296,7 @@ async fn main() -> anyhow::Result<()> {
     let ui_handle = ui_plugin.clone();
     let app = Router::new().merge(api_router).fallback(move |uri: Uri| {
         let ui = ui_handle.clone();
-        async move {
-            ui_fallback_handler(uri, ui, auth_flag, licensed_flag).await
-        }
+        async move { ui_fallback_handler(uri, ui, auth_flag, licensed_flag).await }
     });
 
     let addr = format!("{}:{}", core.config.server.host, core.config.server.port);

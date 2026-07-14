@@ -1,9 +1,9 @@
-use anyhow::Context;
 use crate::plugin::loader::{PluginRuntime, load_authorized_plugins};
+use anyhow::Context;
 use common::config::resolve_license_key;
 use common::license::{
-    LicenseClaims, LicenseExpiryStatus, check_superd_version, licensed_version_span,
-    verify_license_for_superd, LICENSE_UPGRADE_URL,
+    LICENSE_UPGRADE_URL, LicenseClaims, LicenseExpiryStatus, check_superd_version,
+    licensed_version_span, verify_license_for_superd,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -395,12 +395,8 @@ mod tests {
 
     #[test]
     fn licensed_requires_auth_secret() {
-        let err = validate_licensed_auth_secret(
-            RunMode::Licensed,
-            &["security".into()],
-            None,
-        )
-        .unwrap_err();
+        let err = validate_licensed_auth_secret(RunMode::Licensed, &["security".into()], None)
+            .unwrap_err();
         assert!(err.to_string().contains("auth_secret"));
     }
 

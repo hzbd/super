@@ -1,7 +1,7 @@
 use crate::extension::{Extension, ExtensionStack, NoOpExtension};
 use crate::plugin::adapter::PluginExtensionAdapter;
-use common::security::resolve_plugin_library;
 use common::plugin_abi::{PLUGIN_SYMBOL, SuperPluginV1, read_plugin_version};
+use common::security::resolve_plugin_library;
 use libloading::Library;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -52,10 +52,7 @@ pub fn load_authorized_plugins(plugins_dir: &Path, authorized_ids: &[String]) ->
         match try_load_plugin(&lib_path, id) {
             Ok((library, adapter, version)) => {
                 if let Some(version) = version {
-                    info!(
-                        "Plugin '{}' v{} loaded from {:?}",
-                        id, version, lib_path
-                    );
+                    info!("Plugin '{}' v{} loaded from {:?}", id, version, lib_path);
                     plugin_versions.insert(id.clone(), version);
                 } else {
                     info!("Plugin '{}' loaded from {:?}", id, lib_path);

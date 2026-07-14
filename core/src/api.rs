@@ -683,7 +683,12 @@ async fn system_license(State(state): State<AppState>) -> Result<Json<LicenseInf
     state
         .license
         .clone()
-        .ok_or_else(|| AppError(StatusCode::NOT_FOUND, anyhow::anyhow!("No license configured")))
+        .ok_or_else(|| {
+            AppError(
+                StatusCode::NOT_FOUND,
+                anyhow::anyhow!("No license configured"),
+            )
+        })
         .map(Json)
 }
 

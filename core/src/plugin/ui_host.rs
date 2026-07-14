@@ -1,7 +1,7 @@
 //! Static UI bridge for the optional `ui` plugin (`super_plugin_ui_v1`).
 
 use crate::plugin::loader::PluginRuntime;
-use common::plugin_ui_abi::{UI_PLUGIN_API_VERSION, UI_PLUGIN_SYMBOL, SuperPluginUiV1};
+use common::plugin_ui_abi::{SuperPluginUiV1, UI_PLUGIN_API_VERSION, UI_PLUGIN_SYMBOL};
 use libloading::Library;
 use std::ffi::{CStr, CString};
 use std::sync::Arc;
@@ -37,14 +37,8 @@ impl UiPluginHandle {
         let mut len: usize = 0;
         let mut mime_ptr: *const std::ffi::c_char = std::ptr::null();
 
-        let code = unsafe {
-            (self.resolve_asset)(
-                path_c.as_ptr(),
-                &mut ptr,
-                &mut len,
-                &mut mime_ptr,
-            )
-        };
+        let code =
+            unsafe { (self.resolve_asset)(path_c.as_ptr(), &mut ptr, &mut len, &mut mime_ptr) };
 
         if code != 0 || ptr.is_null() || len == 0 {
             return None;
@@ -54,7 +48,11 @@ impl UiPluginHandle {
             "application/octet-stream"
         } else {
             // SAFETY: plugin returns a NUL-terminated static string.
-            unsafe { CStr::from_ptr(mime_ptr).to_str().unwrap_or("application/octet-stream") }
+            unsafe {
+                CStr::from_ptr(mime_ptr)
+                    .to_str()
+                    .unwrap_or("application/octet-stream")
+            }
         };
 
         // SAFETY: pointer/length refer to read-only embedded data in the loaded plugin
