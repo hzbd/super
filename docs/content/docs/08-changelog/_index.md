@@ -12,22 +12,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.2.1] - 2026-07-14
+
+### Added
+- Docs CI: offline HTML link check (site-relative crawl) after Hugo build.
+- Licensed-mode startup checks: deployments with a subscription key require the `security` plugin and `auth_secret` (hard-fail).
+
+### Changed
+- Public docs messaging aligned with a **single subscription plan**; documentation URLs use `https://super.docs.sconts.com/`.
+- Removed public “pre-release / not for customer delivery” banners for the licensed plugin model.
+- Docker Hub image CI publishes **`linux/amd64` only** (arm64 manifest removed from the publish workflow).
+- Open-source edition license is **MIT** (historically GPL-3.0).
+
 ### Security
 
 - Stricter defaults for network exposure and configuration validation in OSS deployments.
 - Improved validation for user-supplied paths and outbound fetch URLs.
 - Reduced sensitive data exposure in API and export responses.
 
-### Changed
-- Docker Hub image CI publishes **`linux/amd64` only** (removed arm64 manifest from workflow to speed up builds).
-- Open-source edition license changed from **GPL-3.0** to **MIT**.
+### Notes
+- Subscription plugin archives remain vendor-delivered (not built from this OSS repository). Pair OSS `1.2.1` with matching commercial plugin packages.
 
 ---
 
-## [1.2.0] - 2026-07-10 — **Pre-release**
+## [1.2.0] - 2026-07-10
 
-> **Status:** Runtime plugin architecture is merged. Linux cgroup isolation QA (aarch64) has passed.  
-> Subscription packages are produced from a separate commercial repository; public GA / sales open separately.
+> Runtime plugin architecture merged. Linux cgroup isolation QA (aarch64) signed off.
 
 ### Added
 - **Runtime plugin host** — `superd` discovers `plugins/*.{so,dylib}`, verifies the signed license key, and dlopens authorized plugins.

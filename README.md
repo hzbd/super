@@ -60,7 +60,7 @@ super logs <id> --tail
 | Getting started | [Docs](https://super.docs.sconts.com/docs/01-getting-started/) |
 | Configuration | [Config reference](https://super.docs.sconts.com/docs/06-internals/config-reference/) |
 | API | [API reference](https://super.docs.sconts.com/docs/06-internals/api-reference/) |
-| Changelog | [v1.2.0](https://super.docs.sconts.com/docs/08-changelog/) |
+| Changelog | [v1.2.1](https://super.docs.sconts.com/docs/08-changelog/) |
 
 ## Contributing
 

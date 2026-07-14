@@ -40,4 +40,4 @@ Super applies defensive defaults even when no plugins are loaded:
 
 Full user-facing detail: [Configuration — OSS security defaults](https://super.docs.sconts.com/docs/02-essentials/configuration/#oss-security-defaults-fail-closed).
 
-> **Licensed plugins (v1.2.0):** Pre-release — not offered for subscription delivery yet. Do not expose plugin-gated deployments as production-ready without maintainer sign-off.
+> **Licensed plugins:** Optional subscription capabilities load as signed plugins with a vendor-supplied `[license].key`. See the [feature matrix](https://super.docs.sconts.com/docs/07-editions/feature-matrix/) and [authentication](https://super.docs.sconts.com/docs/05-advanced-management/authentication/).
