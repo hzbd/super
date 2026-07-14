@@ -9,7 +9,7 @@ Thank you for your interest in contributing to **Project Super** (OSS, MIT).
 3. Build: `make build` (`superd` + `super` CLI).
 4. Run tests: `cargo test --workspace` and `cargo clippy --workspace --all-targets -- -D warnings`.
 
-Docs site (optional): `make docs-serve` or `cd docs && hugo server -D --disableFastRender` (requires [Hugo Extended](https://gohugo.io/installation/) and the `hextra` submodule). Open **http://localhost:1313/** — do not open `docs/public/` directly; `hugo.yaml` `baseURL` is for production builds (CI overrides it on deploy).
+Docs site (optional): `make docs-serve` or `cd docs && hugo server -D --disableFastRender` (requires [Hugo Extended](https://gohugo.io/installation/) **0.163.x** and the `hextra` submodule). Open **http://localhost:1313/** — do not open `docs/public/` directly; `hugo.yaml` `baseURL` is for production builds (CI overrides it on deploy). The `docs` job in `.github/workflows/ci.yml` builds the site on every PR (Hugo pinned to `0.163.3`).
 
 ## Pull requests
 

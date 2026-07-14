@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub const PUBLIC_KEY_BYTES: &[u8] = include_bytes!("../../keys/public.key");
 
 /// Subscription / upgrade page shown when the installed superd exceeds the license.
-pub const LICENSE_UPGRADE_URL: &str = "https://super.project.sconts.com";
+pub const LICENSE_UPGRADE_URL: &str = "https://super.docs.sconts.com/";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct LicenseContainer {

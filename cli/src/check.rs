@@ -1,8 +1,8 @@
 use colored::Colorize;
 use common::config::{resolve_license_key, ServerConfig};
 use common::is_loopback_bind_host;
+use common::resolve_super_root_for_config;
 use common::verify_license_for_superd;
-use common::resolve_super_root;
 use std::fs;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -212,10 +212,8 @@ fn is_writable(path: &Path) -> bool {
             fs::remove_file(&test_file).ok();
             return true;
         }
-    } else {
-        if fs::OpenOptions::new().append(true).open(path).is_ok() {
-            return true;
-        }
+    } else if fs::OpenOptions::new().append(true).open(path).is_ok() {
+        return true;
     }
     false
 }
@@ -245,7 +243,7 @@ fn resolve_config_path(user_path: Option<PathBuf>) -> anyhow::Result<PathBuf> {
         return Ok(p);
     }
 
-    let candidates = vec!["super.toml", "conf/super.toml", "/etc/super/super.toml"];
+    let candidates = ["super.toml", "conf/super.toml", "/etc/super/super.toml"];
 
     for c in candidates {
         let p = PathBuf::from(c);
@@ -278,16 +276,33 @@ fn check_licensed_deployment(
         return false;
     };
 
-    let mut ok = true;
+    let plugins_dir = resolve_super_root_for_config(config_path).join("plugins");
+    let req_errors = licensed_requirement_errors(
+        &claims.plugins,
+        &plugins_dir,
+        config.auth_secret.as_deref(),
+        config.server.allow_insecure_public_bind,
+    );
+    let ok = req_errors.is_empty();
+    errors.extend(req_errors);
+    ok
+}
 
-    if !claims.plugins.iter().any(|p| p == "security") {
+/// Structural licensed checks after a key has verified successfully.
+fn licensed_requirement_errors(
+    plugins_in_claims: &[String],
+    plugins_dir: &Path,
+    auth_secret: Option<&str>,
+    allow_insecure_public_bind: bool,
+) -> Vec<String> {
+    let mut errors = Vec::new();
+
+    if !plugins_in_claims.iter().any(|p| p == "security") {
         errors.push(
             "Licensed deployment requires 'security' in license claims (included with every subscription).".into(),
         );
-        ok = false;
     }
 
-    let plugins_dir = resolve_super_root().join("plugins");
     let has_security = ["security.so", "security.dylib"]
         .iter()
         .any(|name| plugins_dir.join(name).is_file());
@@ -296,26 +311,82 @@ fn check_licensed_deployment(
             "Licensed deployment requires {}/security.so (or security.dylib)",
             plugins_dir.display()
         ));
-        ok = false;
     }
 
-    if config
-        .auth_secret
-        .as_ref()
-        .is_none_or(|s| s.trim().is_empty())
-    {
+    if auth_secret.is_none_or(|s| s.trim().is_empty()) {
         errors.push(
             "Licensed deployment requires auth_secret in super.toml (or via environment).".into(),
         );
-        ok = false;
     }
 
-    if config.server.allow_insecure_public_bind {
+    if allow_insecure_public_bind {
         errors.push(
             "allow_insecure_public_bind is not used when a valid license is configured — remove it or use OSS mode without a license key.".into(),
         );
-        ok = false;
     }
 
-    ok
+    errors
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn licensed_ok_when_security_plugin_and_auth_present() {
+        let dir = std::env::temp_dir().join(format!(
+            "super-check-ok-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let plugins = dir.join("plugins");
+        fs::create_dir_all(&plugins).unwrap();
+        fs::write(plugins.join("security.dylib"), b"fake").unwrap();
+
+        let errors = licensed_requirement_errors(
+            &["security".into(), "ui".into()],
+            &plugins,
+            Some("secret"),
+            false,
+        );
+        assert!(errors.is_empty(), "{errors:?}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn licensed_errors_without_security_plugin_or_auth() {
+        let dir = std::env::temp_dir().join(format!(
+            "super-check-err-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let plugins = dir.join("plugins");
+        fs::create_dir_all(&plugins).unwrap();
+
+        let errors = licensed_requirement_errors(&["ui".into()], &plugins, Some("  "), true);
+        assert!(
+            errors.iter().any(|e| e.contains("security' in license claims")),
+            "{errors:?}"
+        );
+        assert!(
+            errors.iter().any(|e| e.contains("security.so")),
+            "{errors:?}"
+        );
+        assert!(
+            errors.iter().any(|e| e.contains("auth_secret")),
+            "{errors:?}"
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.contains("allow_insecure_public_bind")),
+            "{errors:?}"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

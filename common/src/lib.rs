@@ -16,7 +16,7 @@ pub mod plugin_http_abi;
 pub mod plugin_ui_abi;
 pub mod resources;
 
-pub use paths::resolve_super_root;
+pub use paths::{resolve_super_root, resolve_super_root_for_config};
 pub use security::{
     FetchUrlPolicy, MAX_LICENSE_B64_LEN, MAX_LICENSE_JSON_LEN, is_loopback_bind_host, mask_env_map,
     mask_secret_value, resolve_confined_log_path, resolve_plugin_library,
