@@ -24,10 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.2.0] - 2026-07-10 — **Pre-release (not for production or customer delivery)**
+## [1.2.0] - 2026-07-10 — **Pre-release**
 
-> **Status:** Runtime plugin architecture is merged and testable in development monorepos.  
-> **Licensed plugins are not offered for subscription delivery yet** — readiness is tracked internally before GA.
+> **Status:** Runtime plugin architecture is merged. Linux cgroup isolation QA (aarch64) has passed.  
+> Subscription packages are produced from a separate commercial repository; public GA / sales open separately.
 
 ### Added
 - **Runtime plugin host** — `superd` discovers `plugins/*.{so,dylib}`, verifies the signed license key, and dlopens authorized plugins.
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notes
 - Plugin libraries ship with subscription delivery; they are not built from this OSS repository.
 - **Web dashboard** ships as an optional UI plugin with embedded static assets; OSS `superd` has no built-in web UI.
-- Linux **cgroup isolation** QA remains required before production sign-off.
+- Linux **cgroup isolation** signed off on aarch64 (2026-07-14).
 
 ---
 

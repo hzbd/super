@@ -63,7 +63,7 @@ from a subscription package provides the full web dashboard.
 Source & documentation
 ----------------------
   Upstream:  https://github.com/hzbd/super
-  Docs:      http://super.docs.sconts.com/docs/
+  Docs:      https://super.docs.sconts.com/docs/
   Release:   https://github.com/hzbd/super/releases/tag/v${version}
   License:   MIT License
 
