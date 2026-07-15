@@ -10,13 +10,15 @@ description: "Project Super 是什么，以及如何安装与使用。"
     <p><code>superd</code> 是用 Rust 写的进程管理器，只需部署一个二进制。在 TOML 或 REST API 里定义要跑的程序，负责自动重启、按依赖顺序启动、健康检查。CLI、浏览器、HTTP API 均可操作。</p>
   </section>
 
-  <nav class="home-nav">
-    <a href="/docs/">概览</a>
-    <a href="/docs/01-getting-started/">快速开始</a>
-    <a href="/docs/02-essentials/">基础</a>
-    <a href="/docs/03-orchestration/">编排</a>
-    <a href="/docs/05-advanced-management/">高级管理</a>
-    <a href="/docs/06-internals/api-reference/">API 参考</a>
+  <nav class="home-docnav" aria-label="文档导航">
+    <ul class="home-docnav-list">
+      <li><a href="/docs/">概览</a></li>
+      <li><a href="/docs/01-getting-started/">快速开始</a></li>
+      <li><a href="/docs/02-essentials/">基础</a></li>
+      <li><a href="/docs/03-orchestration/">编排</a></li>
+      <li><a href="/docs/05-advanced-management/">高级管理</a></li>
+      <li><a href="/docs/06-internals/api-reference/">API 参考</a></li>
+    </ul>
   </nav>
 
   <section class="home-section">

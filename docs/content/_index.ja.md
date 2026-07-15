@@ -10,13 +10,15 @@ description: "Project Super とは何か、インストールと運用方法。"
     <p>Rust 製プロセスマネージャ <code>superd</code> — デプロイは 1 バイナリ。TOML または REST API でプログラムを定義。自動再起動、依存順起動、ヘルスチェック。CLI、ブラウザ、HTTP API で操作。</p>
   </section>
 
-  <nav class="home-nav">
-    <a href="/docs/">概要</a>
-    <a href="/docs/01-getting-started/">Getting Started</a>
-    <a href="/docs/02-essentials/">Core Essentials</a>
-    <a href="/docs/03-orchestration/">Orchestration</a>
-    <a href="/docs/05-advanced-management/">Advanced Management</a>
-    <a href="/docs/06-internals/api-reference/">API Reference</a>
+  <nav class="home-docnav" aria-label="ドキュメント">
+    <ul class="home-docnav-list">
+      <li><a href="/docs/">概要</a></li>
+      <li><a href="/docs/01-getting-started/">Getting Started</a></li>
+      <li><a href="/docs/02-essentials/">Core Essentials</a></li>
+      <li><a href="/docs/03-orchestration/">Orchestration</a></li>
+      <li><a href="/docs/05-advanced-management/">Advanced Management</a></li>
+      <li><a href="/docs/06-internals/api-reference/">API Reference</a></li>
+    </ul>
   </nav>
 
   <section class="home-section">

@@ -1,0 +1,15 @@
+{{- /*
+  Renders the outbound purchase button from site.Params.purchase.checkout_url.
+  Homepage and docs link to /go/pro/ only — swap Afdian (or any cashier) here without touching CTAs.
+*/ -}}
+{{- $url := "" -}}
+{{- with site.Params.purchase -}}
+  {{- $url = .checkout_url | default "" -}}
+{{- end -}}
+{{- $label := .Get "label" | default "Continue to checkout" -}}
+{{- $empty := .Get "empty" | default "Checkout link is not configured yet. Check back soon, or email support@sconts.com." -}}
+{{- if $url -}}
+<p><a class="super-purchase-cta" href="{{ $url }}" rel="noopener noreferrer" target="_blank">{{ $label }}</a></p>
+{{- else -}}
+<p class="super-purchase-cta-pending">{{ $empty }}</p>
+{{- end -}}

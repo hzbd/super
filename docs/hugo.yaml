@@ -55,6 +55,10 @@ enableInlineShortcodes: true
 
 params:
   description: "Next-gen, High-performance Process Manager"
+  # Public purchase funnel: homepage → /go/pro/ → this URL.
+  # Change checkout_url and redeploy docs only (no superd release).
+  purchase:
+    checkout_url: "https://ifdian.net/a/hibdmm"
   externalLinkDecoration: true
   theme:
     default: light
@@ -110,17 +114,23 @@ menu:
       name: API Reference
       url: /docs/06-internals/api-reference/
       weight: 2
-    - name: Search
+    - identifier: getSuperPro
+      name: Get Super Pro
+      url: /go/pro/
       weight: 3
+      params:
+        style: cta
+    - name: Search
+      weight: 4
       params:
         type: search
     - name: Language
-      weight: 4
+      weight: 5
       params:
         type: language-switch
     - identifier: github
       name: GitHub
       url: https://github.com/hzbd/super
-      weight: 5
+      weight: 6
       params:
         icon: github

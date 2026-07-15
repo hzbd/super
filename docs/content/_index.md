@@ -10,13 +10,15 @@ description: "What Project Super is, and how to install and operate it."
     <p><code>superd</code> is a Rust process manager — one binary to deploy. Define programs in TOML or over REST; it handles restarts, startup order, and health checks. Manage via CLI, browser, or HTTP API.</p>
   </section>
 
-  <nav class="home-nav">
-    <a href="/docs/">Overview</a>
-    <a href="/docs/01-getting-started/">Getting Started</a>
-    <a href="/docs/02-essentials/">Core Essentials</a>
-    <a href="/docs/03-orchestration/">Orchestration</a>
-    <a href="/docs/05-advanced-management/">Advanced Management</a>
-    <a href="/docs/06-internals/api-reference/">API Reference</a>
+  <nav class="home-docnav" aria-label="Quick navigation">
+    <ul class="home-docnav-list">
+      <li><a href="/docs/">Overview</a></li>
+      <li><a href="/docs/01-getting-started/">Getting Started</a></li>
+      <li><a href="/docs/02-essentials/">Core Essentials</a></li>
+      <li><a href="/docs/03-orchestration/">Orchestration</a></li>
+      <li><a href="/docs/05-advanced-management/">Advanced Management</a></li>
+      <li><a href="/docs/06-internals/api-reference/">API Reference</a></li>
+    </ul>
   </nav>
 
   <section class="home-section">
