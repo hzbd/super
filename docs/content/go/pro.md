@@ -17,6 +17,8 @@ Compare editions in the [feature matrix](/docs/07-editions/feature-matrix/). Aft
 
 {{< purchase-cta label="Continue to checkout" empty="Checkout is not linked yet. Please check back soon, or email support@sconts.com." >}}
 
+By continuing to checkout you agree to the [Terms of Service](/legal/terms/) and [Privacy Policy](/legal/privacy/).
+
 Checkout is hosted on a third-party page so we can change payment providers without republishing Super itself. This docs page (`/go/pro/`) stays the stable link from the homepage and docs.
 
 ### How to buy
