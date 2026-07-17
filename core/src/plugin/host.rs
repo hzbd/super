@@ -344,6 +344,8 @@ mod tests {
     #[test]
     fn licensed_requires_security_in_claims() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "acme".into(),
             issued_at: 0,
             major_version: 1,
@@ -370,6 +372,8 @@ mod tests {
     #[test]
     fn licensed_requires_security_on_disk() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "acme".into(),
             issued_at: 0,
             major_version: 1,
@@ -403,6 +407,8 @@ mod tests {
     #[test]
     fn licensed_reports_security_dlopen_failure() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "acme".into(),
             issued_at: 0,
             major_version: 1,

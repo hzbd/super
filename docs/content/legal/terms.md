@@ -30,7 +30,7 @@ See the [feature matrix](/docs/07-editions/feature-matrix/); purchase guide: [Ge
 
 ## 3. Checkout and payment
 
-Checkout is hosted by a **third-party payment platform** (currently Afdian / 爱发电). That platform’s terms apply to payment. We receive only the order details needed to fulfill (see [Privacy Policy](/legal/privacy/)).
+Checkout and payment are completed on a **third-party platform** (currently **Afdian / 爱发电**). Super does not process card or wallet payments itself. **That platform’s terms apply to payment, settlement, and refunds initiated through their checkout.** We receive only the order details needed to fulfill (see [Privacy Policy](/legal/privacy/)).
 
 **Super Pro** is sold for **annual coverage**: one annual payment maps to a **365-day** license.
 
@@ -49,11 +49,12 @@ After payment clears and required order notes are complete (display name, OS + a
 
 ## 6. Refunds
 
-- **Before** plugins and key are delivered: full refund available.
+Payment and refund mechanics are governed first by **Afdian’s platform rules**. In addition:
+
+- **Before** plugins and key are delivered: we will support a full refund via the platform where possible.
 - **After** delivery: generally no refund; material fulfillment errors may be handled case by case.
 - **Wrong monthly tip instead of annual:** we will help switch to annual payment or refund — we will **not** issue a 365-day key for a short monthly tip.
-
-Refunds that go through the payment platform follow that platform’s rules and outcomes.
+- A refunded or charged-back order voids any associated license key.
 
 ## 7. Support and changes
 

@@ -8,6 +8,25 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const PUBLIC_KEY_BYTES: &[u8] = include_bytes!("../../keys/public.key");
 
+/// Default `kid` for the historically embedded Super Pro verifying key.
+pub const DEFAULT_LICENSE_KID: &str = "v1";
+
+/// One verifying key shipped inside this superd build.
+#[derive(Debug, Clone, Copy)]
+pub struct EmbeddedPublicKey {
+    pub kid: &'static str,
+    pub bytes: &'static [u8],
+}
+
+/// Verifying keyring. Add new generations here **before** Manager starts signing with them.
+/// Old builds only have a prefix of this ring — unknown `kid` → friendly upgrade message.
+pub const PUBLIC_KEY_RING: &[EmbeddedPublicKey] = &[EmbeddedPublicKey {
+    kid: DEFAULT_LICENSE_KID,
+    bytes: PUBLIC_KEY_BYTES,
+    // Future rotations: include additional `keys/public-v2.key` entries here after shipping
+    // a superd release that embeds them, then switch Manager signing to that kid.
+}];
+
 /// Subscription / upgrade page shown when the installed superd exceeds the license.
 pub const LICENSE_UPGRADE_URL: &str = "https://super.docs.sconts.com/";
 
@@ -107,10 +126,7 @@ pub fn license_expiry_status(claims: &LicenseClaims) -> anyhow::Result<LicenseEx
     }
 }
 
-fn verify_signature(
-    license_str: &str,
-    verifying_key: &VerifyingKey,
-) -> anyhow::Result<LicenseClaims> {
+fn decode_license_container(license_str: &str) -> anyhow::Result<LicenseContainer> {
     let trimmed = license_str.trim();
     if trimmed.len() > crate::security::MAX_LICENSE_B64_LEN {
         anyhow::bail!("License key too large");
@@ -124,40 +140,112 @@ fn verify_signature(
         anyhow::bail!("License payload too large");
     }
 
-    let container: LicenseContainer =
-        serde_json::from_slice(&json_bytes).context("Invalid license structure")?;
+    serde_json::from_slice(&json_bytes).context("Invalid license structure")
+}
 
+fn verifying_key_from_bytes(bytes: &[u8]) -> anyhow::Result<VerifyingKey> {
+    let key_array: [u8; 32] = bytes
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("Internal error: embedded public key has incorrect size"))?;
+    VerifyingKey::from_bytes(&key_array)
+        .map_err(|_| anyhow::anyhow!("Internal error: invalid embedded public key"))
+}
+
+fn unknown_kid_message(kid: &str) -> String {
+    let known: Vec<&str> = PUBLIC_KEY_RING.iter().map(|k| k.kid).collect();
+    format!(
+        "This license was signed with key id '{kid}', which this superd build does not recognize \
+         (embedded keys: {}). \
+         Keep your current license file on this superd, or upgrade superd to a release that \
+         includes that verifying key, then use this license. \
+         More: {LICENSE_UPGRADE_URL}",
+        known.join(", ")
+    )
+}
+
+fn unrecognized_signing_key_message() -> String {
+    format!(
+        "License signature verification failed. If you recently received a new license key, \
+         this superd build may not include its verifying key yet — keep your previous license \
+         on this build, or upgrade superd and retry. \
+         If you did not change licenses, the key may be invalid or tampered. \
+         More: {LICENSE_UPGRADE_URL}"
+    )
+}
+
+fn verify_container_with_key(
+    container: &LicenseContainer,
+    verifying_key: &VerifyingKey,
+) -> anyhow::Result<()> {
     let signature = Signature::from_slice(&container.signature)
         .map_err(|_| anyhow::anyhow!("Invalid signature format"))?;
-
     let claims_bytes = serde_json::to_vec(&container.claims)?;
-
     verifying_key
         .verify(&claims_bytes, &signature)
-        .map_err(|_| {
-            anyhow::anyhow!("License signature verification failed (invalid or tampered)")
-        })?;
+        .map_err(|_| anyhow::anyhow!("signature mismatch"))?;
+    Ok(())
+}
 
+fn verify_signature(license_str: &str) -> anyhow::Result<LicenseClaims> {
+    let container = decode_license_container(license_str)?;
+
+    // Prefer the kid stamped at issuance when present.
+    if let Some(kid) = container
+        .claims
+        .kid
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let Some(entry) = PUBLIC_KEY_RING.iter().find(|k| k.kid == kid) else {
+            anyhow::bail!("{}", unknown_kid_message(kid));
+        };
+        let verifying_key = verifying_key_from_bytes(entry.bytes)?;
+        match verify_container_with_key(&container, &verifying_key) {
+            Ok(()) => {
+                crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
+                return Ok(container.claims);
+            }
+            Err(_) => {
+                anyhow::bail!(
+                    "License signature verification failed for key id '{kid}' \
+                     (invalid or tampered)"
+                );
+            }
+        }
+    }
+
+    // Legacy keys (no kid): try the full ring.
+    for entry in PUBLIC_KEY_RING {
+        let Ok(verifying_key) = verifying_key_from_bytes(entry.bytes) else {
+            continue;
+        };
+        if verify_container_with_key(&container, &verifying_key).is_ok() {
+            crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
+            return Ok(container.claims);
+        }
+    }
+
+    anyhow::bail!("{}", unrecognized_signing_key_message());
+}
+
+/// Verify against an explicit key (tests / tooling).
+pub fn verify_license_with_key(
+    license_str: &str,
+    verifying_key: &VerifyingKey,
+) -> anyhow::Result<LicenseClaims> {
+    let container = decode_license_container(license_str)?;
+    verify_container_with_key(&container, verifying_key).map_err(|_| {
+        anyhow::anyhow!("License signature verification failed (invalid or tampered)")
+    })?;
     crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
-
+    ensure_not_expired(&container.claims)?;
     Ok(container.claims)
 }
 
 /// Verify a Base64-encoded signed license string (strict: rejects expired keys).
 pub fn verify_license(license_str: &str) -> anyhow::Result<LicenseClaims> {
-    let key_array: [u8; 32] = PUBLIC_KEY_BYTES
-        .try_into()
-        .expect("Embedded public key has incorrect size");
-    let verifying_key = VerifyingKey::from_bytes(&key_array)
-        .map_err(|_| anyhow::anyhow!("Internal error: invalid embedded public key"))?;
-    verify_license_with_key(license_str, &verifying_key)
-}
-
-fn verify_license_with_key(
-    license_str: &str,
-    verifying_key: &VerifyingKey,
-) -> anyhow::Result<LicenseClaims> {
-    let claims = verify_signature(license_str, verifying_key)?;
+    let claims = verify_signature(license_str)?;
     ensure_not_expired(&claims)?;
     Ok(claims)
 }
@@ -166,19 +254,27 @@ fn verify_license_with_key(
 pub fn verify_license_for_superd(
     license_str: &str,
 ) -> anyhow::Result<(LicenseClaims, LicenseExpiryStatus)> {
-    let key_array: [u8; 32] = PUBLIC_KEY_BYTES
-        .try_into()
-        .expect("Embedded public key has incorrect size");
-    let verifying_key = VerifyingKey::from_bytes(&key_array)
-        .map_err(|_| anyhow::anyhow!("Internal error: invalid embedded public key"))?;
-    verify_license_for_superd_with_key(license_str, &verifying_key)
+    let claims = verify_signature(license_str)?;
+    let expiry = license_expiry_status(&claims)?;
+    if matches!(expiry, LicenseExpiryStatus::Expired)
+        && claims.retain_plugins_after_expiry == Some(false)
+    {
+        ensure_not_expired(&claims)?;
+    }
+    Ok((claims, expiry))
 }
 
+#[allow(dead_code)] // used by unit tests below
 fn verify_license_for_superd_with_key(
     license_str: &str,
     verifying_key: &VerifyingKey,
 ) -> anyhow::Result<(LicenseClaims, LicenseExpiryStatus)> {
-    let claims = verify_signature(license_str, verifying_key)?;
+    let container = decode_license_container(license_str)?;
+    verify_container_with_key(&container, verifying_key).map_err(|_| {
+        anyhow::anyhow!("License signature verification failed (invalid or tampered)")
+    })?;
+    crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
+    let claims = container.claims;
     let expiry = license_expiry_status(&claims)?;
     if matches!(expiry, LicenseExpiryStatus::Expired)
         && claims.retain_plugins_after_expiry == Some(false)
@@ -238,6 +334,17 @@ pub fn licensed_version_span(claims: &LicenseClaims) -> String {
 
 /// Check whether `superd` semver is within the signed major/minor policy.
 pub fn check_superd_version(claims: &LicenseClaims, superd_version: &str) -> Result<(), String> {
+    // Multi-product keys: superd only accepts Super Pro (or legacy keys without product_id).
+    if let Some(pid) = claims.product_id.as_deref() {
+        let pid = pid.trim();
+        if !pid.is_empty() && pid != "super-pro" {
+            return Err(format!(
+                "This license is for product '{pid}', not Super Pro. \
+                 Upgrade / re-issue: {LICENSE_UPGRADE_URL}"
+            ));
+        }
+    }
+
     let (host_major, host_minor, _) = parse_semver(superd_version)
         .ok_or_else(|| format!("Invalid superd version '{superd_version}'"))?;
 
@@ -274,6 +381,8 @@ mod semver_tests {
     #[test]
     fn version_labels_are_explicit() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "t".into(),
             issued_at: 1,
             major_version: 1,
@@ -306,6 +415,8 @@ mod semver_tests {
     #[test]
     fn issued_super_version_still_parses_minor_for_display() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "t".into(),
             issued_at: 1,
             major_version: 1,
@@ -326,6 +437,8 @@ mod semver_tests {
     #[test]
     fn max_super_minor_caps_upper_bound_only() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "t".into(),
             issued_at: 1,
             major_version: 1,
@@ -347,6 +460,8 @@ mod semver_tests {
     #[test]
     fn legacy_minor_ahead_delta_still_works() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "t".into(),
             issued_at: 1,
             major_version: 1,
@@ -368,6 +483,8 @@ mod semver_tests {
     #[test]
     fn legacy_license_major_only() {
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "t".into(),
             issued_at: 1,
             major_version: 1,
@@ -413,6 +530,8 @@ mod tests {
     fn expired_license_still_loads_for_superd() {
         let signing_key = SigningKey::generate(&mut OsRng);
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "expired@example.com".into(),
             issued_at: 1,
             major_version: 1,
@@ -438,6 +557,8 @@ mod tests {
         let signing_key = SigningKey::generate(&mut OsRng);
         let verifying_key = signing_key.verifying_key();
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "expired@example.com".into(),
             issued_at: 1,
             major_version: 1,
@@ -459,6 +580,8 @@ mod tests {
         let signing_key = SigningKey::generate(&mut OsRng);
         let verifying_key = signing_key.verifying_key();
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "legacy".into(),
             issued_at: 1,
             major_version: 1,
@@ -479,6 +602,8 @@ mod tests {
     fn superd_rejects_expired_when_claim_says_so() {
         let signing_key = SigningKey::generate(&mut OsRng);
         let claims = LicenseClaims {
+            product_id: None,
+            kid: None,
             issued_to: "expired@example.com".into(),
             issued_at: 1,
             major_version: 1,
@@ -494,5 +619,32 @@ mod tests {
         let token = sign_claims(&signing_key, &claims);
         let verifying_key = signing_key.verifying_key();
         assert!(verify_license_for_superd_with_key(&token, &verifying_key).is_err());
+    }
+
+    #[test]
+    fn unknown_kid_suggests_upgrade_or_keep_license() {
+        let signing_key = SigningKey::generate(&mut OsRng);
+        let claims = LicenseClaims {
+            product_id: Some("super-pro".into()),
+            kid: Some("future-k".into()),
+            issued_to: "newkey@example.com".into(),
+            issued_at: 1,
+            major_version: 1,
+            minor_version: None,
+            max_super_minor: None,
+            minor_ahead: None,
+            issued_super_version: None,
+            plugins: vec!["security".into()],
+            expires_at: None,
+            retain_plugins_after_expiry: None,
+            license_id: Some("lic-new".into()),
+        };
+        let token = sign_claims(&signing_key, &claims);
+        let err = verify_license(&token).unwrap_err().to_string();
+        assert!(err.contains("future-k"), "{err}");
+        assert!(
+            err.contains("Keep your current license") || err.contains("upgrade superd"),
+            "{err}"
+        );
     }
 }

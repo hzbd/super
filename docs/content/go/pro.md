@@ -19,6 +19,8 @@ Compare editions in the [feature matrix](/docs/07-editions/feature-matrix/). Aft
 
 By continuing to checkout you agree to the [Terms of Service](/legal/terms/) and [Privacy Policy](/legal/privacy/).
 
+**Payment is completed on Afdian (爱发电), a third-party platform.** Super does not process your card or wallet directly. **Refunds and chargebacks follow Afdian’s platform rules**; see [Terms §6](/legal/terms/#6-refunds). Contact **support@sconts.com** if fulfillment is delayed after payment clears.
+
 Checkout is hosted on a third-party page so we can change payment providers without republishing Super itself. This docs page (`/go/pro/`) stays the stable link from the homepage and docs.
 
 ### How to buy
