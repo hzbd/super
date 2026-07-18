@@ -59,7 +59,7 @@ impl From<&LicenseClaims> for LicenseInfo {
             major_version: claims.major_version,
             minor_version: claims.minor_version,
             issued_super_version: claims.issued_super_version.clone(),
-            plugins: claims.plugins.clone(),
+            grants: claims.grants.clone(),
             expires_at: claims.expires_at,
             license_id: claims.license_id.clone(),
             features: Vec::new(),
@@ -203,7 +203,7 @@ fn verify_signature(license_str: &str) -> anyhow::Result<LicenseClaims> {
         let verifying_key = verifying_key_from_bytes(entry.bytes)?;
         match verify_container_with_key(&container, &verifying_key) {
             Ok(()) => {
-                crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
+                crate::security::validate_license_grant_ids(&container.claims.grants)?;
                 return Ok(container.claims);
             }
             Err(_) => {
@@ -221,7 +221,7 @@ fn verify_signature(license_str: &str) -> anyhow::Result<LicenseClaims> {
             continue;
         };
         if verify_container_with_key(&container, &verifying_key).is_ok() {
-            crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
+            crate::security::validate_license_grant_ids(&container.claims.grants)?;
             return Ok(container.claims);
         }
     }
@@ -238,7 +238,7 @@ pub fn verify_license_with_key(
     verify_container_with_key(&container, verifying_key).map_err(|_| {
         anyhow::anyhow!("License signature verification failed (invalid or tampered)")
     })?;
-    crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
+    crate::security::validate_license_grant_ids(&container.claims.grants)?;
     ensure_not_expired(&container.claims)?;
     Ok(container.claims)
 }
@@ -250,14 +250,14 @@ pub fn verify_license(license_str: &str) -> anyhow::Result<LicenseClaims> {
     Ok(claims)
 }
 
-/// Verify signature for superd runtime (honours signed `retain_plugins_after_expiry` when set).
+/// Verify signature for superd runtime (honours signed `retain_grants_after_expiry` when set).
 pub fn verify_license_for_superd(
     license_str: &str,
 ) -> anyhow::Result<(LicenseClaims, LicenseExpiryStatus)> {
     let claims = verify_signature(license_str)?;
     let expiry = license_expiry_status(&claims)?;
     if matches!(expiry, LicenseExpiryStatus::Expired)
-        && claims.retain_plugins_after_expiry == Some(false)
+        && claims.retain_grants_after_expiry == Some(false)
     {
         ensure_not_expired(&claims)?;
     }
@@ -273,11 +273,11 @@ fn verify_license_for_superd_with_key(
     verify_container_with_key(&container, verifying_key).map_err(|_| {
         anyhow::anyhow!("License signature verification failed (invalid or tampered)")
     })?;
-    crate::security::validate_license_plugin_ids(&container.claims.plugins)?;
+    crate::security::validate_license_grant_ids(&container.claims.grants)?;
     let claims = container.claims;
     let expiry = license_expiry_status(&claims)?;
     if matches!(expiry, LicenseExpiryStatus::Expired)
-        && claims.retain_plugins_after_expiry == Some(false)
+        && claims.retain_grants_after_expiry == Some(false)
     {
         ensure_not_expired(&claims)?;
     }
@@ -389,10 +389,9 @@ mod semver_tests {
             minor_version: Some(2),
             max_super_minor: Some(4),
             minor_ahead: None,
-            issued_super_version: Some("1.2.0".into()),
-            plugins: vec![],
+            issued_super_version: Some("1.2.0".into()), grants: vec![],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         assert_eq!(
@@ -423,10 +422,9 @@ mod semver_tests {
             minor_version: None,
             max_super_minor: Some(4),
             minor_ahead: None,
-            issued_super_version: Some("1.2.0".into()),
-            plugins: vec![],
+            issued_super_version: Some("1.2.0".into()), grants: vec![],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         assert_eq!(licensed_minor_line(&claims), Some(2));
@@ -445,10 +443,9 @@ mod semver_tests {
             minor_version: Some(2),
             max_super_minor: Some(4),
             minor_ahead: None,
-            issued_super_version: Some("1.2.0".into()),
-            plugins: vec![],
+            issued_super_version: Some("1.2.0".into()), grants: vec![],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         assert!(check_superd_version(&claims, "1.0.0").is_ok());
@@ -468,10 +465,9 @@ mod semver_tests {
             minor_version: Some(2),
             max_super_minor: None,
             minor_ahead: Some(2),
-            issued_super_version: Some("1.2.0".into()),
-            plugins: vec![],
+            issued_super_version: Some("1.2.0".into()), grants: vec![],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         assert_eq!(licensed_max_super_minor(&claims), Some(4));
@@ -491,10 +487,9 @@ mod semver_tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec![],
+            issued_super_version: None, grants: vec![],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         assert_eq!(license_max_superd_version(&claims), "1.x");
@@ -538,10 +533,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["security".into()],
+            issued_super_version: None, grants: vec!["security".into()],
             expires_at: Some(2),
-            retain_plugins_after_expiry: Some(true),
+            retain_grants_after_expiry: Some(true),
             license_id: Some("lic-test".into()),
         };
         let token = sign_claims(&signing_key, &claims);
@@ -565,10 +559,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["security".into()],
+            issued_super_version: None, grants: vec!["security".into()],
             expires_at: Some(2),
-            retain_plugins_after_expiry: Some(true),
+            retain_grants_after_expiry: Some(true),
             license_id: Some("lic-test".into()),
         };
         let token = sign_claims(&signing_key, &claims);
@@ -588,10 +581,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["security".into()],
+            issued_super_version: None, grants: vec!["security".into()],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         let token = sign_claims(&signing_key, &claims);
@@ -610,10 +602,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["security".into()],
+            issued_super_version: None, grants: vec!["security".into()],
             expires_at: Some(2),
-            retain_plugins_after_expiry: Some(false),
+            retain_grants_after_expiry: Some(false),
             license_id: Some("lic-hard".into()),
         };
         let token = sign_claims(&signing_key, &claims);
@@ -633,10 +624,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["security".into()],
+            issued_super_version: None, grants: vec!["security".into()],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: Some("lic-new".into()),
         };
         let token = sign_claims(&signing_key, &claims);

@@ -115,14 +115,14 @@ impl PluginHost {
                 }
 
                 info!(
-                    "License verified for '{}' (superd {}, plugins: {:?})",
+                    "License verified for '{}' (superd {}, grants: {:?})",
                     claims.issued_to,
                     licensed_version_span(claims),
-                    claims.plugins
+                    claims.grants
                 );
 
                 let licensed_set: HashSet<&str> =
-                    claims.plugins.iter().map(String::as_str).collect();
+                    claims.grants.iter().map(String::as_str).collect();
                 let installed_set: HashSet<&str> =
                     installed_plugins.iter().map(String::as_str).collect();
 
@@ -132,7 +132,7 @@ impl PluginHost {
                     }
                 }
 
-                for id in &claims.plugins {
+                for id in &claims.grants {
                     if !installed_set.contains(id.as_str()) {
                         warn!(
                             "Plugin '{}' licensed but not installed; feature unavailable.",
@@ -152,7 +152,7 @@ impl PluginHost {
                 Self {
                     mode: RunMode::Licensed,
                     claims: Some(claims.clone()),
-                    licensed_plugins: claims.plugins.clone(),
+                    licensed_plugins: claims.grants.clone(),
                     installed_plugins,
                     loaded_plugins: runtime.loaded_ids.clone(),
                     runtime,
@@ -185,7 +185,7 @@ pub fn validate_licensed_security(
 
     let claims = claims.context("licensed mode requires license claims")?;
 
-    if !claims.plugins.iter().any(|p| p == "security") {
+    if !claims.grants.iter().any(|p| p == "security") {
         anyhow::bail!(
             "Licensed deployment requires the security plugin in your subscription key. \
              Re-issue or renew your license — security is included with every subscription."
@@ -352,10 +352,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["ui".into()],
+            issued_super_version: None, grants: vec!["ui".into()],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         let err = validate_licensed_security(
@@ -380,10 +379,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["security".into(), "ui".into()],
+            issued_super_version: None, grants: vec!["security".into(), "ui".into()],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         let err = validate_licensed_security(
@@ -415,10 +413,9 @@ mod tests {
             minor_version: None,
             max_super_minor: None,
             minor_ahead: None,
-            issued_super_version: None,
-            plugins: vec!["security".into()],
+            issued_super_version: None, grants: vec!["security".into()],
             expires_at: None,
-            retain_plugins_after_expiry: None,
+            retain_grants_after_expiry: None,
             license_id: None,
         };
         let err = validate_licensed_security(

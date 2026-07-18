@@ -45,11 +45,11 @@ pub fn is_valid_plugin_id(id: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
 }
 
-/// Reject plugin ids that do not match the public catalog naming rules.
-pub fn validate_license_plugin_ids(plugins: &[String]) -> anyhow::Result<()> {
-    for id in plugins {
+/// Reject grant ids that do not match the public catalog naming rules.
+pub fn validate_license_grant_ids(grants: &[String]) -> anyhow::Result<()> {
+    for id in grants {
         if !is_valid_plugin_id(id) {
-            bail!("Invalid plugin id in license: '{id}'");
+            bail!("Invalid grant id in license: '{id}'");
         }
     }
     Ok(())

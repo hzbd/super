@@ -287,7 +287,7 @@ Returns verified subscription metadata plus runtime plugin versions (versions ar
   "issued_to": "Customer Name",
   "issued_at": 1710000000,
   "major_version": 1,
-  "plugins": ["security", "notify", "ui"],
+  "grants": ["security", "notify", "ui"],
   "expires_at": 1741536000,
   "license_id": "550e8400-e29b-41d4-a716-446655440000",
   "features": ["auth", "notify", "dashboard"],
@@ -301,7 +301,7 @@ Returns verified subscription metadata plus runtime plugin versions (versions ar
 | Field | Notes |
 |-------|-------|
 | `expires_at` | Omitted when license is perpetual (no expiry in claims) |
-| `features` | UI feature codes derived from authorized `plugins[]` |
+| `features` | UI feature codes derived from authorized `grants[]` |
 | `plugin_versions` | Loaded plugin crate versions at runtime |
 
 **Errors:** `404` if no license configured; `401` if auth required and missing/invalid token.

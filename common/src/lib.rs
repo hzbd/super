@@ -20,7 +20,7 @@ pub use paths::{resolve_super_root, resolve_super_root_for_config};
 pub use security::{
     FetchUrlPolicy, MAX_LICENSE_B64_LEN, MAX_LICENSE_JSON_LEN, is_loopback_bind_host, mask_env_map,
     mask_secret_value, resolve_confined_log_path, resolve_plugin_library, sanitize_ui_asset_path,
-    validate_license_plugin_ids, validate_outbound_url,
+    validate_license_grant_ids, validate_outbound_url,
 };
 
 pub use auth::{AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole};

@@ -27,14 +27,14 @@ pub struct LicenseClaims {
     /// Super product version this license was issued for (e.g. `"1.2.0"`). Anchors renewals and upgrades.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub issued_super_version: Option<String>,
-    /// Authorized plugin IDs (e.g. `security`, `notify`, `isolation`).
-    pub plugins: Vec<String>,
+    /// Authorized grant IDs (plugin stems for Super Pro, e.g. `security`, `notify`, `isolation`).
+    pub grants: Vec<String>,
     /// Unix timestamp when the license expires. Omitted = no expiration.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<u64>,
-    /// When `false`, superd rejects expired keys at runtime. Omitted/`true` = keep plugins offline.
+    /// When `false`, superd rejects expired keys at runtime. Omitted/`true` = keep grants offline.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub retain_plugins_after_expiry: Option<bool>,
+    pub retain_grants_after_expiry: Option<bool>,
     /// Stable identifier for support / renewal tracking (optional in legacy licenses).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub license_id: Option<String>,
@@ -50,12 +50,12 @@ pub struct LicenseInfo {
     pub minor_version: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub issued_super_version: Option<String>,
-    pub plugins: Vec<String>,
+    pub grants: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub license_id: Option<String>,
-    /// UI feature codes (optional; clients may derive from `plugins`).
+    /// UI feature codes (optional; clients may derive from `grants`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub features: Vec<String>,
     /// Loaded plugin release versions (runtime; not part of signed claims).

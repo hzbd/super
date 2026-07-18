@@ -278,7 +278,7 @@ fn check_licensed_deployment(
 
     let plugins_dir = resolve_super_root_for_config(config_path).join("plugins");
     let req_errors = licensed_requirement_errors(
-        &claims.plugins,
+        &claims.grants,
         &plugins_dir,
         config.auth_secret.as_deref(),
         config.server.allow_insecure_public_bind,
