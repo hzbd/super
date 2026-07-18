@@ -1,0 +1,44 @@
+name: Pro trial request
+description: Request a free 1-year Super Pro license (plugins + key sent by email)
+title: "[Pro trial] "
+labels: ["pro-trial"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Super is in a **public trial** — not for production yet.
+        Fill this out and we will email a **free 1-year** license key and plugin package.
+  - type: input
+    id: email
+    attributes:
+      label: Contact email
+      description: Where should we send the license key and plugins?
+      placeholder: you@example.com
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - linux/amd64
+        - linux/arm64
+        - darwin/arm64
+        - darwin/amd64
+        - freebsd/amd64
+        - other (specify in notes)
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: One or two sentences — what do you want to try Super for?
+      placeholder: e.g. Replace PM2 for a Go API + Redis on a small VPS (homelab / trial only)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Anything else (other platform, Docker-only, etc.)
