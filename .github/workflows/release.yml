@@ -1,6 +1,5 @@
-# Builds release archives. Before compile, fetch-verifying-keys.sh pulls the
-# Manager public keyring when secrets MANAGER_BASE + MANAGER_TOKEN are set
-# (optional repo variable REQUIRE_MANAGER_KEYRING=1 to require Manager).
+# Builds release archives. common/keys/ is empty in git — fetch Manager
+# public keyring (secrets MANAGER_BASE + MANAGER_TOKEN) before every compile.
 name: Release
 
 on:
@@ -66,7 +65,7 @@ jobs:
         env:
           MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
           MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
-          REQUIRE_MANAGER_KEYRING: ${{ vars.REQUIRE_MANAGER_KEYRING }}
+          REQUIRE_MANAGER_KEYRING: '1'
         run: bash .github/scripts/fetch-verifying-keys.sh
 
       - name: Build and package
@@ -99,7 +98,7 @@ jobs:
         env:
           MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
           MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
-          REQUIRE_MANAGER_KEYRING: ${{ vars.REQUIRE_MANAGER_KEYRING }}
+          REQUIRE_MANAGER_KEYRING: '1'
         run: bash .github/scripts/fetch-verifying-keys.sh
 
       - name: Build on FreeBSD

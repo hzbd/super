@@ -30,11 +30,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Dockerfile runs cargo build — same keyring requirement as release binaries.
       - name: Fetch verifying keys from Manager
         env:
           MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
           MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
-          REQUIRE_MANAGER_KEYRING: ${{ vars.REQUIRE_MANAGER_KEYRING }}
+          REQUIRE_MANAGER_KEYRING: '1'
         run: bash .github/scripts/fetch-verifying-keys.sh
 
       - name: Docker meta

@@ -1,11 +1,10 @@
 //! Embed every verifying public key under `keys/` into `PUBLIC_KEY_RING`.
 //!
-//! Naming:
-//! - `public.key` → kid `v1` (historical Super Pro embed)
-//! - `{product}.{kid}.public.key` → kid from the filename (e.g. `super-pro.k_abc.public.key`)
+//! Naming: `{product}.{kid}.public.key` (e.g. `super-pro.k_abc.public.key`).
+//! Optional legacy: `public.key` → kid `v1` (not used for new commercial builds).
 //!
-//! Add/remove files via Manager export (`super-pro/scripts/export-oss-verifying-keys.sh`);
-//! no hand-edited kid list in source.
+//! Populate via `make fetch-keys` / `make build` (Manager API) or
+//! `super-pro/scripts/export-oss-verifying-keys.sh`.
 
 use std::env;
 use std::fs;
@@ -22,8 +21,8 @@ fn main() {
     let entries = collect_keys(&keys_dir);
     if entries.is_empty() {
         panic!(
-            "no verifying keys in {} — need public.key and/or *.public.key \
-             (export from Manager: super-pro/scripts/export-oss-verifying-keys.sh)",
+            "no verifying keys in {} (directory is empty in git). \
+             Run: make fetch-keys  (MANAGER_BASE + MANAGER_TOKEN / .env)",
             keys_dir.display()
         );
     }

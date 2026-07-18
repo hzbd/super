@@ -33,8 +33,8 @@ data.json
 !.env.example
 *.key
 *.pem
-!common/keys/public.key
-!common/keys/*.public.key
+# Verifying keys are fetched from Manager at build time — do not commit.
+!common/keys/.gitkeep
 
 docs/public/
 docs/resources/

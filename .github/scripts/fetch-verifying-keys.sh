@@ -2,29 +2,70 @@
 # Fetch Super Pro verifying keyring from Manager into common/keys/ for this build.
 #
 # Env:
-#   MANAGER_BASE   — e.g. https://manager.example.com (default http://127.0.0.1:8787)
+#   MANAGER_BASE   — e.g. http://127.0.0.1:8787 (dev) or https://manager.example.com
 #   MANAGER_TOKEN  — Bearer token with products.read
 #   PRODUCT_ID     — default super-pro
-#   REQUIRE_MANAGER_KEYRING — if 1/true, fail when token missing or fetch fails
+#   REQUIRE_MANAGER_KEYRING — default 1; fail when token missing or fetch fails
+#   KEEP_LEGACY_PUBLIC_KEY — if 1, keep common/keys/public.key (default: remove on fetch)
+#
+# Also loads KEY=VALUE lines from repo-root `.env` when present (gitignored).
+#
+# common/keys/ is empty in git (.gitkeep only). CI, release, and `make build`
+# must fetch from Manager before compiling.
 #
 # Behavior:
 #   - Decodes each entries[].public_key_b64 → common/keys/{product}.{kid}.public.key
 #   - Replaces prior {product}.*.public.key for that product (exact Manager snapshot)
-#   - Leaves common/keys/public.key alone (historical kid v1 embed, if present)
+#   - Removes legacy public.key unless KEEP_LEGACY_PUBLIC_KEY=1
 #   - common/build.rs embeds every key file into PUBLIC_KEY_RING at compile time
 #
-# GitHub Actions: set repository secrets MANAGER_BASE + MANAGER_TOKEN; optional
-# repository variable REQUIRE_MANAGER_KEYRING=1 to make release builds require Manager.
+# Local: `make build` (dev Manager via .env).
+# GitHub Actions: secrets MANAGER_BASE + MANAGER_TOKEN (required).
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OSS_KEYS="${OSS_KEYS:-$ROOT/common/keys}"
 PRODUCT_ID="${PRODUCT_ID:-super-pro}"
-REQUIRE="${REQUIRE_MANAGER_KEYRING:-0}"
+REQUIRE="${REQUIRE_MANAGER_KEYRING:-1}"
+KEEP_LEGACY="${KEEP_LEGACY_PUBLIC_KEY:-0}"
+
+load_dotenv() {
+  local f="$ROOT/.env"
+  [[ -f "$f" ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      local key="${BASH_REMATCH[1]}"
+      local val="${BASH_REMATCH[2]}"
+      # Strip optional surrounding quotes
+      if [[ "$val" =~ ^\"(.*)\"$ ]]; then
+        val="${BASH_REMATCH[1]}"
+      elif [[ "$val" =~ ^\'(.*)\'$ ]]; then
+        val="${BASH_REMATCH[1]}"
+      fi
+      # Do not override vars already set in the environment
+      if [[ -z "${!key+x}" ]]; then
+        export "$key=$val"
+      fi
+    fi
+  done <"$f"
+}
+
+load_dotenv
+REQUIRE="${REQUIRE_MANAGER_KEYRING:-$REQUIRE}"
+KEEP_LEGACY="${KEEP_LEGACY_PUBLIC_KEY:-$KEEP_LEGACY}"
 
 require_on() {
   case "$(printf '%s' "$REQUIRE" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+keep_legacy_on() {
+  case "$(printf '%s' "$KEEP_LEGACY" | tr '[:upper:]' '[:lower:]')" in
     1|true|yes|on) return 0 ;;
     *) return 1 ;;
   esac
@@ -34,9 +75,12 @@ fail_or_skip() {
   local msg="$1"
   if require_on; then
     echo "ERROR: $msg (REQUIRE_MANAGER_KEYRING is set)" >&2
+    echo "Hint: set MANAGER_BASE + MANAGER_TOKEN in the environment or super/.env" >&2
+    echo "      (create an API token with products.read in Manager Settings)." >&2
+    echo "      common/keys/ is empty in git — fetch is required before compile." >&2
     exit 1
   fi
-  echo "NOTICE: $msg — using committed keys under common/keys/"
+  echo "NOTICE: $msg — leaving common/keys/ unchanged (may be empty; compile will fail)"
   exit 0
 }
 
@@ -57,7 +101,7 @@ json=$(curl -fsS \
   fail_or_skip "Manager keyring request failed"
 }
 
-PRODUCT_ID="$PRODUCT_ID" OSS_KEYS="$OSS_KEYS" python3 - "$json" <<'PY'
+KEEP_LEGACY_PUBLIC_KEY="$KEEP_LEGACY" PRODUCT_ID="$PRODUCT_ID" OSS_KEYS="$OSS_KEYS" python3 - "$json" <<'PY'
 import base64, json, os, sys
 from pathlib import Path
 
@@ -65,20 +109,28 @@ def sanitize(raw: str) -> str:
     s = "".join(c if (c.isalnum() or c in "-_.") else "_" for c in raw.strip())
     return s or "_"
 
+def truthy(raw: str) -> bool:
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
 data = json.loads(sys.argv[1])
 product_id = os.environ["PRODUCT_ID"]
 oss = Path(os.environ["OSS_KEYS"])
+keep_legacy = truthy(os.environ.get("KEEP_LEGACY_PUBLIC_KEY", "0"))
 entries = data.get("entries") or []
 if not entries:
     sys.exit("ERROR: keyring has no entries")
 
-# Drop previous named public keys for this product so the tree matches Manager.
+# Exact Manager snapshot for this product.
 prefix = f"{sanitize(product_id)}."
 for path in sorted(oss.glob("*.public.key")):
-    name = path.name
-    if name.startswith(prefix) and name.endswith(".public.key"):
+    if path.name.startswith(prefix):
         path.unlink()
-        print(f"  removed stale {name}")
+        print(f"  removed stale {path.name}")
+
+legacy = oss / "public.key"
+if legacy.is_file() and not keep_legacy:
+    legacy.unlink()
+    print(f"  removed legacy {legacy.name}")
 
 written = 0
 for e in entries:
@@ -99,8 +151,7 @@ for e in entries:
 if written == 0:
     sys.exit("ERROR: no keyring entries written")
 
-v1 = oss / "public.key"
-if v1.is_file():
-    print(f"  kept {v1.name} (historical v1 embed, {v1.stat().st_size} bytes)")
+if keep_legacy and legacy.is_file():
+    print(f"  kept {legacy.name} (KEEP_LEGACY_PUBLIC_KEY)")
 print(f"==> {written} verifying key(s) ready under {oss}")
 PY

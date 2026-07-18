@@ -53,19 +53,24 @@ When updating public docs:
 
 Before opening a PR that touches docs or license-related code, confirm the change does not require documenting private trees or issuance policy internals.
 
-## Release builds and verifying keys
+## Verifying keys (required when compiling binaries)
 
-PR/CI uses committed files under `common/keys/` (offline). **Release** and **Docker publish** workflows call `.github/scripts/fetch-verifying-keys.sh` before compiling `superd`, so published binaries can embed the live Manager keyring.
+`common/keys/` is **empty in git** (only `.gitkeep`). Anything that compiles `common` / `superd` / `super` (local `make build` / `make check`, CI, Release) **must** fetch the Super Pro public keyring from Manager first. This is about the binary build, not Docker packaging itself.
 
-Repository secrets (maintainers):
+Local:
 
-| Secret / variable | Purpose |
-|-------------------|--------|
-| `MANAGER_BASE` | Manager origin URL (no trailing slash required) |
-| `MANAGER_TOKEN` | Bearer token with `products.read` |
-| `REQUIRE_MANAGER_KEYRING` (optional variable) | Set to `1` to fail the build if Manager is unreachable |
+1. Copy `.env.example` → `.env` and set `MANAGER_BASE` + `MANAGER_TOKEN` (`products.read`).
+2. Run Manager (or point at your dev Manager).
+3. `make build` (or `make fetch-keys`).
 
-If `MANAGER_TOKEN` is unset, the script keeps committed keys and continues (until you flip `REQUIRE_MANAGER_KEYRING`).
+GitHub (`hzbd/super`) secrets (required for `ci.yml` and `release.yml`; also `docker-publish.yml` because that Dockerfile runs `cargo build`):
+
+| Secret | Purpose |
+|--------|---------|
+| `MANAGER_BASE` | Manager origin URL |
+| `MANAGER_TOKEN` | Bearer with `products.read` |
+
+Fetched `*.public.key` files are gitignored — do not commit them.
 
 ## Questions
 

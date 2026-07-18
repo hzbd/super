@@ -16,6 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fetch verifying keys from Manager
+        env:
+          MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
+          MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
+          REQUIRE_MANAGER_KEYRING: '1'
+        run: bash .github/scripts/fetch-verifying-keys.sh
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:

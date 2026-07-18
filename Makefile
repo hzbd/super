@@ -6,6 +6,9 @@ TARGET_DIR   := target/release
 # Define all OSS binaries (Server 'superd' and CLI 'super')
 BINARIES     := --bin superd --bin super
 
+# common/keys/ is empty in git — always fetch from Manager before compile.
+REQUIRE_MANAGER_KEYRING ?= 1
+
 # Colors for output
 GREEN  := \033[0;32m
 YELLOW := \033[0;33m
@@ -22,19 +25,29 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  build       Build OSS binaries (superd + super CLI)"
+	@echo "  build       Fetch Manager keyring, then build superd + super CLI"
+	@echo "  fetch-keys  Only fetch verifying keys into common/keys/"
 	@echo "  clean       Clean up build artifacts (target/)"
-	@echo "  check       Run cargo check"
+	@echo "  check       Fetch keyring, then cargo check"
 	@echo "  docker      Build containerpi/super image (native arch, local load)"
 	@echo "  docker-multi  Build and push linux/amd64 image"
+	@echo ""
+	@echo "Keyring: common/keys/ is empty in git. make build / check fetch from"
+	@echo "  Manager (MANAGER_BASE + MANAGER_TOKEN in env or .env)."
 	@echo ""
 
 # ==========================================
 # Core Build Tasks
 # ==========================================
 
+.PHONY: fetch-keys
+fetch-keys:
+	@echo "$(BLUE)🔑 Fetching verifying keyring from Manager...$(NC)"
+	@REQUIRE_MANAGER_KEYRING="$(REQUIRE_MANAGER_KEYRING)" \
+		bash .github/scripts/fetch-verifying-keys.sh
+
 .PHONY: build
-build:
+build: fetch-keys
 	@echo "$(BLUE)🦀 Building Rust Binaries (OSS)...$(NC)"
 	@cargo build --release $(BINARIES)
 	@echo "$(GREEN)🎉 All OSS binaries built successfully!$(NC)"
@@ -53,7 +66,7 @@ clean:
 	@echo "$(GREEN)✅ Clean complete.$(NC)"
 
 .PHONY: check
-check:
+check: fetch-keys
 	@cargo check
 
 # Local docs preview (Hugo adjusts paths for localhost — do not open public/ as files)

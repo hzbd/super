@@ -4,9 +4,8 @@
 //! runtime. Subscription key signing and plugin catalogs are out of scope
 //! for this repository.
 //!
-//! Verifying keys: commit public material under `common/keys/`; `build.rs` embeds
-//! all of them into `PUBLIC_KEY_RING`. Export from Manager with
-//! `super-pro/scripts/export-oss-verifying-keys.sh` (no hand-maintained kid list).
+//! Verifying keys: `make build` / `make fetch-keys` pulls Manager public-keyring into
+//! `common/keys/`; `build.rs` embeds all `*.public.key` into `PUBLIC_KEY_RING`.
 
 mod claims;
 mod verify;
