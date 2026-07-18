@@ -33,7 +33,8 @@ data.json
 !.env.example
 *.key
 *.pem
-# Verifying keys are fetched from Manager at build time — do not commit.
+# Ed25519 verifying public keys only (safe to commit; required for offline OSS builds).
+!common/keys/*.public.key
 !common/keys/.gitkeep
 
 docs/public/

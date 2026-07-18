@@ -1,26 +1,20 @@
 #!/usr/bin/env bash
-# Fetch Super Pro verifying keyring from Manager into common/keys/ for this build.
+# Maintainer helper: refresh committed verifying keys from Manager.
+#
+# OSS builds (make build, CI, Release) use common/keys/*.public.key already in
+# git — contributors do not need Manager access. Public keys are public.
 #
 # Env:
-#   MANAGER_BASE   — e.g. http://127.0.0.1:8787 (dev) or https://manager.example.com
+#   MANAGER_BASE   — e.g. http://127.0.0.1:8787 or production Manager URL
 #   MANAGER_TOKEN  — Bearer token with products.read
 #   PRODUCT_ID     — default super-pro
-#   REQUIRE_MANAGER_KEYRING — default 1; fail when token missing or fetch fails
-#   KEEP_LEGACY_PUBLIC_KEY — if 1, keep common/keys/public.key (default: remove on fetch)
+#   REQUIRE_MANAGER_KEYRING — default 1 for this script
+#   KEEP_LEGACY_PUBLIC_KEY — if 1, keep common/keys/public.key
 #
-# Also loads KEY=VALUE lines from repo-root `.env` when present (gitignored).
+# Also loads KEY=VALUE from repo-root `.env` when present (gitignored).
 #
-# common/keys/ is empty in git (.gitkeep only). CI, release, and `make build`
-# must fetch from Manager before compiling.
-#
-# Behavior:
-#   - Decodes each entries[].public_key_b64 → common/keys/{product}.{kid}.public.key
-#   - Replaces prior {product}.*.public.key for that product (exact Manager snapshot)
-#   - Removes legacy public.key unless KEEP_LEGACY_PUBLIC_KEY=1
-#   - common/build.rs embeds every key file into PUBLIC_KEY_RING at compile time
-#
-# Local: `make build` (dev Manager via .env).
-# GitHub Actions: secrets MANAGER_BASE + MANAGER_TOKEN (required).
+# After a successful fetch, commit updated common/keys/*.public.key so the next
+# OSS/CI/Release build embeds the new ring.
 
 set -euo pipefail
 
@@ -39,13 +33,11 @@ load_dotenv() {
     if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
       local key="${BASH_REMATCH[1]}"
       local val="${BASH_REMATCH[2]}"
-      # Strip optional surrounding quotes
       if [[ "$val" =~ ^\"(.*)\"$ ]]; then
         val="${BASH_REMATCH[1]}"
       elif [[ "$val" =~ ^\'(.*)\'$ ]]; then
         val="${BASH_REMATCH[1]}"
       fi
-      # Do not override vars already set in the environment
       if [[ -z "${!key+x}" ]]; then
         export "$key=$val"
       fi
@@ -76,11 +68,11 @@ fail_or_skip() {
   if require_on; then
     echo "ERROR: $msg (REQUIRE_MANAGER_KEYRING is set)" >&2
     echo "Hint: set MANAGER_BASE + MANAGER_TOKEN in the environment or super/.env" >&2
-    echo "      (create an API token with products.read in Manager Settings)." >&2
-    echo "      common/keys/ is empty in git — fetch is required before compile." >&2
+    echo "      (API token with products.read). OSS contributors: skip this script;" >&2
+    echo "      make build uses committed common/keys/*.public.key." >&2
     exit 1
   fi
-  echo "NOTICE: $msg — leaving common/keys/ unchanged (may be empty; compile will fail)"
+  echo "NOTICE: $msg — leaving common/keys/ unchanged"
   exit 0
 }
 
@@ -120,7 +112,6 @@ entries = data.get("entries") or []
 if not entries:
     sys.exit("ERROR: keyring has no entries")
 
-# Exact Manager snapshot for this product.
 prefix = f"{sanitize(product_id)}."
 for path in sorted(oss.glob("*.public.key")):
     if path.name.startswith(prefix):
@@ -154,4 +145,5 @@ if written == 0:
 if keep_legacy and legacy.is_file():
     print(f"  kept {legacy.name} (KEEP_LEGACY_PUBLIC_KEY)")
 print(f"==> {written} verifying key(s) ready under {oss}")
+print("==> Commit common/keys/*.public.key so CI/Release embed this ring.")
 PY

@@ -1,10 +1,8 @@
 //! Embed every verifying public key under `keys/` into `PUBLIC_KEY_RING`.
 //!
 //! Naming: `{product}.{kid}.public.key` (e.g. `super-pro.k_abc.public.key`).
-//! Optional legacy: `public.key` → kid `v1` (not used for new commercial builds).
-//!
-//! Populate via `make fetch-keys` / `make build` (Manager API) or
-//! `super-pro/scripts/export-oss-verifying-keys.sh`.
+//! These files are committed so OSS contributors can build offline.
+//! Maintainers refresh with `make fetch-keys` (Manager API) then commit.
 
 use std::env;
 use std::fs;
@@ -21,8 +19,8 @@ fn main() {
     let entries = collect_keys(&keys_dir);
     if entries.is_empty() {
         panic!(
-            "no verifying keys in {} (directory is empty in git). \
-             Run: make fetch-keys  (MANAGER_BASE + MANAGER_TOKEN / .env)",
+            "no verifying keys in {} — need committed *.public.key \
+             (maintainers: make fetch-keys, then commit)",
             keys_dir.display()
         );
     }

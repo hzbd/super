@@ -53,24 +53,19 @@ When updating public docs:
 
 Before opening a PR that touches docs or license-related code, confirm the change does not require documenting private trees or issuance policy internals.
 
-## Verifying keys (required when compiling binaries)
+## Verifying keys (OSS-friendly)
 
-`common/keys/` is **empty in git** (only `.gitkeep`). Anything that compiles `common` / `superd` / `super` (local `make build` / `make check`, CI, Release) **must** fetch the Super Pro public keyring from Manager first. This is about the binary build, not Docker packaging itself.
+Ed25519 **verifying** public keys live under `common/keys/*.public.key` and are **committed**. Anyone can `make build` / run CI offline — no Manager account or token required. Public keys are not secrets.
 
-Local:
+**Maintainers** (after Manager key rotate): refresh and commit the snapshot:
 
-1. Copy `.env.example` → `.env` and set `MANAGER_BASE` + `MANAGER_TOKEN` (`products.read`).
-2. Run Manager (or point at your dev Manager).
-3. `make build` (or `make fetch-keys`).
+```bash
+cp .env.example .env   # MANAGER_BASE + MANAGER_TOKEN (products.read)
+make fetch-keys
+git add common/keys/*.public.key && git commit -m "Update verifying keyring"
+```
 
-GitHub (`hzbd/super`) secrets (required for `ci.yml` and `release.yml`; also `docker-publish.yml` because that Dockerfile runs `cargo build`):
-
-| Secret | Purpose |
-|--------|---------|
-| `MANAGER_BASE` | Manager origin URL |
-| `MANAGER_TOKEN` | Bearer with `products.read` |
-
-Fetched `*.public.key` files are gitignored — do not commit them.
+Then tag a release so published binaries embed the new ring before issuing licenses with new kids.
 
 ## Questions
 

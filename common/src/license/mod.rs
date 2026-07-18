@@ -4,8 +4,8 @@
 //! runtime. Subscription key signing and plugin catalogs are out of scope
 //! for this repository.
 //!
-//! Verifying keys: `make build` / `make fetch-keys` pulls Manager public-keyring into
-//! `common/keys/`; `build.rs` embeds all `*.public.key` into `PUBLIC_KEY_RING`.
+//! Verifying keys: committed under `common/keys/*.public.key` (public material).
+//! `build.rs` embeds them into `PUBLIC_KEY_RING`. Maintainers refresh with `make fetch-keys`.
 
 mod claims;
 mod verify;
