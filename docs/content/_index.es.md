@@ -59,6 +59,11 @@ description: "Qué es Project Super y cómo instalarlo y operarlo."
         <p>Ejecuta programas con expresiones cron sin scheduler externo.</p>
         <a href="/docs/02-essentials/scheduled-tasks">Tareas programadas →</a>
       </article>
+      <article class="home-feature">
+        <h3>Operaciones remotas por HTTP</h3>
+        <p>Una sola API REST para CLI, scripts y control remoto de programas, logs y OTA. Community (OSS) <strong>no tiene autenticación de API</strong> — mantén el bind en loopback. Las ediciones con licencia añaden Bearer con el plugin security.</p>
+        <a href="/docs/04-production-scenarios/observability/programmatic-control">Ops programables →</a>
+      </article>
     </div>
   </section>
 
@@ -69,7 +74,7 @@ description: "Qué es Project Super y cómo instalarlo y operarlo."
     <div class="home-split">
       <div class="home-split-text">
         <h3>REST y WebSockets</h3>
-        <p>Registra y controla programas por HTTP; la CLI usa los mismos endpoints.</p>
+        <p>Registra y controla programas por HTTP; la CLI usa los mismos endpoints. Scripts y CI para ops locales o remotas; logs por WebSocket.</p>
         <a href="/docs/06-internals/api-reference">Referencia API completa →</a>
       </div>
       <div class="home-split-code">

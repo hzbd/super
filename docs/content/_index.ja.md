@@ -59,6 +59,11 @@ description: "Project Super とは何か、インストールと運用方法。"
         <p>cron 式でプログラムを実行 — 外部スケジューラ不要。</p>
         <a href="/docs/02-essentials/scheduled-tasks">スケジュールタスク →</a>
       </article>
+      <article class="home-feature">
+        <h3>HTTP リモート運用</h3>
+        <p>CLI・スクリプト・リモート制御が同じ REST API（プログラム、ログ、OTA）。コミュニティ版（OSS）には<strong>API 認証がありません</strong> — バインドはループバックのままにしてください。ライセンス版は security プラグインで Bearer 認証を追加します。</p>
+        <a href="/docs/04-production-scenarios/observability/programmatic-control">プログラマブル運用 →</a>
+      </article>
     </div>
   </section>
 
@@ -69,7 +74,7 @@ description: "Project Super とは何か、インストールと運用方法。"
     <div class="home-split">
       <div class="home-split-text">
         <h3>REST と WebSocket</h3>
-        <p>HTTP でプログラムを登録・制御。CLI も同じエンドポイント。</p>
+        <p>HTTP でプログラムを登録・制御。CLI も同じエンドポイント。スクリプトや CI からローカル／リモート運用が可能。ログは WebSocket。</p>
         <a href="/docs/06-internals/api-reference">API リファレンス →</a>
       </div>
       <div class="home-split-code">

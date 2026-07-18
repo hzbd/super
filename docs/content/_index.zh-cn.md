@@ -59,6 +59,11 @@ description: "Project Super 是什么，以及如何安装与使用。"
         <p>按 cron 表达式运行程序 —— 无需外部调度器或 crontab。</p>
         <a href="/docs/02-essentials/scheduled-tasks">定时任务 →</a>
       </article>
+      <article class="home-feature">
+        <h3>HTTP 远程运维</h3>
+        <p>同一套 REST API 覆盖 CLI、脚本与远程管控（进程、日志、OTA）。社区版（OSS）<strong>无 API 认证</strong>，请保持本机回环绑定。订阅版通过 security 插件提供 Bearer 鉴权。</p>
+        <a href="/docs/04-production-scenarios/observability/programmatic-control">可编程运维 →</a>
+      </article>
     </div>
   </section>
 
@@ -69,7 +74,7 @@ description: "Project Super 是什么，以及如何安装与使用。"
     <div class="home-split">
       <div class="home-split-text">
         <h3>REST 与 WebSocket</h3>
-        <p>通过 HTTP 注册与控制程序 —— CLI 使用相同端点；日志经 WebSocket 流式传输。</p>
+        <p>通过 HTTP 注册与控制程序 —— CLI 使用相同端点；脚本与 CI 可做本地或远程运维；日志经 WebSocket 流式传输。</p>
         <a href="/docs/06-internals/api-reference">完整 API 参考 →</a>
       </div>
       <div class="home-split-code">
