@@ -29,9 +29,9 @@ help:
 	@echo "  docker      Build containerpi/super image (native arch, local load)"
 	@echo "  docker-multi  Build and push linux/amd64 image"
 	@echo ""
-	@echo "Anyone can make build using committed common/keys/*.public.key."
-	@echo "Maintainers: make fetch-keys (MANAGER_BASE + MANAGER_TOKEN / .env),"
-	@echo "  then commit updated public keys if the Manager ring changed."
+	@echo "Daily: make build uses committed common/keys/*.public.key (no Manager)."
+	@echo "Release CI fetches Manager keyring before packaging binaries."
+	@echo "Optional: make fetch-keys then commit keys so OSS stays in sync."
 	@echo ""
 
 # ==========================================

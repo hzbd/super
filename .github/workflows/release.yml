@@ -1,5 +1,6 @@
-# Builds release archives. Embeds committed common/keys/*.public.key.
-# Maintainers: make fetch-keys && commit before tagging if Manager ring changed.
+# Builds release archives. Fetches Manager verifying keyring before compile
+# (secrets MANAGER_BASE + MANAGER_TOKEN). Daily make build / CI use committed
+# common/keys/*.public.key only — no Manager access required.
 name: Release
 
 on:
@@ -61,6 +62,13 @@ jobs:
         with:
           key: ${{ matrix.name }}-${{ matrix.target }}
 
+      - name: Fetch verifying keys from Manager
+        env:
+          MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
+          MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
+          REQUIRE_MANAGER_KEYRING: '1'
+        run: bash .github/scripts/fetch-verifying-keys.sh
+
       - name: Build and package
         run: bash .github/scripts/package-release-unix.sh "${{ steps.ver.outputs.version }}" "${{ matrix.name }}" "${{ matrix.target }}"
 
@@ -86,6 +94,13 @@ jobs:
           else
             echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Fetch verifying keys from Manager
+        env:
+          MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
+          MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
+          REQUIRE_MANAGER_KEYRING: '1'
+        run: bash .github/scripts/fetch-verifying-keys.sh
 
       - name: Build on FreeBSD
         uses: vmactions/freebsd-vm@v1

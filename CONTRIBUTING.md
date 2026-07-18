@@ -55,17 +55,21 @@ Before opening a PR that touches docs or license-related code, confirm the chang
 
 ## Verifying keys (OSS-friendly)
 
-Ed25519 **verifying** public keys live under `common/keys/*.public.key` and are **committed**. Anyone can `make build` / run CI offline — no Manager account or token required. Public keys are not secrets.
+| Path | Keyring source |
+|------|----------------|
+| `make build` / PR CI | Committed `common/keys/*.public.key` (offline; no Manager) |
+| `make fetch-keys` | Optional maintainer sync from Manager → write keys (then commit) |
+| GitHub **Release** (`v*` tag) | Fetches Manager keyring in CI, then builds binaries |
 
-**Maintainers** (after Manager key rotate): refresh and commit the snapshot:
+Public verifying keys are not secrets — keep a committed copy so anyone can build. Official release artifacts always embed the live Manager ring (`MANAGER_BASE` + `MANAGER_TOKEN` secrets on `hzbd/super`).
+
+After rotate, also commit refreshed keys so self-built OSS binaries stay compatible:
 
 ```bash
-cp .env.example .env   # MANAGER_BASE + MANAGER_TOKEN (products.read)
+cp .env.example .env   # products.read token
 make fetch-keys
 git add common/keys/*.public.key && git commit -m "Update verifying keyring"
 ```
-
-Then tag a release so published binaries embed the new ring before issuing licenses with new kids.
 
 ## Questions
 

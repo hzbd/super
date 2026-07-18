@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Maintainer helper: refresh committed verifying keys from Manager.
+# Refresh verifying keys from Manager into common/keys/.
 #
-# OSS builds (make build, CI, Release) use common/keys/*.public.key already in
-# git — contributors do not need Manager access. Public keys are public.
+# - make fetch-keys: optional maintainer sync (then commit for OSS/CI).
+# - Release CI: runs this before packaging official binaries.
+# - make build / PR CI: do NOT call this — use committed *.public.key only.
 #
 # Env:
 #   MANAGER_BASE   — e.g. http://127.0.0.1:8787 or production Manager URL
