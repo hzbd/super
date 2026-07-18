@@ -3,6 +3,10 @@
 //! Verifies cryptographically signed subscription keys and enforces signed claims at
 //! runtime. Subscription key signing and plugin catalogs are out of scope
 //! for this repository.
+//!
+//! Verifying keys: commit public material under `common/keys/`; `build.rs` embeds
+//! all of them into `PUBLIC_KEY_RING`. Export from Manager with
+//! `super-pro/scripts/export-oss-verifying-keys.sh` (no hand-maintained kid list).
 
 mod claims;
 mod verify;

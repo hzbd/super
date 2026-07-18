@@ -30,6 +30,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fetch verifying keys from Manager
+        env:
+          MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
+          MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
+          REQUIRE_MANAGER_KEYRING: ${{ vars.REQUIRE_MANAGER_KEYRING }}
+        run: bash .github/scripts/fetch-verifying-keys.sh
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5

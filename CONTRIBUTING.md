@@ -53,6 +53,20 @@ When updating public docs:
 
 Before opening a PR that touches docs or license-related code, confirm the change does not require documenting private trees or issuance policy internals.
 
+## Release builds and verifying keys
+
+PR/CI uses committed files under `common/keys/` (offline). **Release** and **Docker publish** workflows call `.github/scripts/fetch-verifying-keys.sh` before compiling `superd`, so published binaries can embed the live Manager keyring.
+
+Repository secrets (maintainers):
+
+| Secret / variable | Purpose |
+|-------------------|--------|
+| `MANAGER_BASE` | Manager origin URL (no trailing slash required) |
+| `MANAGER_TOKEN` | Bearer token with `products.read` |
+| `REQUIRE_MANAGER_KEYRING` (optional variable) | Set to `1` to fail the build if Manager is unreachable |
+
+If `MANAGER_TOKEN` is unset, the script keeps committed keys and continues (until you flip `REQUIRE_MANAGER_KEYRING`).
+
 ## Questions
 
 Open a [GitHub Discussion](https://github.com/hzbd/super/discussions) or an issue for design questions before large refactors.

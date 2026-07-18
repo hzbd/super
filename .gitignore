@@ -34,6 +34,7 @@ data.json
 *.key
 *.pem
 !common/keys/public.key
+!common/keys/*.public.key
 
 docs/public/
 docs/resources/

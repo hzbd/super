@@ -1,3 +1,6 @@
+# Builds release archives. Before compile, fetch-verifying-keys.sh pulls the
+# Manager public keyring when secrets MANAGER_BASE + MANAGER_TOKEN are set
+# (optional repo variable REQUIRE_MANAGER_KEYRING=1 to require Manager).
 name: Release
 
 on:
@@ -59,6 +62,13 @@ jobs:
         with:
           key: ${{ matrix.name }}-${{ matrix.target }}
 
+      - name: Fetch verifying keys from Manager
+        env:
+          MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
+          MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
+          REQUIRE_MANAGER_KEYRING: ${{ vars.REQUIRE_MANAGER_KEYRING }}
+        run: bash .github/scripts/fetch-verifying-keys.sh
+
       - name: Build and package
         run: bash .github/scripts/package-release-unix.sh "${{ steps.ver.outputs.version }}" "${{ matrix.name }}" "${{ matrix.target }}"
 
@@ -84,6 +94,13 @@ jobs:
           else
             echo "version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Fetch verifying keys from Manager
+        env:
+          MANAGER_BASE: ${{ secrets.MANAGER_BASE }}
+          MANAGER_TOKEN: ${{ secrets.MANAGER_TOKEN }}
+          REQUIRE_MANAGER_KEYRING: ${{ vars.REQUIRE_MANAGER_KEYRING }}
+        run: bash .github/scripts/fetch-verifying-keys.sh
 
       - name: Build on FreeBSD
         uses: vmactions/freebsd-vm@v1
