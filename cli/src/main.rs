@@ -3,6 +3,7 @@ mod check;
 mod client;
 mod config;
 mod display;
+mod doctor;
 mod handlers;
 mod session;
 mod top;
@@ -41,6 +42,13 @@ async fn main() -> anyhow::Result<()> {
     let base_url = config.server_url.trim_end_matches('/').to_string();
 
     let auth_token = args.token.or(config.auth_token);
+
+    // Doctor aggregates config + daemon + license diagnostics; it tolerates an
+    // unreachable daemon, so it runs before any command that would hard-fail.
+    if let Commands::Doctor = &args.command {
+        return doctor::run(&base_url, auth_token.as_ref()).await;
+    }
+
     let client = client::build_client(auth_token.as_ref())?;
     let ctx = Context {
         client,

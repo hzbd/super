@@ -219,6 +219,30 @@ async fn shutdown_signal(mut rx: tokio::sync::broadcast::Receiver<()>, manager: 
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // superd takes no positional arguments; support only --version/--help so
+    // operators can identify the binary without starting the daemon.
+    if let Some(arg) = std::env::args().nth(1) {
+        match arg.as_str() {
+            "-V" | "--version" => {
+                println!("superd {VERSION}");
+                return Ok(());
+            }
+            "-h" | "--help" => {
+                println!("superd {VERSION} — Project Super daemon");
+                println!("Usage: superd [--version] [--help]");
+                println!();
+                println!("Configuration is read from $SUPER_ROOT/conf/super.toml");
+                println!("(SUPER_ROOT defaults to the executable-relative layout or cwd).");
+                println!("Docs: https://super.docs.sconts.com/docs/");
+                return Ok(());
+            }
+            other => {
+                eprintln!("superd: unrecognized argument '{other}' (try --help)");
+                std::process::exit(2);
+            }
+        }
+    }
+
     let root = resolve_root();
 
     let plugin_host = PluginHost::discover(&root, VERSION);

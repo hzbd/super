@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "super")]
-#[command(about = "Project Super CLI", long_about = None)]
+#[command(version, about = "Project Super CLI", long_about = None)]
 pub struct Cli {
     /// Specify server address (overrides config file)
     #[arg(short, long)]
@@ -286,6 +286,9 @@ pub enum Commands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+
+    /// Diagnose local setup and a running daemon (config, connectivity, license)
+    Doctor,
 }
 
 #[derive(Subcommand)]

@@ -17,6 +17,3 @@ clap = { workspace = true }
 axum = { workspace = true }
 tracing = { workspace = true }
 bytes = "1"
-
-[target.'cfg(unix)'.dependencies]
-daemonize = "0.5"
