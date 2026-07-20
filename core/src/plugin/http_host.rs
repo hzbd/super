@@ -65,6 +65,8 @@ impl HttpPluginHandle {
             return Ok(());
         };
         let cstr = CString::new(config_json)?;
+        // SAFETY: `cstr` is a valid NUL-terminated `CString` that outlives the
+        // call; `init` is a checked vtable entry point (api_version verified).
         let code = unsafe { init(cstr.as_ptr()) };
         if code != 0 {
             anyhow::bail!("HTTP plugin init failed ({code})");
@@ -77,6 +79,10 @@ impl HttpPluginHandle {
         let path_c = CString::new(path).unwrap_or_default();
         let body_c = CString::new(body).unwrap_or_default();
         let mut buf = vec![0u8; 65536];
+        // SAFETY: the three input pointers are valid NUL-terminated `CString`s
+        // and `buf` is a valid writable buffer of `buf.len()` bytes, all
+        // outliving the call; the ABI contract is that the plugin writes a
+        // NUL-terminated response of at most `buf.len()` bytes.
         let status = unsafe {
             (self.handle_api)(
                 method_c.as_ptr(),
@@ -115,6 +121,10 @@ fn list_routes(vtable: &SuperPluginHttpV1) -> anyhow::Result<Vec<RouteSpec>> {
         anyhow::bail!("HTTP plugin missing list_routes");
     };
     let mut buf = vec![0u8; 8192];
+    // SAFETY: `buf` is a valid writable buffer of `buf.len()` bytes for the
+    // duration of the call; the ABI contract is that the plugin writes a
+    // NUL-terminated route list of at most `buf.len()` bytes and returns the
+    // number of bytes written.
     let n = unsafe { list_routes(buf.as_mut_ptr().cast(), buf.len()) } as usize;
     if n == 0 || n >= buf.len() {
         anyhow::bail!("HTTP plugin list_routes returned empty buffer");
@@ -282,6 +292,9 @@ async fn plugin_auth_middleware(
     let mut buf = vec![0u8; 2048];
 
     let code = unsafe {
+        // SAFETY: the three input pointers are valid NUL-terminated `CString`s
+        // and `buf` is a valid writable buffer of `buf.len()` bytes, all
+        // outliving the call; `authenticate` is a checked vtable entry point.
         authenticate(
             path_c.as_ptr(),
             auth_c.as_ptr(),
@@ -326,6 +339,8 @@ async fn plugin_rbac_middleware(
     let method_c = CString::new(method).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let ctx_c = CString::new(ctx.ctx_json.as_str()).unwrap_or_default();
 
+    // SAFETY: all three pointers are valid NUL-terminated `CString`s that
+    // outlive the call; `authorize` is a checked vtable entry point.
     let code = unsafe { authorize(path_c.as_ptr(), method_c.as_ptr(), ctx_c.as_ptr()) };
     if code == 0 {
         Ok(next.run(req).await)
@@ -368,6 +383,8 @@ async fn plugin_audit_middleware(
     let path_c = CString::new(path.as_str()).unwrap_or_default();
     let ip_c = CString::new(ip).unwrap_or_default();
 
+    // SAFETY: all four pointers are valid NUL-terminated `CString`s that
+    // outlive the call; `audit_request` is a checked vtable entry point.
     unsafe {
         audit_request(
             ctx_c.as_ptr(),

@@ -37,6 +37,10 @@ pub fn spawn_process(
                 let username_c = CString::new(username.clone())
                     .map_err(|_| anyhow::anyhow!("Invalid username string"))?;
 
+                // SAFETY: `pre_exec` runs in the child after fork, before exec.
+                // `username_c` is moved into the closure and outlives the call;
+                // `initgroups` is async-signal-safe per POSIX and `c_user` is a
+                // valid NUL-terminated pointer to the moved `CString`.
                 unsafe {
                     cmd.pre_exec(move || {
                         let c_user = username_c.as_ptr();

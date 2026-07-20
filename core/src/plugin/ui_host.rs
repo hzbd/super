@@ -21,6 +21,9 @@ pub struct UiAsset<'a> {
 impl UiPluginHandle {
     pub fn build_id(&self) -> Option<String> {
         let build_id = self.build_id?;
+        // SAFETY: `build_id` is a checked vtable entry point; the ABI contract
+        // is that it returns null or a pointer to a NUL-terminated static
+        // string owned by the plugin (valid for the library's loaded lifetime).
         unsafe {
             let ptr = build_id();
             if ptr.is_null() {
@@ -37,6 +40,9 @@ impl UiPluginHandle {
         let mut len: usize = 0;
         let mut mime_ptr: *const std::ffi::c_char = std::ptr::null();
 
+        // SAFETY: `path_c` is a valid NUL-terminated `CString` and the three
+        // out-pointers are valid for writes for the duration of the call;
+        // `resolve_asset` is a checked vtable entry point.
         let code =
             unsafe { (self.resolve_asset)(path_c.as_ptr(), &mut ptr, &mut len, &mut mime_ptr) };
 
@@ -92,6 +98,9 @@ pub fn load_ui_plugin(runtime: &PluginRuntime) -> Option<Arc<UiPluginHandle>> {
     let resolve_asset = vtable.resolve_asset?;
 
     if let Some(build_id_fn) = vtable.build_id {
+        // SAFETY: `build_id_fn` is a checked vtable entry point; it returns
+        // null or a pointer to a NUL-terminated static string owned by the
+        // plugin (valid for the library's loaded lifetime).
         let id = unsafe {
             let ptr = build_id_fn();
             if ptr.is_null() {

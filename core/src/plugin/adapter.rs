@@ -43,6 +43,9 @@ impl PluginExtensionAdapter {
             );
         }
 
+        // SAFETY: `vtable.plugin_id` is null-checked above. The plugin ABI
+        // requires it to point to a valid NUL-terminated C string owned by the
+        // plugin, which outlives this call (the library stays loaded).
         let plugin_id = unsafe {
             if vtable.plugin_id.is_null() {
                 anyhow::bail!("plugin_id is null");
@@ -62,6 +65,9 @@ impl PluginExtensionAdapter {
         }
 
         if let Some(init) = vtable.init {
+            // SAFETY: `init` is a valid function pointer from the plugin's
+            // `SuperPluginV1` vtable, whose `api_version` was checked above.
+            // The ABI contract is a synchronous `extern "C" fn() -> i32`.
             let code = unsafe { init() };
             if code != 0 {
                 return Err(plugin_hook_error(&plugin_id, "init", code));
@@ -89,6 +95,8 @@ impl Extension for PluginExtensionAdapter {
         let config_json = serde_json::to_string(config)?;
         let id_ptr = std::ffi::CString::new(id_c)?;
         let cfg_ptr = std::ffi::CString::new(config_json)?;
+        // SAFETY: both pointers are valid, NUL-terminated `CString`s that
+        // outlive the call; `hook` is a checked vtable entry point.
         let code = unsafe { hook(id_ptr.as_ptr(), pid, cfg_ptr.as_ptr()) };
         if code != 0 {
             return Err(plugin_hook_error(&self.name, "after_start", code));
@@ -104,6 +112,8 @@ impl Extension for PluginExtensionAdapter {
         let config_json = serde_json::to_string(config)?;
         let id_ptr = std::ffi::CString::new(id_c)?;
         let cfg_ptr = std::ffi::CString::new(config_json)?;
+        // SAFETY: both pointers are valid, NUL-terminated `CString`s that
+        // outlive the call; `hook` is a checked vtable entry point.
         let code = unsafe { hook(id_ptr.as_ptr(), cfg_ptr.as_ptr()) };
         if code != 0 {
             return Err(plugin_hook_error(&self.name, "after_stop", code));
@@ -128,6 +138,8 @@ impl Extension for PluginExtensionAdapter {
         let id_ptr = std::ffi::CString::new(id_c)?;
         let old_ptr = std::ffi::CString::new(old_json)?;
         let new_ptr = std::ffi::CString::new(new_json)?;
+        // SAFETY: all three pointers are valid, NUL-terminated `CString`s that
+        // outlive the call; `hook` is a checked vtable entry point.
         let code = unsafe { hook(id_ptr.as_ptr(), pid_val, old_ptr.as_ptr(), new_ptr.as_ptr()) };
         if code != 0 {
             return Err(plugin_hook_error(&self.name, "on_update", code));
@@ -142,12 +154,15 @@ impl Extension for PluginExtensionAdapter {
         if let Ok(json) = serde_json::to_string(&event)
             && let Ok(cstr) = std::ffi::CString::new(json)
         {
+            // SAFETY: `cstr` is a valid NUL-terminated `CString` that outlives
+            // the call; `hook` is a checked vtable entry point.
             let _ = unsafe { hook(cstr.as_ptr()) };
         }
     }
 
     fn on_reload(&self) -> anyhow::Result<()> {
         if let Some(hook) = self.on_reload {
+            // SAFETY: `hook` is a checked vtable entry point with no arguments.
             let code = unsafe { hook() };
             if code != 0 {
                 return Err(plugin_hook_error(&self.name, "on_reload", code));
@@ -161,6 +176,9 @@ impl Extension for PluginExtensionAdapter {
             return String::new();
         };
         let mut buf = vec![0u8; 4096];
+        // SAFETY: `buf` is a valid writable buffer of `buf.len()` bytes for the
+        // duration of the call; the ABI contract is that the plugin writes at
+        // most `buf.len()` bytes and returns the number written.
         let written = unsafe { hook(buf.as_mut_ptr().cast(), buf.len()) };
         if written == 0 {
             return String::new();

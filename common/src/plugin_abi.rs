@@ -11,6 +11,9 @@ pub type PluginVersionFn = unsafe extern "C" fn() -> *const std::ffi::c_char;
 /// Read the optional release version exported by a lifecycle plugin.
 pub fn read_plugin_version(vtable: &SuperPluginV1) -> Option<String> {
     let version_fn = vtable.plugin_version?;
+    // SAFETY: `version_fn` is a vtable entry point; the ABI contract is that
+    // it returns null or a pointer to a NUL-terminated static string owned by
+    // the plugin (valid for the library's loaded lifetime).
     unsafe {
         let ptr = version_fn();
         if ptr.is_null() {

@@ -85,8 +85,12 @@ fn try_load_plugin(
     lib_path: &Path,
     expected_id: &str,
 ) -> anyhow::Result<(Library, PluginExtensionAdapter, Option<String>)> {
-    // SAFETY: plugin must export `super_plugin_v1` with stable C ABI.
+    // SAFETY: `lib_path` is a plugin file under `$SUPER_ROOT/plugins/` that
+    // passed license verification; dlopen of an arbitrary file is the
+    // documented, intended behaviour here.
     let library = unsafe { Library::new(lib_path) }?;
+    // SAFETY: the plugin must export `super_plugin_v1` with the stable C ABI
+    // described by `SuperPluginV1`; `api_version` is validated before use.
     let vtable = unsafe {
         let symbol: libloading::Symbol<unsafe extern "C" fn() -> SuperPluginV1> =
             library.get(PLUGIN_SYMBOL)?;
