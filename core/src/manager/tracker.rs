@@ -37,10 +37,12 @@ impl FlappingTracker {
         if let Some(queue) = self.history.get(&id)
             && queue.len() > threshold
         {
-            let first_time = *queue.front().unwrap();
-            let last_time = *queue.back().unwrap(); // simplified: use last recorded start
+            // `queue.len() > threshold >= 0`, so front/back are non-empty.
+            let (Some(first_time), Some(last_time)) = (queue.front(), queue.back()) else {
+                return false;
+            };
             // If (Nth start - 1st start) < window, restarts are too frequent
-            if last_time - first_time < window {
+            if *last_time - *first_time < window {
                 return true;
             }
         }

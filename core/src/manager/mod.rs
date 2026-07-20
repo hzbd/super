@@ -63,6 +63,28 @@ fn validate_resource_limits_patch(limits: &ResourceLimits) -> anyhow::Result<()>
     Ok(())
 }
 
+/// Validate an OTA artifact config at the API boundary.
+///
+/// URL policy (HTTPS, private/link-local blocking) is enforced separately at
+/// download time in `artifact::download_to_staging`; here we only reject
+/// configs that are structurally unusable, so a bad request fails fast with a
+/// 400 instead of an opaque background download error.
+fn validate_artifact_config(artifact: &common::ArtifactConfig) -> anyhow::Result<()> {
+    if artifact.source.trim().is_empty() {
+        return Err(anyhow::anyhow!("artifact.source must not be empty"));
+    }
+    if artifact.destination.trim().is_empty() {
+        return Err(anyhow::anyhow!("artifact.destination must not be empty"));
+    }
+    let sum = artifact.checksum.trim();
+    if sum.len() != 64 || !sum.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(anyhow::anyhow!(
+            "artifact.checksum must be a 64-char hex SHA256 digest"
+        ));
+    }
+    Ok(())
+}
+
 fn validate_program_log_paths(
     log_dir: &Path,
     stdout_logfile: Option<&str>,
@@ -610,6 +632,7 @@ impl Manager {
 
             // [Trigger Logic] Checksum change detection to trigger OTA
             if let Some(v) = &req.artifact {
+                validate_artifact_config(v)?;
                 let old_sum = config
                     .artifact
                     .as_ref()
@@ -772,7 +795,16 @@ impl Manager {
             Some(c) => c,
             None => return,
         };
-        let target_path = PathBuf::from(&config.artifact.as_ref().unwrap().destination);
+        let target_path = match config.artifact.as_ref().map(|a| a.destination.clone()) {
+            Some(dest) if !dest.is_empty() => PathBuf::from(dest),
+            _ => {
+                tracing::error!(
+                    "OTA apply aborted for {}: artifact destination missing from config.",
+                    id
+                );
+                return;
+            }
+        };
 
         // 1. Create backup (hard link)
         use crate::artifact;
@@ -916,7 +948,18 @@ impl Manager {
                         code
                     );
 
-                    let target_path = PathBuf::from(&config.artifact.as_ref().unwrap().destination);
+                    let target_path = match config.artifact.as_ref().map(|a| a.destination.clone())
+                    {
+                        Some(dest) if !dest.is_empty() => PathBuf::from(dest),
+                        _ => {
+                            tracing::error!(
+                                "OTA rollback aborted for {}: artifact destination missing from config.",
+                                id
+                            );
+                            self.registry.crashed.insert(id);
+                            return;
+                        }
+                    };
                     let backup_path = PathBuf::from(backup_file);
 
                     use crate::artifact;
@@ -1458,8 +1501,14 @@ impl Manager {
         for (id, config) in &self.registry.programs {
             for dep_name in &config.depends_on {
                 if let Some(dep_id) = id_map.get(dep_name) {
-                    adj.get_mut(dep_id).unwrap().push(*id);
-                    *in_degree.get_mut(id).unwrap() += 1;
+                    // `dep_id` and `id` were both inserted above, so these
+                    // entries always exist; skip defensively instead of panic.
+                    if let Some(edges) = adj.get_mut(dep_id) {
+                        edges.push(*id);
+                    }
+                    if let Some(deg) = in_degree.get_mut(id) {
+                        *deg += 1;
+                    }
                 }
             }
         }
@@ -1476,10 +1525,12 @@ impl Manager {
             start_order.push(u);
             if let Some(neighbors) = adj.get(&u) {
                 for &v in neighbors {
-                    let deg = in_degree.get_mut(&v).unwrap();
-                    *deg -= 1;
-                    if *deg == 0 {
-                        queue.push(v);
+                    // `v` came from `adj`, whose keys are all registered ids.
+                    if let Some(deg) = in_degree.get_mut(&v) {
+                        *deg -= 1;
+                        if *deg == 0 {
+                            queue.push(v);
+                        }
                     }
                 }
             }
@@ -1536,6 +1587,13 @@ impl Manager {
                     &cfg.resource_limits,
                     "create program",
                 );
+            }
+
+            if let Some(a) = &cfg.artifact
+                && let Err(e) = validate_artifact_config(a)
+            {
+                validation_error = Some(e);
+                break;
             }
         }
 
@@ -2187,5 +2245,51 @@ mod resource_limits_tests {
             memory_limit: Some(0),
         })
         .unwrap();
+    }
+}
+
+#[cfg(test)]
+mod artifact_config_tests {
+    use super::validate_artifact_config;
+    use common::ArtifactConfig;
+
+    fn valid() -> ArtifactConfig {
+        ArtifactConfig {
+            source: "https://example.com/app.tar.gz".to_string(),
+            checksum: "a".repeat(64),
+            extract: false,
+            destination: "/opt/app/bin/app".to_string(),
+            restart_policy: "immediate".to_string(),
+        }
+    }
+
+    #[test]
+    fn accepts_valid_config() {
+        validate_artifact_config(&valid()).unwrap();
+    }
+
+    #[test]
+    fn rejects_empty_source() {
+        let mut a = valid();
+        a.source = "   ".to_string();
+        assert!(validate_artifact_config(&a).is_err());
+    }
+
+    #[test]
+    fn rejects_empty_destination() {
+        let mut a = valid();
+        a.destination = String::new();
+        assert!(validate_artifact_config(&a).is_err());
+    }
+
+    #[test]
+    fn rejects_bad_checksum() {
+        let mut a = valid();
+        a.checksum = "not-hex".to_string();
+        assert!(validate_artifact_config(&a).is_err());
+
+        let mut b = valid();
+        b.checksum = "abc".to_string(); // too short
+        assert!(validate_artifact_config(&b).is_err());
     }
 }

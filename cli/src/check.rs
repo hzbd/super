@@ -170,14 +170,15 @@ pub fn run(file_path: Option<PathBuf>) -> anyhow::Result<()> {
             config.include.files.len()
         );
         for pattern in &config.include.files {
-            if glob::glob(pattern).is_err() {
-                errors.push(format!("Invalid glob pattern: {}", pattern));
-            } else {
-                let count = glob::glob(pattern).unwrap().count();
-                if count == 0 {
-                    println!("     - '{}': No matching files (Warning)", pattern);
-                } else {
-                    println!("     - '{}': Matches {} files", pattern, count);
+            match glob::glob(pattern) {
+                Err(_) => errors.push(format!("Invalid glob pattern: {}", pattern)),
+                Ok(paths) => {
+                    let count = paths.count();
+                    if count == 0 {
+                        println!("     - '{}': No matching files (Warning)", pattern);
+                    } else {
+                        println!("     - '{}': Matches {} files", pattern, count);
+                    }
                 }
             }
         }

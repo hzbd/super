@@ -9,7 +9,7 @@ use std::time::Duration;
 use super_core::ManagerHandle;
 use super_core::config::ServerConfig;
 use super_core::extension::NoOpExtension;
-use super_core::manager::Manager;
+use super_core::manager::{Command, Manager};
 use tempfile::TempDir;
 use tokio::sync::{broadcast, mpsc};
 use wiremock::matchers::{method, path};
@@ -24,6 +24,17 @@ fn calculate_hash(content: &str) -> String {
 }
 
 async fn setup_system() -> (ManagerHandle, TempDir, PathBuf, PathBuf) {
+    let (handle, tmp, target_bin, data_file, _tx) = setup_system_full().await;
+    (handle, tmp, target_bin, data_file)
+}
+
+async fn setup_system_full() -> (
+    ManagerHandle,
+    TempDir,
+    PathBuf,
+    PathBuf,
+    mpsc::Sender<Command>,
+) {
     let temp_dir = TempDir::new().unwrap();
     let root = temp_dir.path();
 
@@ -68,7 +79,13 @@ async fn setup_system() -> (ManagerHandle, TempDir, PathBuf, PathBuf) {
         manager.run().await;
     });
 
-    (ManagerHandle::new(tx), temp_dir, target_bin, data_file)
+    (
+        ManagerHandle::new(tx.clone()),
+        temp_dir,
+        target_bin,
+        data_file,
+        tx,
+    )
 }
 
 // + Test cases +
@@ -278,4 +295,38 @@ async fn test_ota_transaction_commit() {
     assert!(saved_state.get(&id).unwrap().restore_path.is_none());
 
     println!("Test Passed: Commit successful.");
+}
+
+// Regression test: an OTA-ready command for a program whose config has no
+// artifact (or an empty destination) must be logged and skipped, not panic.
+#[tokio::test]
+async fn test_ota_ready_without_artifact_does_not_panic() {
+    let (handle, _tmp, _target_bin, _data_file, tx) = setup_system_full().await;
+
+    // Program without any artifact config.
+    let req = CreateProgramRequest {
+        name: Some("app-no-artifact".to_string()),
+        command: "sleep".to_string(),
+        args: vec!["100".to_string()],
+        autostart: false,
+        ..Default::default()
+    };
+    let ids = handle.create_program(req).await.unwrap();
+    let id = ids[0];
+
+    // Directly inject the internal OTA-ready command (normally only sent after
+    // a successful download). With no artifact in config this used to panic
+    // the Manager actor on `config.artifact.as_ref().unwrap()`.
+    tx.send(Command::InternalArtifactReady {
+        id,
+        path: PathBuf::from("/nonexistent/staging/file"),
+    })
+    .await
+    .unwrap();
+
+    // The Manager must still be alive and answering commands.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let info = handle.get_program(id).await.unwrap();
+    assert_eq!(info.config.name, "app-no-artifact");
+    assert!(info.config.restore_path.is_none());
 }
