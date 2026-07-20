@@ -40,4 +40,15 @@ Super applies defensive defaults even when no plugins are loaded:
 
 Full user-facing detail: [Configuration — OSS security defaults](https://super.docs.sconts.com/docs/02-essentials/configuration/#oss-security-defaults-fail-closed).
 
+## Security self-audit
+
+We hold the codebase to the following public standards, checked on every release branch:
+
+- **Dependency vulnerabilities** — `cargo audit` runs against the RustSec advisory database; release branches must be clean of known-vulnerable dependencies before tagging. As of `1.2.1` the scan reports **no vulnerabilities**; the only remaining advisories are low-severity warnings pulled in exclusively by the test-only `wiremock` dev-dependency (`http-types`, `instant`, `rand 0.7`) and do not ship in release binaries.
+- **`unsafe` code** — `unsafe` is confined to the plugin C-ABI boundary (`core/src/plugin/`), one `pre_exec` setgroups call (`core/src/process.rs`), and test-only environment manipulation. Every `unsafe` block carries a `// SAFETY:` comment stating its invariant; these are reviewed on change.
+- **Fuzz/edge inputs** — the daemon must not panic on malformed config, API payloads, or plugin responses; OTA and plugin-load paths degrade to logged errors instead.
+- **CI gates** — `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check`, and the full integration-test suite must pass before merge.
+
+If you find a gap between these standards and the code, that is a security bug — please report it as above.
+
 > **Licensed plugins:** Optional subscription capabilities load as signed plugins with a vendor-supplied `[license].key`. See the [feature matrix](https://super.docs.sconts.com/docs/07-editions/feature-matrix/) and [authentication](https://super.docs.sconts.com/docs/05-advanced-management/authentication/).

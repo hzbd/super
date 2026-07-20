@@ -4,12 +4,12 @@
 
 Super is a modern replacement for tools like [Supervisor](https://supervisord.org/) or [PM2](https://pm2.keymetrics.io/), built with **Rust**. It is designed for edge computing, IoT devices, and high-performance servers.
 
-> **Public trial (not for production yet)**
+> **Public beta**
 >
-> Super is under intensive testing — **do not run it in production**. We are looking for early feedback.
+> Super `1.x` is feature-complete and in active hardening. The core process-management paths (start/stop/restart, auto-recovery, health checks, OTA rollback) are covered by integration tests and run in the maintainers' own deployments. We recommend it for staging and non-critical workloads today; see [below](#toward-ga) for what we require before calling it production-ready (GA).
 >
 > - **OSS core** (`superd` + `super`) is free under MIT — install and try anytime.
-> - **Super Pro plugins** (Dashboard UI, API auth/RBAC/audit, notifications, Linux cgroup isolation) are available with a **free 1-year license** on request. No payment required during this trial phase.
+> - **Super Pro plugins** (Dashboard UI, API auth/RBAC/audit, notifications, Linux cgroup isolation) are available with a **free 1-year license** during the beta. No payment required.
 >
 > **Request a free Pro trial:** open a [GitHub Issue](https://github.com/hzbd/super/issues/new?template=pro-trial.yml) (use the **Pro trial request** template). Include a contact email — we will send the license key and plugin package to that address.
 
@@ -26,6 +26,14 @@ Super is a modern replacement for tools like [Supervisor](https://supervisord.or
 Licensed under the **[MIT License](LICENSE)**. Optional **licensed plugins** (`.so` / `.dylib` under `$SUPER_ROOT/plugins/`) add API auth, RBAC, notifications, and cgroup limits — same `superd` binary, no separate commercial build. Compare editions in the [feature matrix](https://super.docs.sconts.com/docs/07-editions/feature-matrix/).
 
 ## Quick Start
+
+### Install script (Linux / macOS / FreeBSD)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hzbd/super/master/install.sh | sh
+```
+
+Installs `superd` and `super` into `/usr/local/bin` (or `~/.local/bin` when not writable), verifying the SHA-256 checksum of the release archive. Options: `--version X.Y.Z`, `--prefix DIR`, `--no-sudo`.
 
 ### Docker
 
@@ -57,6 +65,24 @@ super add --name redis --autostart /usr/bin/redis-server
 super list
 super logs <id> --tail
 ```
+
+Diagnose a setup (config, daemon connectivity, license) in one shot:
+
+```bash
+super doctor
+```
+
+## Toward GA
+
+We will call Super production-ready (GA) when the following are true. If you rely on Super today, this is the contract we are working against — feedback on any of these is the most valuable contribution right now.
+
+- **Stability** — no known panic paths in the daemon on malformed config or API input; graceful degradation when a plugin fails.
+- **Upgrade safety** — OTA updates are transactional (backup → verify → commit/rollback) and covered by integration tests.
+- **Security defaults** — fail-closed network binding, signed-plugin verification, and no secrets in API/CLI output; `cargo audit` clean on release branches.
+- **Operability** — `super doctor` diagnoses a deployment end-to-end; logs and metrics are sufficient to triage without a debugger.
+- **API stability** — the REST API and the plugin C ABI (`PLUGIN_API_VERSION`) are versioned; breaking changes ship only with a major bump and migration notes.
+
+Track progress in the [changelog](https://super.docs.sconts.com/docs/08-changelog/).
 
 ## Documentation
 
