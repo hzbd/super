@@ -114,23 +114,17 @@ menu:
       name: API Reference
       url: /docs/06-internals/api-reference/
       weight: 2
-    - identifier: getSuperPro
-      name: Get Super Pro
-      url: /go/pro/
-      weight: 3
-      params:
-        style: cta
     - name: Search
-      weight: 4
+      weight: 3
       params:
         type: search
     - name: Language
-      weight: 5
+      weight: 4
       params:
         type: language-switch
     - identifier: github
       name: GitHub
       url: https://github.com/hzbd/super
-      weight: 6
+      weight: 5
       params:
         icon: github
