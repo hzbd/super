@@ -2,7 +2,7 @@
 # SuperProcess OSS Build System
 # ==========================================
 
-TARGET_DIR   := target/release
+TARGET_DIR   := $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR)/release,target/release)
 # Define all OSS binaries (Server 'superd' and CLI 'super')
 BINARIES     := --bin superd --bin super
 
