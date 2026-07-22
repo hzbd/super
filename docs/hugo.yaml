@@ -72,7 +72,7 @@ params:
     enable: true
     displayCopyright: true
     displayPoweredBy: false
-    copyright: "© 2026 Project Super Team."
+    copyright: "© 2026 g1/DDL"
   page:
     # full (100%), wide (90rem), normal (80rem)
     width: wide
