@@ -1,10 +1,10 @@
 use clap::{Parser, ValueEnum};
-use sysinfo::{Pid, ProcessExt, System, SystemExt};
+use std::fs::OpenOptions;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
-use std::path::PathBuf;
-use std::fs::OpenOptions;
+use sysinfo::{Pid, ProcessExt, System, SystemExt};
 
 #[derive(Parser)]
 struct Args {
@@ -35,7 +35,10 @@ fn main() -> anyhow::Result<()> {
     // 1. Cleanup & Start Daemon
     let (daemon_pid, _child_handle) = start_target(&args.target, &args.config_dir)?;
 
-    println!(">>> Monitoring PID: {} for {} seconds...", daemon_pid, args.duration);
+    println!(
+        ">>> Monitoring PID: {} for {} seconds...",
+        daemon_pid, args.duration
+    );
 
     // 2. Monitoring Loop
     let start_time = Instant::now();
@@ -70,7 +73,10 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn start_target(target: &Target, config_dir: &PathBuf) -> anyhow::Result<(u32, Option<std::process::Child>)> {
+fn start_target(
+    target: &Target,
+    config_dir: &PathBuf,
+) -> anyhow::Result<(u32, Option<std::process::Child>)> {
     match target {
         Target::Super => {
             let config_path = config_dir.join("super.toml");
@@ -84,11 +90,12 @@ fn start_target(target: &Target, config_dir: &PathBuf) -> anyhow::Result<(u32, O
             // Wait for initialization
             thread::sleep(Duration::from_secs(2));
             Ok((pid, Some(child)))
-        },
+        }
         Target::Supervisor => {
             let config_path = config_dir.join("supervisord.conf");
             Command::new("supervisord")
-                .arg("-c").arg(config_path)
+                .arg("-c")
+                .arg(config_path)
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()?;
@@ -96,11 +103,14 @@ fn start_target(target: &Target, config_dir: &PathBuf) -> anyhow::Result<(u32, O
 
             // Supervisor runs as a daemon; find PID via pidfile or pgrep
             // Use pgrep for simplicity
-            let output = Command::new("pgrep").arg("-n").arg("supervisord").output()?;
+            let output = Command::new("pgrep")
+                .arg("-n")
+                .arg("supervisord")
+                .output()?;
             let pid_str = String::from_utf8(output.stdout)?.trim().to_string();
             let pid = pid_str.parse::<u32>()?;
             Ok((pid, None))
-        },
+        }
         Target::Pm2 => {
             let config_path = config_dir.join("ecosystem.config.js");
             // PM2 start
@@ -119,7 +129,12 @@ fn start_target(target: &Target, config_dir: &PathBuf) -> anyhow::Result<(u32, O
             let output = Command::new("pgrep").arg("-f").arg("PM2").output()?;
             let pids = String::from_utf8(output.stdout)?;
             // For simplicity, take the first matching God Daemon PID
-            let pid = pids.lines().next().ok_or(anyhow::anyhow!("PM2 God Daemon not found"))?.trim().parse::<u32>()?;
+            let pid = pids
+                .lines()
+                .next()
+                .ok_or(anyhow::anyhow!("PM2 God Daemon not found"))?
+                .trim()
+                .parse::<u32>()?;
             Ok((pid, None))
         }
     }
@@ -129,10 +144,10 @@ fn stop_target(target: &Target, _config_dir: &PathBuf) {
     match target {
         Target::Super => {
             let _ = Command::new("pkill").arg("superd").output();
-        },
+        }
         Target::Supervisor => {
             let _ = Command::new("pkill").arg("supervisord").output();
-        },
+        }
         Target::Pm2 => {
             let _ = Command::new("pm2").arg("kill").output();
         }

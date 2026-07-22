@@ -1,8 +1,8 @@
 use clap::{Parser, ValueEnum};
+use rand::Rng;
 use std::io::{self, Write};
 use std::thread;
 use std::time::{Duration, Instant};
-use rand::Rng;
 
 #[derive(Parser)]
 struct Args {
@@ -12,11 +12,11 @@ struct Args {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum Mode {
-    Idle,           // Idle: measure Super baseline overhead
-    LogThroughput,  // Log throughput: measure Super pipe consumption (critical)
-    CrashRandom,    // Random crash: measure Super recovery logic
-    MemEat,         // Memory growth: measure Super OOM handling
-    CpuBurn,        // CPU burn mode
+    Idle,          // Idle: measure Super baseline overhead
+    LogThroughput, // Log throughput: measure Super pipe consumption (critical)
+    CrashRandom,   // Random crash: measure Super recovery logic
+    MemEat,        // Memory growth: measure Super OOM handling
+    CpuBurn,       // CPU burn mode
 }
 
 fn main() {
@@ -26,7 +26,9 @@ fn main() {
     match args.mode {
         Mode::Idle => {
             // Just stay alive with minimal resource use
-            loop { thread::sleep(Duration::from_secs(3600)); }
+            loop {
+                thread::sleep(Duration::from_secs(3600));
+            }
         }
 
         Mode::LogThroughput => {
@@ -87,7 +89,9 @@ fn main() {
             loop {
                 // Simple float ops to prevent compiler from optimizing away the loop
                 x = (x + 1.0).sin().cos().tan();
-                if x > 1000.0 { x = 0.0; }
+                if x > 1000.0 {
+                    x = 0.0;
+                }
             }
         }
     }
