@@ -57,7 +57,7 @@ Quick start
 ${quick_start}
 
 Open http://127.0.0.1:9002/ — OSS edition shows an HTML notice (no built-in dashboard).
-Use the \`super\` CLI or /api/* for process management. An optional UI plugin
+Use the \`super\` CLI or /api/v1/* for process management. An optional UI plugin
 from a subscription package provides the full web dashboard.
 
 Source & documentation

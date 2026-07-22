@@ -75,7 +75,7 @@ pub async fn run(ctx: &Context) -> anyhow::Result<()> {
 
     // Background Fetcher
     let client = ctx.client.clone();
-    let url = format!("{}/api/programs", ctx.base_url);
+    let url = format!("{}/api/v1/programs", ctx.base_url);
 
     tokio::spawn(async move {
         loop {

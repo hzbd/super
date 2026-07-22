@@ -92,7 +92,7 @@ pub enum Command {
         retry_count: u32,
     },
 
-    // For HTTP API (GET /api/health)
+    // For HTTP API (GET /health)
     HealthCheck {
         reply: oneshot::Sender<HealthResponse>,
     },

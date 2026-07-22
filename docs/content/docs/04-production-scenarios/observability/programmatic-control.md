@@ -62,16 +62,16 @@ You can trigger deployments directly from GitHub Actions, GitLab CI, or Jenkins 
 
 ```bash
 # In your CI pipeline script — resolve UUID first (API paths use id, not name)
-ID=$(curl -s http://prod-server:9002/api/programs | jq -r '.[] | select(.name=="my-app") | .id')
-curl -X POST "http://prod-server:9002/api/programs/${ID}/restart"
+ID=$(curl -s http://prod-server:9002/api/v1/programs | jq -r '.[] | select(.name=="my-app") | .id')
+curl -X POST "http://prod-server:9002/api/v1/programs/${ID}/restart"
 ```
 
 **Example: Updating configuration dynamically**
 
 ```bash
 # Update the binary path and arguments without editing files on the server
-ID=$(curl -s http://prod-server:9002/api/programs | jq -r '.[] | select(.name=="my-app") | .id')
-curl -X PUT "http://prod-server:9002/api/programs/${ID}" \
+ID=$(curl -s http://prod-server:9002/api/v1/programs | jq -r '.[] | select(.name=="my-app") | .id')
+curl -X PUT "http://prod-server:9002/api/v1/programs/${ID}" \
      -H "Content-Type: application/json" \
      -d '{
            "command": "/usr/local/bin/new-version",

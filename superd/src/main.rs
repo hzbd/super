@@ -81,7 +81,7 @@ const OSS_UI_MESSAGE: &str = r#"<!DOCTYPE html>
     <p>Everything you need for automation is already here:</p>
     <ul>
       <li><code>super</code> CLI for day-to-day operations</li>
-      <li><code>/api/*</code> for integrations and CI/CD</li>
+      <li><code>/api/v1/*</code> for integrations and CI/CD</li>
       <li><code>/metrics</code> for Prometheus monitoring</li>
     </ul>
     <p>
@@ -108,7 +108,11 @@ async fn ui_fallback_handler(
     is_licensed: bool,
 ) -> Response {
     let path = uri.path();
-    if path.starts_with("/api/") || path == "/metrics" || path.starts_with("/ws") {
+    if path.starts_with("/api/")
+        || path == "/health"
+        || path == "/metrics"
+        || path.starts_with("/ws")
+    {
         return StatusCode::NOT_FOUND.into_response();
     }
 
@@ -289,9 +293,9 @@ async fn main() -> anyhow::Result<()> {
         info
     });
     if license_info.is_some() {
-        tracing::info!("License API enabled at GET /api/system/license");
+        tracing::info!("License API enabled at GET /api/v1/system/license");
     } else {
-        tracing::warn!("No license in AppState; GET /api/system/license will return 404");
+        tracing::warn!("No license in AppState; GET /api/v1/system/license will return 404");
     }
 
     let base_router = api::make_api_router(

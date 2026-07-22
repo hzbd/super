@@ -147,7 +147,7 @@ pub async fn handle_batch_action(
     );
 
     // 3. Send single request
-    let url = format!("{}/api/programs/batch", ctx.base_url);
+    let url = format!("{}/api/v1/programs/batch", ctx.base_url);
     let resp = ctx.client.post(&url).json(&req).send().await?;
 
     if !resp.status().is_success() {
@@ -207,7 +207,7 @@ pub async fn handle_batch_action(
 }
 
 pub async fn handle_list(ctx: &Context) -> anyhow::Result<()> {
-    let url = format!("{}/api/programs", ctx.base_url);
+    let url = format!("{}/api/v1/programs", ctx.base_url);
     let resp = ctx.client.get(&url).send().await?;
 
     if resp.status().is_success() {
@@ -226,7 +226,7 @@ pub async fn handle_info(ctx: &Context, target: &str) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let url = format!("{}/api/programs/{}", ctx.base_url, ids[0]);
+    let url = format!("{}/api/v1/programs/{}", ctx.base_url, ids[0]);
     let resp = ctx.client.get(&url).send().await?;
 
     if resp.status().is_success() {
@@ -253,7 +253,7 @@ pub async fn handle_logs(
     let id = ids[0];
 
     if let Some(n) = tail {
-        let mut url = format!("{}/api/programs/{}/logs?tail={}", ctx.base_url, id, n);
+        let mut url = format!("{}/api/v1/programs/{}/logs?tail={}", ctx.base_url, id, n);
         if let Some(s) = source {
             url.push_str(&format!("&source={}", s));
         }
@@ -395,7 +395,7 @@ pub async fn handle_add(ctx: &Context, cmd: &args::Commands) -> anyhow::Result<(
             ..Default::default()
         };
 
-        let url = format!("{}/api/programs", ctx.base_url);
+        let url = format!("{}/api/v1/programs", ctx.base_url);
         let resp = ctx.client.post(&url).json(&payload).send().await?;
         let status = resp.status();
 
@@ -500,7 +500,7 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
             let destination = if let Some(dest) = artifact_destination.clone() {
                 dest
             } else {
-                let url = format!("{}/api/programs/{}", ctx.base_url, id);
+                let url = format!("{}/api/v1/programs/{}", ctx.base_url, id);
                 let resp = ctx.client.get(&url).send().await?;
                 if !resp.status().is_success() {
                     return Err(anyhow::anyhow!(
@@ -563,7 +563,7 @@ pub async fn handle_update(ctx: &Context, cmd: &args::Commands) -> anyhow::Resul
             payload.health_check = Some(common::HealthCheck::Disabled);
         }
 
-        let url = format!("{}/api/programs/{}", ctx.base_url, id);
+        let url = format!("{}/api/v1/programs/{}", ctx.base_url, id);
         let resp = ctx.client.put(&url).json(&payload).send().await?;
         if resp.status().is_success() {
             if ota_triggered {
@@ -589,7 +589,7 @@ pub async fn handle_token(ctx: &Context, action: &TokenCommands) -> anyhow::Resu
         TokenCommands::List => {
             let resp = ctx
                 .client
-                .get(format!("{base_url}/api/auth/tokens"))
+                .get(format!("{base_url}/api/v1/auth/tokens"))
                 .send()
                 .await?;
             if resp.status().is_success() {
@@ -610,7 +610,7 @@ pub async fn handle_token(ctx: &Context, action: &TokenCommands) -> anyhow::Resu
             };
             let resp = ctx
                 .client
-                .post(format!("{base_url}/api/auth/tokens"))
+                .post(format!("{base_url}/api/v1/auth/tokens"))
                 .json(&req)
                 .send()
                 .await?;
@@ -627,7 +627,7 @@ pub async fn handle_token(ctx: &Context, action: &TokenCommands) -> anyhow::Resu
         TokenCommands::Revoke { id } => {
             let resp = ctx
                 .client
-                .delete(format!("{base_url}/api/auth/tokens/{id}"))
+                .delete(format!("{base_url}/api/v1/auth/tokens/{id}"))
                 .send()
                 .await?;
             check_resp(resp).await?;
@@ -638,7 +638,7 @@ pub async fn handle_token(ctx: &Context, action: &TokenCommands) -> anyhow::Resu
 
 pub async fn handle_shutdown(ctx: &Context) -> anyhow::Result<()> {
     println!("Initiating System Shutdown...");
-    let url = format!("{}/api/system/shutdown", ctx.base_url);
+    let url = format!("{}/api/v1/system/shutdown", ctx.base_url);
     let resp = ctx.client.post(&url).send().await?;
 
     if resp.status().is_success() {
@@ -666,7 +666,7 @@ pub async fn handle_reload(ctx: &Context, target: &Option<String>) -> anyhow::Re
         println!("Reloading System Configuration...");
         let resp = ctx
             .client
-            .post(format!("{}/api/system/reload", ctx.base_url))
+            .post(format!("{}/api/v1/system/reload", ctx.base_url))
             .send()
             .await?;
         check_resp(resp).await?;
@@ -679,7 +679,7 @@ pub async fn handle_apply(ctx: &Context, file: &std::path::PathBuf) -> anyhow::R
     let request: StackApplyRequest = serde_json::from_str(&content)?;
 
     println!("Applying stack from {:?}...", file);
-    let url = format!("{}/api/stack", ctx.base_url);
+    let url = format!("{}/api/v1/stack", ctx.base_url);
     let resp = ctx.client.put(&url).json(&request).send().await?;
     let status = resp.status();
 
@@ -697,7 +697,7 @@ pub async fn handle_apply(ctx: &Context, file: &std::path::PathBuf) -> anyhow::R
 }
 
 pub async fn handle_export(ctx: &Context) -> anyhow::Result<()> {
-    let url = format!("{}/api/stack", ctx.base_url);
+    let url = format!("{}/api/v1/stack", ctx.base_url);
     let resp = ctx.client.get(&url).send().await?;
 
     if resp.status().is_success() {

@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
             return session::login(&mut config, secret, url.as_deref()).await;
         }
         Commands::Logout => {
-            return session::logout(&mut config);
+            return session::logout(&mut config).await;
         }
         _ => {}
     }

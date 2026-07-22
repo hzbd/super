@@ -28,15 +28,15 @@ Provide a new `artifact` block with a **different `checksum`** than the one alre
 
 ### Via API (recommended for CI/CD)
 
-Use **`PUT /api/programs/{id}`** with the program UUID. Full reference: [API Reference — Update Program](/docs/06-internals/api-reference#update-program).
+Use **`PUT /api/v1/programs/{id}`** with the program UUID. Full reference: [API Reference — Update Program](/docs/06-internals/api-reference#update-program).
 
 ```bash
 # 1. Resolve UUID by name
-PROGRAM_ID=$(curl -s http://127.0.0.1:9002/api/programs \
+PROGRAM_ID=$(curl -s http://127.0.0.1:9002/api/v1/programs \
   | jq -r '.[] | select(.name=="my-app") | .id')
 
 # 2. Trigger OTA
-curl -X PUT "http://127.0.0.1:9002/api/programs/${PROGRAM_ID}" \
+curl -X PUT "http://127.0.0.1:9002/api/v1/programs/${PROGRAM_ID}" \
   -H "Content-Type: application/json" \
   -d '{
     "artifact": {
@@ -54,7 +54,7 @@ With the `security` plugin: add `-H "Authorization: Bearer <token>"`.
 ### Via Stack (declarative, multi-service)
 
 ```bash
-curl -X PUT http://127.0.0.1:9002/api/stack \
+curl -X PUT http://127.0.0.1:9002/api/v1/stack \
   -H "Content-Type: application/json" \
   -d '{
     "prune": false,

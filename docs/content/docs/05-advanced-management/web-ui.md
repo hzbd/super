@@ -14,7 +14,7 @@ aliases:
 
 | Edition | Web UI at `/` |
 | :--- | :--- |
-| **OSS** (no plugins) | Static notice — **no dashboard**. Use `super` CLI or `/api/*`. |
+| **OSS** (no plugins) | Static notice — **no dashboard**. Use `super` CLI or `/api/v1/*`. |
 | **Licensed** | Full dashboard served by the authorized UI plugin. |
 
 OSS `superd` does **not** embed a dashboard binary. The optional **`ui`** plugin serves the web dashboard via `super_plugin_ui_v1`.
@@ -29,7 +29,7 @@ With the `ui` plugin loaded and authorized in `[license].key`:
   Assuming `port = 9002` in your config
 {{< /callout >}}
 
-Log in with your `auth_secret` when the **`security`** plugin is enabled (`super login <secret>`). See [Authentication](/docs/05-advanced-management/authentication).
+Log in with an **Access Token** (`sk-…`) when the **`security`** plugin is enabled. Prefer generated tokens for day-to-day use; config `auth_secret` remains usable until an Admin explicitly disables it. See [Authentication](/docs/05-advanced-management/authentication).
 
 ## Dashboard tour
 
@@ -92,6 +92,6 @@ The dashboard also includes create/edit forms, a [declarative stack editor](/doc
 
 **Licensed:** `security` is bundled and **must load** — startup fails otherwise. Dashboard and API require token auth.
 
-**With `security` plugin loaded:** Token authentication and RBAC apply to the API and dashboard. Log in via `super login <auth_secret>` or create API tokens. See [Access control](/docs/05-advanced-management/access-control) and [Authentication](/docs/05-advanced-management/authentication).
+**With `security` plugin loaded:** Token authentication and RBAC apply to the API and dashboard. Prefer generated Access Tokens for day-to-day login. `auth_secret` remains usable until an Admin explicitly disables it (after creating an Admin token). See [Access control](/docs/05-advanced-management/access-control) and [Authentication](/docs/05-advanced-management/authentication).
 
 > **Security tip:** OSS exposure beyond localhost requires explicit `allow_insecure_public_bind = true` or the **`security` plugin**. Licensed deployments always load `security`.

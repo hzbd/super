@@ -67,13 +67,13 @@ Define the artifact details in a JSON object.
 
 ### 2. Trigger via API
 
-Resolve the program **UUID** first (`GET /api/programs`), then `PUT` the artifact. See [API Reference — Update Program](/docs/06-internals/api-reference#update-program).
+Resolve the program **UUID** first (`GET /api/v1/programs`), then `PUT` the artifact. See [API Reference — Update Program](/docs/06-internals/api-reference#update-program).
 
 ```bash
-PROGRAM_ID=$(curl -s http://device-ip:9002/api/programs \
+PROGRAM_ID=$(curl -s http://device-ip:9002/api/v1/programs \
   | jq -r '.[] | select(.name=="edge-agent") | .id')
 
-curl -X PUT "http://device-ip:9002/api/programs/${PROGRAM_ID}" \
+curl -X PUT "http://device-ip:9002/api/v1/programs/${PROGRAM_ID}" \
   -H "Content-Type: application/json" \
   -d '{
     "artifact": {

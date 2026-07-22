@@ -23,7 +23,10 @@ pub use security::{
     validate_license_grant_ids, validate_outbound_url,
 };
 
-pub use auth::{AuthRecord, CreateTokenRequest, CreateTokenResponse, UserContext, UserRole};
+pub use auth::{
+    AuthRecord, AuthStatusResponse, AuthTokenInfo, CreateTokenRequest, CreateTokenResponse,
+    UserContext, UserRole,
+};
 pub use license::{
     LICENSE_UPGRADE_URL, LicenseClaims, LicenseExpiryStatus, LicenseInfo, license_expiry_status,
     verify_license, verify_license_for_superd,
@@ -532,7 +535,7 @@ pub struct ProgramLogFile {
     pub content: String,
 }
 
-/// Response for GET /api/programs/{id}/logs
+/// Response for GET /api/v1/programs/{id}/logs
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct ProgramLogsResponse {
     pub id: Uuid,

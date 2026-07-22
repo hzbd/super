@@ -78,7 +78,7 @@ super update data-processor --cpu 10
 super update data-processor --memory 536870912
 
 # API
-curl -X PUT http://127.0.0.1:9002/api/programs/<id> \
+curl -X PUT http://127.0.0.1:9002/api/v1/programs/<id> \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"resource_limits": {"cpu_quota": 10.0, "memory_limit": 536870912}}'

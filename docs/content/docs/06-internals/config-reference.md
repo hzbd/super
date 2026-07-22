@@ -38,7 +38,7 @@ Global settings for the daemon.
 | `shutdown_timeout` | int | `10` | Seconds to wait for SIGTERM before SIGKILL during shutdown. |
 | `flapping_window` | int | `60` | Time window (seconds) to detect restart loops. |
 | `flapping_threshold` | int | `5` | Max restarts allowed within the window. |
-| `enable_docs` | bool | `false` | Enable Swagger UI (`/swagger-ui`) when the binary is built with the docs feature. |
+| `enable_docs` | bool | `false` | Enable Swagger UI (`/api/docs`) when the binary is built with the docs feature. |
 
 ## Root keys (Licensed 💎)
 
@@ -46,7 +46,7 @@ Top-level fields in `super.toml` (sibling to `[server]`, not inside it):
 
 | Key | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `auth_secret` 💎 | string | — | **Plugin only** (`security`). Root secret for token bootstrap. See [Authentication](/docs/05-advanced-management/authentication). |
+| `auth_secret` 💎 | string | — | **Plugin only** (`security`). Required for licensed startup. Root Admin Bearer for bootstrap; Admins may explicitly disable login with it after creating an Admin Access Token. See [Authentication](/docs/05-advanced-management/authentication). |
 
 ## `[license]` — subscription key (Licensed 💎)
 

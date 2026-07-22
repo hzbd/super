@@ -12,14 +12,20 @@ Super exposes a RESTful API on port `9002` (default). All responses are in JSON 
 
 **Licensed (`[license].key` valid):** `security` is bundled with every subscription and **must load** — otherwise `superd` refuses startup. API auth is always active when licensed. See [Authentication — Licensed deployments require security](/docs/05-advanced-management/authentication#licensed-deployments-require-security).
 
-**With `security` plugin loaded**: All API requests require `Authorization: Bearer <token>` (except health/docs whitelist). Public bind is allowed because auth middleware is active. See [Authentication](/docs/05-advanced-management/authentication).
+**With `security` plugin loaded**: All API requests require `Authorization: Bearer <token>` (except `/health`, `/metrics`, and docs whitelist). Public bind is allowed because auth middleware is active. Config `auth_secret` bootstraps Access Tokens and stays usable until an Admin explicitly disables it. See [Authentication](/docs/05-advanced-management/authentication).
+
+## Health & docs
+
+*   **GET** `/health` — liveness (no auth)
+*   **GET** `/api/docs` — Swagger UI when `enable_docs = true` (docs feature build)
+*   **GET** `/api/v1/openapi.json` — OpenAPI catalog (same docs gate / whitelist)
 
 ## Programs
 
 ### List Programs
 Get a summary of all managed processes.
 
-*   **GET** `/api/programs`
+*   **GET** `/api/v1/programs`
 
 **Response:**
 ```json
@@ -38,7 +44,7 @@ Get a summary of all managed processes.
 ### Create Program
 Register a new process dynamically.
 
-*   **POST** `/api/programs`
+*   **POST** `/api/v1/programs`
 
 **Body:**
 ```json
@@ -64,14 +70,14 @@ Register a new process dynamically.
 ### Get Details
 Get full configuration and state for a specific program.
 
-*   **GET** `/api/programs/{id}`
+*   **GET** `/api/v1/programs/{id}`
 
-`{id}` is the program **UUID** (not the name). Resolve it from `GET /api/programs`.
+`{id}` is the program **UUID** (not the name). Resolve it from `GET /api/v1/programs`.
 
 ### Update Program
 Partially update an existing program. Only fields present in the body are changed; omitted fields are left unchanged.
 
-*   **PUT** `/api/programs/{id}`
+*   **PUT** `/api/v1/programs/{id}`
 
 **Body** (all fields optional):
 
@@ -95,7 +101,7 @@ Partially update an existing program. Only fields present in the body are change
 | `cron` | Cron expression — see [Scheduled Tasks](/docs/02-essentials/scheduled-tasks). |
 | `resource_limits` | 💎 Requires `isolation` plugin on Linux — stored in config always; enforced only when plugin is loaded |
 
-> **Restart semantics**: Updating `command`, `env`, etc. **persists config only** — it does **not** restart a running process. Call `POST /api/programs/{id}/restart` explicitly, or change `artifact.checksum` to trigger an automatic OTA restart.
+> **Restart semantics**: Updating `command`, `env`, etc. **persists config only** — it does **not** restart a running process. Call `POST /api/v1/programs/{id}/restart` explicitly, or change `artifact.checksum` to trigger an automatic OTA restart.
 
 #### OTA update via API
 
@@ -104,14 +110,14 @@ When `artifact.checksum` differs from the stored value, Super starts the transac
 **Step 1 — resolve UUID:**
 
 ```bash
-curl -s http://127.0.0.1:9002/api/programs \
+curl -s http://127.0.0.1:9002/api/v1/programs \
   | jq -r '.[] | select(.name=="my-app") | .id'
 ```
 
 **Step 2 — trigger update:**
 
 ```bash
-curl -X PUT "http://127.0.0.1:9002/api/programs/${PROGRAM_ID}" \
+curl -X PUT "http://127.0.0.1:9002/api/v1/programs/${PROGRAM_ID}" \
   -H "Content-Type: application/json" \
   -d '{
     "artifact": {
@@ -140,15 +146,15 @@ curl -X PUT "http://127.0.0.1:9002/api/programs/${PROGRAM_ID}" \
 
 Perform lifecycle actions.
 
-*   **POST** `/api/programs/{id}/start`
-*   **POST** `/api/programs/{id}/stop` (Query param: `?force=true`)
-*   **POST** `/api/programs/{id}/restart`
+*   **POST** `/api/v1/programs/{id}/start`
+*   **POST** `/api/v1/programs/{id}/stop` (Query param: `?force=true`)
+*   **POST** `/api/v1/programs/{id}/restart`
 
 ### Historical Logs
 
 Read the last N lines from on-disk log files (`{uuid}.out` / `{uuid}.err`).
 
-*   **GET** `/api/programs/{id}/logs`
+*   **GET** `/api/v1/programs/{id}/logs`
 
 **Query parameters:**
 
@@ -170,7 +176,7 @@ Read the last N lines from on-disk log files (`{uuid}.out` / `{uuid}.err`).
 
 ### Send Signal
 
-*   **POST** `/api/programs/{id}/signal`
+*   **POST** `/api/v1/programs/{id}/signal`
 
 **Body:**
 ```json
@@ -184,7 +190,7 @@ Read the last N lines from on-disk log files (`{uuid}.out` / `{uuid}.err`).
 ### Apply Stack (Declarative)
 Update the entire system state to match a JSON definition.
 
-*   **PUT** `/api/stack`
+*   **PUT** `/api/v1/stack`
 
 **Body:**
 ```json
@@ -197,12 +203,12 @@ Update the entire system state to match a JSON definition.
 ### Shutdown
 Gracefully stop the daemon.
 
-*   **POST** `/api/system/shutdown`
+*   **POST** `/api/v1/system/shutdown`
 
 ### System Stats
 Host-level CPU and memory snapshot (refreshed every ~3s by the monitor thread).
 
-*   **GET** `/api/system/stats`
+*   **GET** `/api/v1/system/stats`
 
 **Response:**
 ```json
@@ -230,7 +236,7 @@ Stream stdout/stderr.
 
 Perform actions on multiple programs simultaneously.
 
-*   **POST** `/api/programs/batch`
+*   **POST** `/api/v1/programs/batch`
 
 **Body:**
 ```json
@@ -247,15 +253,30 @@ Perform actions on multiple programs simultaneously.
 
 > **Without the plugin**: These routes are not registered. Requests return **404 Not Found**.
 
-Manage access tokens for API authorization.
+Manage access tokens for API authorization. Bootstrap with config `auth_secret`; Admins may optionally disable it after creating an Admin token. See [Authentication](/docs/05-advanced-management/authentication#optional-disable-auth_secret).
+
+### Login
+*   **POST** `/api/v1/auth/login`
+
+### Logout
+*   **POST** `/api/v1/auth/logout`
+
+### Auth status
+*   **GET** `/api/v1/auth/status`
+
+### Disable auth_secret
+*   **POST** `/api/v1/auth/secret/disable`
 
 ### List Tokens
-*   **GET** `/api/auth/tokens`
+*   **GET** `/api/v1/auth/tokens`
 
 ### Create Token
-*   **POST** `/api/auth/tokens`
+*   **POST** `/api/v1/auth/tokens`
 
-**Body:**
+### Renew Token
+*   **POST** `/api/v1/auth/tokens/{id}/renew`
+
+### Create Token body
 ```json
 {
   "name": "ci-deploy-bot",
@@ -264,7 +285,7 @@ Manage access tokens for API authorization.
 ```
 
 ### Revoke Token
-*   **DELETE** `/api/auth/tokens/{id}`
+*   **DELETE** `/api/v1/auth/tokens/{id}`
 
 
 ## System Configuration (licensed plugins 💎)
@@ -275,7 +296,7 @@ Manage access tokens for API authorization.
 > **Authentication:** When the `security` plugin is loaded, protected routes (including license) require a valid Bearer token — same as other authenticated API calls.
 
 ### Get License Info
-*   **GET** `/api/system/license`
+*   **GET** `/api/v1/system/license`
 
 Returns verified subscription metadata plus runtime plugin versions (versions are **not** part of the signed license claims).
 
@@ -309,6 +330,6 @@ Returns verified subscription metadata plus runtime plugin versions (versions ar
 ### Manage Notifications
 View or hot-reload webhook channels.
 
-*   **GET** `/api/system/notify`
-*   **PUT** `/api/system/notify`
-*   **POST** `/api/system/notify/test`
+*   **GET** `/api/v1/system/notify`
+*   **PUT** `/api/v1/system/notify`
+*   **POST** `/api/v1/system/notify/test`

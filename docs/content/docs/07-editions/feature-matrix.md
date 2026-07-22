@@ -36,7 +36,7 @@ Same **`superd`** and **`super`** binaries for both columns — drop `plugins/*.
 *   No strict per-process CPU/memory enforcement.
 
 ### Licensed plugins
-*   **`security.so` + `auth_secret`** — required for any licensed startup (included with subscription).
+*   **`security.so` + `auth_secret`** — required for any licensed startup (included with subscription). `auth_secret` bootstraps Access Tokens; Admins may explicitly disable it after creating an Admin token.
 *   **PaaS** or shared hosting with cgroup isolation (`isolation`, **Linux hosts only**).
 *   **Webhook notifications** for on-call (`notify`).
 *   **Visual dashboard** (`ui`) — requires `security` for licensed startup.

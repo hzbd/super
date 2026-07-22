@@ -12,9 +12,9 @@ When multiple engineers manage a system, you don't want everyone to have `root` 
 
 | Role | Permissions | Ideal For |
 | :--- | :--- | :--- |
-| **Viewer** | **Read-Only**. Can view process status, logs, and metrics. Cannot modify anything. | Developers debugging issues, Dashboard displays. |
-| **Operator** | **Operational Actions**. Can Start, Stop, Restart, and Signal processes. Cannot create/delete programs or manage tokens. | SREs, On-call engineers, Automated Watchdogs. |
-| **Admin** | **Full Access**. Can create/delete programs, manage authentication tokens, and reload system config. | System Administrators, CI/CD Deployment pipelines. |
+| **Viewer** | **Read-Only**. Process status, logs, metrics; stack/notify configs with secrets redacted. Can renew own Access Token. | Developers debugging issues, Dashboard displays. |
+| **Operator** | **Operational Actions**. Create programs; manage notification channels; Start, Stop, Restart, and Signal processes. Cannot edit/delete programs, apply stack, or revoke tokens. Stack reads are redacted. Can renew own token. | SREs, On-call engineers, Automated Watchdogs. |
+| **Admin** | **Full Access**. Program CRUD, plaintext configs, all tokens, disable `auth_secret`, system reload/shutdown. | System Administrators, CI/CD Deployment pipelines. |
 
 ## Usage Example
 
@@ -22,23 +22,25 @@ When multiple engineers manage a system, you don't want everyone to have `root` 
 
 You want a developer to be able to view logs and restart their service, but not delete the database service or change the root configuration.
 
-**1. Create an Operator Token (Admin or root `auth_secret`):**
+**1. Create an Operator Token** (Admin `sk-…` token, or `auth_secret` during an active root bootstrap session):
 
 ```bash
-curl -X POST http://127.0.0.1:9002/api/auth/tokens \
-  -H "Authorization: Bearer <admin-or-root-secret>" \
+curl -X POST http://127.0.0.1:9002/api/v1/auth/tokens \
+  -H "Authorization: Bearer <admin-token-or-auth_secret>" \
   -H "Content-Type: application/json" \
   -d '{"name":"dev-team","role":"operator"}'
 ```
+
+After the first Admin Access Token exists, an Admin may optionally **disable** `auth_secret` — see [Authentication](/docs/05-advanced-management/authentication#optional-disable-auth_secret).
 
 **2. Developer usage:**
 
 ```bash
 # Restart allowed
 curl -X POST -H "Authorization: Bearer sk-..." \
-  http://127.0.0.1:9002/api/programs/<id>/restart
+  http://127.0.0.1:9002/api/v1/programs/<id>/restart
 
 # Delete denied (403 Forbidden)
 curl -X DELETE -H "Authorization: Bearer sk-..." \
-  http://127.0.0.1:9002/api/programs/<database-id>
+  http://127.0.0.1:9002/api/v1/programs/<database-id>
 ```

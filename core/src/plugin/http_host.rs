@@ -3,15 +3,15 @@
 use crate::SystemPaths;
 use crate::plugin::loader::PluginRuntime;
 use axum::{
-    Router,
-    body::Bytes,
+    Json, Router,
     extract::{ConnectInfo, State},
-    http::{Method, StatusCode, Uri, header},
+    http::{Method, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
     routing::MethodRouter,
 };
 use common::plugin_http_abi::{HTTP_PLUGIN_API_VERSION, HTTP_PLUGIN_SYMBOL, SuperPluginHttpV1};
+use common::UserContext;
 use libloading::Library;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -74,12 +74,13 @@ impl HttpPluginHandle {
         Ok(())
     }
 
-    fn call_api(&self, method: &str, path: &str, body: &str) -> (u16, String) {
+    fn call_api(&self, method: &str, path: &str, body: &str, ctx_json: &str) -> (u16, String) {
         let method_c = CString::new(method).unwrap_or_default();
         let path_c = CString::new(path).unwrap_or_default();
         let body_c = CString::new(body).unwrap_or_default();
+        let ctx_c = CString::new(ctx_json).unwrap_or_default();
         let mut buf = vec![0u8; 65536];
-        // SAFETY: the three input pointers are valid NUL-terminated `CString`s
+        // SAFETY: the four input pointers are valid NUL-terminated `CString`s
         // and `buf` is a valid writable buffer of `buf.len()` bytes, all
         // outliving the call; the ABI contract is that the plugin writes a
         // NUL-terminated response of at most `buf.len()` bytes.
@@ -88,6 +89,7 @@ impl HttpPluginHandle {
                 method_c.as_ptr(),
                 path_c.as_ptr(),
                 body_c.as_ptr(),
+                ctx_c.as_ptr(),
                 buf.as_mut_ptr().cast(),
                 buf.len(),
             )
@@ -103,7 +105,7 @@ impl HttpPluginHandle {
 fn is_core_reserved_route(method: &str, path: &str) -> bool {
     matches!(
         (method.to_uppercase().as_str(), path),
-        ("GET", "/api/system/license")
+        ("GET", "/api/v1/system/license")
     )
 }
 
@@ -245,13 +247,20 @@ pub fn attach_http_plugins(
 
 async fn plugin_api_handler(
     State(handle): State<Arc<HttpPluginHandle>>,
-    method: Method,
-    uri: Uri,
-    body: Bytes,
+    req: axum::extract::Request,
 ) -> Response {
-    let path = uri.path();
+    let method = req.method().as_str().to_string();
+    let path = req.uri().path().to_string();
+    let ctx_json = req
+        .extensions()
+        .get::<PluginAuthContext>()
+        .map(|c| c.ctx_json.clone())
+        .unwrap_or_default();
+    let body = axum::body::to_bytes(req.into_body(), 1024 * 1024)
+        .await
+        .unwrap_or_default();
     let body_str = String::from_utf8_lossy(&body);
-    let (status, resp_body) = handle.call_api(method.as_str(), path, &body_str);
+    let (status, resp_body) = handle.call_api(&method, &path, &body_str, &ctx_json);
     api_response(status, resp_body)
 }
 
@@ -273,10 +282,10 @@ async fn plugin_auth_middleware(
     State(handle): State<Arc<HttpPluginHandle>>,
     mut req: axum::extract::Request,
     next: Next,
-) -> Result<Response, StatusCode> {
-    let authenticate = handle
-        .authenticate
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+) -> Response {
+    let Some(authenticate) = handle.authenticate else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
 
     let path = req.uri().path();
     let auth = req
@@ -286,7 +295,9 @@ async fn plugin_auth_middleware(
         .unwrap_or("");
     let query = req.uri().query().unwrap_or("");
 
-    let path_c = CString::new(path).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let Ok(path_c) = CString::new(path) else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
     let auth_c = CString::new(auth).unwrap_or_default();
     let query_c = CString::new(query).unwrap_or_default();
     let mut buf = vec![0u8; 2048];
@@ -305,21 +316,55 @@ async fn plugin_auth_middleware(
     };
 
     match code {
-        3 => Ok(next.run(req).await),
+        3 => next.run(req).await,
         0 => {
             let nul = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-            let json =
-                std::str::from_utf8(&buf[..nul]).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            let Ok(json) = std::str::from_utf8(&buf[..nul]) else {
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            };
             req.extensions_mut().insert(PluginAuthContext {
                 ctx_json: json.to_string(),
             });
-            Ok(next.run(req).await)
+            if let Ok(user) = serde_json::from_str::<UserContext>(json) {
+                req.extensions_mut().insert(user);
+            }
+            next.run(req).await
         }
         1 => {
             warn!("Unauthorized access to {}", path);
-            Err(StatusCode::UNAUTHORIZED)
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({
+                    "status": "error",
+                    "message": "unauthorized",
+                })),
+            )
+                .into_response()
         }
-        _ => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        4 => {
+            let nul = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
+            let detail = std::str::from_utf8(&buf[..nul]).unwrap_or("");
+            let body = if detail.trim().starts_with('{') {
+                serde_json::from_str::<serde_json::Value>(detail).unwrap_or_else(|_| {
+                    serde_json::json!({
+                        "status": "error",
+                        "message": "unauthorized",
+                    })
+                })
+            } else {
+                serde_json::json!({
+                    "status": "error",
+                    "message": if detail.is_empty() {
+                        "unauthorized"
+                    } else {
+                        detail
+                    },
+                })
+            };
+            warn!("Unauthorized access to {} ({})", path, body);
+            (StatusCode::UNAUTHORIZED, Json(body)).into_response()
+        }
+        _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }
 

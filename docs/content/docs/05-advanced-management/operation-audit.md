@@ -20,17 +20,17 @@ Audit logs are stored separately from application logs, typically in `./logs/aud
 
 **1. Admin logs in and creates a token:**
 ```text
-[2023-10-27 10:00:01] IP=192.168.1.50 User=[RootAdmin (Admin)] Action=POST Path=/api/auth/tokens Status=201
+[2023-10-27 10:00:01] IP=192.168.1.50 User=[RootAdmin (Admin)] Action=POST Path=/api/v1/auth/tokens Status=201
 ```
 
 **2. Operator restarts a service:**
 ```text
-[2023-10-27 10:05:23] IP=192.168.1.50 User=[ci-bot (Operator)] Action=POST Path=/api/programs/api-server/restart Status=200
+[2023-10-27 10:05:23] IP=192.168.1.50 User=[ci-bot (Operator)] Action=POST Path=/api/v1/programs/api-server/restart Status=200
 ```
 
 **3. Viewer attempts unauthorized action (Denied):**
 ```text
-[2023-10-27 10:15:00] IP=10.0.0.5 User=[guest (Viewer)] Action=DELETE Path=/api/programs/db Status=403
+[2023-10-27 10:15:00] IP=10.0.0.5 User=[guest (Viewer)] Action=DELETE Path=/api/v1/programs/db Status=403
 ```
 
 ## System Events

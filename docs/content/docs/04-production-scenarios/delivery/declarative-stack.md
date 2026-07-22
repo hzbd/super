@@ -68,7 +68,7 @@ This feature makes Super ideal for **GitOps**.
 2.  Configure a GitHub Action / GitLab Runner.
 3.  On push to `main`, the runner executes:
     ```bash
-    curl -X PUT http://prod-server:9002/api/stack \
+    curl -X PUT http://prod-server:9002/api/v1/stack \
       -H "Authorization: Bearer $TOKEN" \
       -d @stack.json
     ```

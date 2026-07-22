@@ -4,7 +4,7 @@ use axum::response::Response;
 use axum::{
     Json, Router,
     extract::{
-        DefaultBodyLimit, Path, Query, State, WebSocketUpgrade,
+        DefaultBodyLimit, Extension, Path, Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
     http::StatusCode,
@@ -16,7 +16,8 @@ use common::{
     ArtifactConfig, BatchAction, BatchProgramRequest, BatchProgramResponse, CreateProgramRequest,
     HealthCheck, HealthResponse, LicenseInfo, ProcessStatus, ProgramConfig, ProgramHooks,
     ProgramInfo, ProgramLogFile, ProgramLogsResponse, ProgramSummary, SignalProgramRequest,
-    StackApplyRequest, SystemStats, UpdateProgramRequest, WsMessage, mask_env_map,
+    StackApplyRequest, SystemStats, UpdateProgramRequest, UserContext, UserRole, WsMessage,
+    mask_env_map,
 };
 
 use crate::logger::{self, LogSource};
@@ -161,44 +162,45 @@ pub fn make_api_router(
         license,
     };
 
-    // 1. Business API routes (require AppState)
-    let mut api_router = Router::new()
-        .route("/api/health", get(health_check))
-        .route("/api/programs", get(list_programs).post(create_program))
+    // Business APIs under `/api/v1`; `/health` at root; `/ws` + `/metrics` stay root.
+    let v1 = Router::new()
+        .route("/programs", get(list_programs).post(create_program))
         .route(
-            "/api/programs/{id}",
+            "/programs/{id}",
             get(get_program_info)
                 .delete(remove_program)
                 .put(update_program),
         )
-        .route("/api/programs/{id}/logs", get(get_program_logs))
-        .route("/api/programs/{id}/start", post(start_program))
-        .route("/api/programs/{id}/stop", post(stop_program))
-        .route("/api/programs/{id}/restart", post(restart_program))
-        .route("/api/programs/{id}/signal", post(signal_program))
-        // Batch operation routes
-        .route("/api/programs/batch", post(batch_programs))
-        .route("/api/groups/{name}/start", post(start_group))
-        .route("/api/groups/{name}/stop", post(stop_group))
-        .route("/api/groups/{name}/restart", post(restart_group))
-        .route("/api/stack", put(apply_stack).get(export_stack))
-        .route("/api/system/shutdown", post(system_shutdown))
-        .route("/api/system/reload", post(system_reload))
-        .route("/api/system/stats", get(system_stats))
-        .route("/api/system/license", get(system_license))
+        .route("/programs/{id}/logs", get(get_program_logs))
+        .route("/programs/{id}/start", post(start_program))
+        .route("/programs/{id}/stop", post(stop_program))
+        .route("/programs/{id}/restart", post(restart_program))
+        .route("/programs/{id}/signal", post(signal_program))
+        .route("/programs/batch", post(batch_programs))
+        .route("/groups/{name}/start", post(start_group))
+        .route("/groups/{name}/stop", post(stop_group))
+        .route("/groups/{name}/restart", post(restart_group))
+        .route("/stack", put(apply_stack).get(export_stack))
+        .route("/system/shutdown", post(system_shutdown))
+        .route("/system/reload", post(system_reload))
+        .route("/system/stats", get(system_stats))
+        .route("/system/license", get(system_license));
+
+    let mut api_router = Router::new()
+        .route("/health", get(health_check))
+        .nest("/api/v1", v1)
         .route("/ws", get(ws_handler))
         .route("/metrics", get(metrics_handler))
         .layer(DefaultBodyLimit::max(API_BODY_LIMIT))
         .with_state(state);
 
-    // 2. Merge routes
-    // Mount Swagger UI when enabled in config
     #[cfg(feature = "docs")]
     {
         if config.server.enable_docs && mount_docs {
             let openapi = ApiDoc::openapi();
-            api_router = api_router
-                .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi));
+            api_router = api_router.merge(
+                SwaggerUi::new("/api/docs").url("/api/v1/openapi.json", openapi),
+            );
         }
     }
 
@@ -208,7 +210,7 @@ pub fn make_api_router(
 /// System Shutdown
 #[utoipa::path(
     post,
-    path = "/api/system/shutdown",
+    path = "/api/v1/system/shutdown",
     tag = "system",
     responses(
         (status = 200, description = "Shutdown initiated"),
@@ -263,7 +265,7 @@ async fn handle_socket(
 /// List all programs
 #[utoipa::path(
     get,
-    path = "/api/programs",
+    path = "/api/v1/programs",
     tag = "programs",
     responses(
         (status = 200, description = "List successfully retrieved", body = Vec<ProgramSummary>),
@@ -284,7 +286,7 @@ async fn list_programs(
 /// Create a new program
 #[utoipa::path(
     post,
-    path = "/api/programs",
+    path = "/api/v1/programs",
     tag = "programs",
     request_body = CreateProgramRequest,
     responses(
@@ -313,7 +315,7 @@ async fn create_program(
 /// Get program details
 #[utoipa::path(
     get,
-    path = "/api/programs/{id}",
+    path = "/api/v1/programs/{id}",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID")
@@ -339,7 +341,7 @@ async fn get_program_info(
 /// Read historical log lines from disk
 #[utoipa::path(
     get,
-    path = "/api/programs/{id}/logs",
+    path = "/api/v1/programs/{id}/logs",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID"),
@@ -403,7 +405,7 @@ async fn get_program_logs(
 /// Start a program
 #[utoipa::path(
     post,
-    path = "/api/programs/{id}/start",
+    path = "/api/v1/programs/{id}/start",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID")
@@ -428,7 +430,7 @@ async fn start_program(
 /// Update program configuration
 #[utoipa::path(
     put,
-    path = "/api/programs/{id}",
+    path = "/api/v1/programs/{id}",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID")
@@ -455,7 +457,7 @@ async fn update_program(
 /// Stop a program
 #[utoipa::path(
     post,
-    path = "/api/programs/{id}/stop",
+    path = "/api/v1/programs/{id}/stop",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID"),
@@ -483,7 +485,7 @@ async fn stop_program(
 /// Restart a program
 #[utoipa::path(
     post,
-    path = "/api/programs/{id}/restart",
+    path = "/api/v1/programs/{id}/restart",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID")
@@ -508,7 +510,7 @@ async fn restart_program(
 /// Remove a program
 #[utoipa::path(
     delete,
-    path = "/api/programs/{id}",
+    path = "/api/v1/programs/{id}",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID")
@@ -533,7 +535,7 @@ async fn remove_program(
 /// Batch operations
 #[utoipa::path(
     post,
-    path = "/api/programs/batch",
+    path = "/api/v1/programs/batch",
     tag = "programs",
     request_body = BatchProgramRequest,
     responses(
@@ -557,7 +559,7 @@ async fn batch_programs(
 /// Start a group of programs
 #[utoipa::path(
     post,
-    path = "/api/groups/{name}/start",
+    path = "/api/v1/groups/{name}/start",
     tag = "groups",
     params(
         ("name" = String, Path, description = "Group Name")
@@ -582,7 +584,7 @@ async fn start_group(
 /// Stop a group of programs
 #[utoipa::path(
     post,
-    path = "/api/groups/{name}/stop",
+    path = "/api/v1/groups/{name}/stop",
     tag = "groups",
     params(
         ("name" = String, Path, description = "Group Name"),
@@ -610,7 +612,7 @@ async fn stop_group(
 /// Restart a group of programs
 #[utoipa::path(
     post,
-    path = "/api/groups/{name}/restart",
+    path = "/api/v1/groups/{name}/restart",
     tag = "groups",
     params(
         ("name" = String, Path, description = "Group Name")
@@ -635,7 +637,7 @@ async fn restart_group(
 /// Reload System Config
 #[utoipa::path(
     post,
-    path = "/api/system/reload",
+    path = "/api/v1/system/reload",
     tag = "system",
     responses(
         (status = 200, description = "Configuration reloaded"),
@@ -654,7 +656,7 @@ async fn system_reload(State(state): State<AppState>) -> Result<StatusCode, AppE
 /// Host-level CPU and memory snapshot
 #[utoipa::path(
     get,
-    path = "/api/system/stats",
+    path = "/api/v1/system/stats",
     tag = "system",
     responses(
         (status = 200, description = "System stats", body = SystemStats),
@@ -672,7 +674,7 @@ async fn system_stats(State(state): State<AppState>) -> Result<Json<SystemStats>
 /// Verified subscription license (requires auth when security plugin is loaded).
 #[utoipa::path(
     get,
-    path = "/api/system/license",
+    path = "/api/v1/system/license",
     tag = "system",
     responses(
         (status = 200, description = "License info", body = LicenseInfo),
@@ -695,7 +697,7 @@ async fn system_license(State(state): State<AppState>) -> Result<Json<LicenseInf
 /// System Health Check
 #[utoipa::path(
     get,
-    path = "/api/health",
+    path = "/health",
     tag = "system",
     responses(
         (status = 200, description = "System healthy", body = HealthResponse),
@@ -718,7 +720,7 @@ async fn health_check(State(state): State<AppState>) -> Result<impl IntoResponse
 /// Apply Stack
 #[utoipa::path(
     put,
-    path = "/api/stack",
+    path = "/api/v1/stack",
     tag = "stack",
     request_body = StackApplyRequest,
     responses(
@@ -741,14 +743,20 @@ async fn apply_stack(
 /// Export Stack
 #[utoipa::path(
     get,
-    path = "/api/stack",
+    path = "/api/v1/stack",
     tag = "stack",
     responses(
         (status = 200, description = "Stack configuration", body = StackApplyRequest),
         (status = 500, description = "Internal error")
     )
 )]
-async fn export_stack(State(state): State<AppState>) -> Result<Json<StackApplyRequest>, AppError> {
+async fn export_stack(
+    State(state): State<AppState>,
+    user: Option<Extension<UserContext>>,
+) -> Result<Json<StackApplyRequest>, AppError> {
+    let reveal_secrets = user
+        .as_ref()
+        .is_some_and(|Extension(u)| matches!(u.role, UserRole::Admin));
     let configs = state
         .manager
         .dump_programs()
@@ -762,7 +770,11 @@ async fn export_stack(State(state): State<AppState>) -> Result<Json<StackApplyRe
                 name: Some(c.name),
                 command: c.command,
                 args: c.args,
-                env: mask_env_map(&c.env),
+                env: if reveal_secrets {
+                    c.env
+                } else {
+                    mask_env_map(&c.env)
+                },
                 env_file: c.env_file,
                 cwd: c.cwd,
                 user: c.user,
@@ -799,7 +811,7 @@ async fn export_stack(State(state): State<AppState>) -> Result<Json<StackApplyRe
 /// Send signal to program
 #[utoipa::path(
     post,
-    path = "/api/programs/{id}/signal",
+    path = "/api/v1/programs/{id}/signal",
     tag = "programs",
     params(
         ("id" = Uuid, Path, description = "Program ID")

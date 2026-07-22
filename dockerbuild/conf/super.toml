@@ -34,7 +34,7 @@ download_timeout = 86400
 flapping_window = 60
 flapping_threshold = 5
 
-# Swagger UI at /swagger-ui (requires docs feature). Keep false when API is exposed.
+# Swagger UI at /api/docs (requires docs feature). Keep false when API is exposed.
 enable_docs = false
 
 # Paths below mirror SUPER_ROOT layout. Bootstrap always resolves state/logs

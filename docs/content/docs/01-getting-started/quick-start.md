@@ -50,7 +50,7 @@ Open a new terminal. Use the CLI or `curl` to register a program:
   {{< /tab >}}
   {{< tab name="REST API" >}}
   ```bash
-  curl -X POST http://127.0.0.1:9002/api/programs \
+  curl -X POST http://127.0.0.1:9002/api/v1/programs \
     -H "Content-Type: application/json" \
     -d '{
         "name": "demo-web",
@@ -83,7 +83,7 @@ curl http://127.0.0.1:8080
 
 Open **[http://127.0.0.1:9002](http://127.0.0.1:9002)**.
 
-**OSS only:** You will see a short HTML notice — there is **no built-in dashboard**. Manage processes with the `super` CLI or `/api/*` (see [Web UI](/docs/05-advanced-management/web-ui)).
+**OSS only:** You will see a short HTML notice — there is **no built-in dashboard**. Manage processes with the `super` CLI or `/api/v1/*` (see [Web UI](/docs/05-advanced-management/web-ui)).
 
 **With the `ui` plugin:** The full dashboard (process list, logs, controls) is served from `plugins/ui.{so,dylib}`.
 
@@ -118,12 +118,15 @@ cp /path/to/subscription/plugins/* "$SUPER_ROOT/plugins/"
 
 Restart `superd` after updating plugins or the subscription key.
 
-**API authentication** (requires `security` plugin + `auth_secret`):
+**API authentication** (requires `security` plugin + `auth_secret` for startup):
 
 ```bash
+# First-time bootstrap (no Access Tokens yet):
 ./target/release/super login <auth_secret>
-./target/release/super token list
+./target/release/super token create admin --role admin
 
-# or curl directly:
-curl -H "Authorization: Bearer <auth_secret>" http://127.0.0.1:9002/api/auth/tokens
+# Prefer sk-... for routine CLI use; optionally disable auth_secret from the Dashboard.
+./target/release/super token list
 ```
+
+See [Authentication](/docs/05-advanced-management/authentication#optional-disable-auth_secret).

@@ -58,7 +58,7 @@ Equivalent in stack JSON:
 | Source | Path / API | Persisted to |
 | :--- | :--- | :--- |
 | TOML file | `[[programs]]` → `[programs.hooks]` | Loaded into registry on daemon start |
-| Stack apply | `POST /api/stack/apply` with `"hooks": { ... }` | `snapshot.json` |
+| Stack apply | `PUT /api/v1/stack` with `"hooks": { ... }` | `snapshot.json` |
 | CLI | `super add` / `super update --pre-start "..."` | `snapshot.json` |
 | Dashboard | Program create/edit form | `snapshot.json` |
 

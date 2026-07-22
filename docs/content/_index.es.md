@@ -78,7 +78,7 @@ description: "Qué es Project Super y cómo instalarlo y operarlo."
         <a href="/docs/06-internals/api-reference">Referencia API completa →</a>
       </div>
       <div class="home-split-code">
-        <pre><code>curl -X POST http://127.0.0.1:9002/api/programs \
+        <pre><code>curl -X POST http://127.0.0.1:9002/api/v1/programs \
   -H "Content-Type: application/json" \
   -d '{
     "name": "api-server",

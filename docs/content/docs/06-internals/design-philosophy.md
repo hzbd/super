@@ -21,7 +21,7 @@ flowchart TB
   end
 
   subgraph superd["superd (OSS core)"]
-    API["REST API /api/*"]
+    API["REST API /api/v1/*"]
     WS["WebSocket /ws logs"]
     MET["/metrics Prometheus"]
     MGR["Process Manager\nActor + registry"]
@@ -85,7 +85,7 @@ flowchart TB
 
 **Subscription:** same `superd` binary; add `[license].key`, deploy plugin libraries under `plugins/`, and set `auth_secret`. The **`security` plugin is included with every subscription** and is required for licensed startup — API token auth and RBAC then protect the control plane. See [Authentication](/docs/05-advanced-management/authentication#licensed-deployments-require-security) and the [Feature matrix](/docs/07-editions/feature-matrix/).
 
-**Typical control flow:** an operator or pipeline sends `POST /api/programs` (or `super add`) → the Manager validates config → spawns the child in its own **process group** → streams stdout/stderr to disk and WebSocket → health probes and dependency rules decide when downstream services start. Shutdown and OTA paths use the same Manager mailbox so state stays consistent under load.
+**Typical control flow:** an operator or pipeline sends `POST /api/v1/programs` (or `super add`) → the Manager validates config → spawns the child in its own **process group** → streams stdout/stderr to disk and WebSocket → health probes and dependency rules decide when downstream services start. Shutdown and OTA paths use the same Manager mailbox so state stays consistent under load.
 
 For day-to-day configuration rather than internals, start with [Configuration](/docs/02-essentials/configuration) and [Quick Start](/docs/01-getting-started/quick-start/).
 

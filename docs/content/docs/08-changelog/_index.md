@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- HTTP business APIs are versioned under **`/api/v1/…`**; liveness is **`GET /health`**; Swagger (when enabled) is **`/api/docs`** (`/api/v1/openapi.json`).
+- With the `security` plugin: `auth_secret` remains usable by default; Admins can **explicitly disable** it after creating an Admin Access Token. Viewer/Operator may renew their own tokens. **Operator** may create programs and manage notification channels; stack reads stay redacted for non-Admins; notify config is plaintext for Admin/Operator and redacted for Viewer.
+
 ---
 
 ## [1.2.1] - 2026-07-14

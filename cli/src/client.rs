@@ -31,21 +31,53 @@ pub fn build_client(token: Option<&String>) -> anyhow::Result<reqwest::Client> {
     Ok(client)
 }
 
-/// Verify credentials against a server with the security plugin (GET /api/auth/tokens).
+/// Verify credentials against a server with the security plugin (POST /api/v1/auth/login).
 pub async fn verify_credentials(base_url: &str, token: &str) -> anyhow::Result<()> {
     let client = build_client(Some(&token.to_string()))?;
-    let url = format!("{}/api/auth/tokens", base_url.trim_end_matches('/'));
-    let resp = client.get(&url).send().await?;
+    let url = format!("{}/api/v1/auth/login", base_url.trim_end_matches('/'));
+    let resp = client.post(&url).send().await?;
 
     match resp.status() {
         reqwest::StatusCode::OK => Ok(()),
-        reqwest::StatusCode::UNAUTHORIZED => Err(anyhow::anyhow!("Login failed: invalid token.")),
+        reqwest::StatusCode::UNAUTHORIZED => {
+            let body = resp.text().await.unwrap_or_default();
+            let detail = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|v| {
+                    v.get("message")
+                        .and_then(|m| m.as_str())
+                        .map(str::to_string)
+                })
+                .filter(|m| !m.is_empty() && m != "unauthorized");
+            if let Some(msg) = detail {
+                Err(anyhow::anyhow!("Login failed: {msg}"))
+            } else {
+                Err(anyhow::anyhow!("Login failed: invalid token."))
+            }
+        }
         reqwest::StatusCode::NOT_FOUND => Err(anyhow::anyhow!(
             "Login requires superd with the security plugin loaded. \
-             This server ({base_url}) returned 404 for /api/auth/tokens."
+             This server ({base_url}) returned 404 for /api/v1/auth/login."
         )),
         status => Err(anyhow::anyhow!("Login failed: server returned {status}.")),
     }
+}
+
+/// Best-effort server logout (ends sticky root `auth_secret` session when applicable).
+pub async fn server_logout(base_url: &str, token: &str) -> anyhow::Result<()> {
+    let client = build_client(Some(&token.to_string()))?;
+    let url = format!("{}/api/v1/auth/logout", base_url.trim_end_matches('/'));
+    let resp = client.post(&url).send().await?;
+    if resp.status().is_success() || resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+        return Ok(());
+    }
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(());
+    }
+    Err(anyhow::anyhow!(
+        "Logout request failed: server returned {}.",
+        resp.status()
+    ))
 }
 
 /// Resolve target (all, @group, name, id)
@@ -54,7 +86,7 @@ pub async fn resolve_targets(
     base_url: &str,
     target: &str,
 ) -> anyhow::Result<Vec<Uuid>> {
-    let url = format!("{}/api/programs", base_url);
+    let url = format!("{}/api/v1/programs", base_url);
     let resp = client.get(&url).send().await?;
 
     if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
@@ -117,7 +149,7 @@ pub async fn wait_for_status(
 ) -> anyhow::Result<()> {
     let start_time = Instant::now();
     let timeout = Duration::from_secs(timeout_sec);
-    let url = format!("{}/api/programs/{}", base_url, id);
+    let url = format!("{}/api/v1/programs/{}", base_url, id);
 
     print!("   Verifying status...");
     let _ = std::io::stdout().flush();

@@ -34,7 +34,7 @@ pub async fn run(base_url: &str, token: Option<&String>) -> anyhow::Result<()> {
         }
     };
 
-    let health_url = format!("{base_url}/api/health");
+    let health_url = format!("{base_url}/health");
     let resp = match client.get(&health_url).send().await {
         Ok(r) => r,
         Err(e) => {
@@ -69,7 +69,7 @@ pub async fn run(base_url: &str, token: Option<&String>) -> anyhow::Result<()> {
 
     // 3. License / edition (404 in OSS mode is expected, not an error).
     println!("\n{}", "== License ==".bold());
-    let license_url = format!("{base_url}/api/system/license");
+    let license_url = format!("{base_url}/api/v1/system/license");
     match client.get(&license_url).send().await {
         Ok(r) if r.status() == reqwest::StatusCode::NOT_FOUND => {
             println!(

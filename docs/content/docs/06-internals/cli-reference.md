@@ -113,7 +113,7 @@ super logs <TARGET> --tail 50 --follow   # tail then follow live
 
 | Flag | Description |
 | :--- | :--- |
-| `--tail N` | Read last N lines from log files (`GET /api/programs/{id}/logs`) |
+| `--tail N` | Read last N lines from log files (`GET /api/v1/programs/{id}/logs`) |
 | `--source` | `stdout` or `stderr` only |
 | `--follow` | After `--tail`, keep streaming via WebSocket |
 
@@ -153,7 +153,11 @@ super shutdown
 When the `security` plugin is loaded, use the same `super` CLI:
 
 ```bash
+# Bootstrap only (no Access Tokens yet), or after all tokens were revoked:
 super login <auth_secret>          # save credentials to ~/.super/cli.json
+
+# Day-to-day: use a generated token
+super login sk-...
 super token list
 super token create ci-bot --role operator
 super token revoke <id>
@@ -163,19 +167,23 @@ super --token sk-... list
 export SUPER_TOKEN=sk-...
 ```
 
-Without the plugin, `super login` fails (404 on `/api/auth/tokens`). OSS deployments without auth can use `super list` directly on localhost.
+`auth_secret` stays usable by default; Admins may explicitly disable it after creating an Admin Access Token. See [Authentication](/docs/05-advanced-management/authentication#optional-disable-auth_secret).
+
+Without the plugin, `super login` fails (404 on `/api/v1/auth/login`). OSS deployments without auth can use `super list` directly on localhost.
 
 Alternative via curl:
 
 ```bash
-curl -H "Authorization: Bearer <auth_secret>" http://127.0.0.1:9002/api/auth/tokens
+# Bootstrap (login with auth_secret only when no tokens exist yet):
+curl -X POST http://127.0.0.1:9002/api/v1/auth/login \
+  -H "Authorization: Bearer <auth_secret>"
 
-curl -X POST http://127.0.0.1:9002/api/auth/tokens \
+curl -X POST http://127.0.0.1:9002/api/v1/auth/tokens \
   -H "Authorization: Bearer <auth_secret>" \
   -H "Content-Type: application/json" \
   -d '{"name":"ci-bot","role":"operator"}'
 
-curl -H "Authorization: Bearer sk-..." http://127.0.0.1:9002/api/programs
+curl -H "Authorization: Bearer sk-..." http://127.0.0.1:9002/api/v1/programs
 ```
 
 See [Authentication](/docs/05-advanced-management/authentication) for details.

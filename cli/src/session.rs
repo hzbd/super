@@ -17,10 +17,16 @@ pub async fn login(config: &mut CliConfig, secret: &str, url: Option<&str>) -> a
     Ok(())
 }
 
-pub fn logout(config: &mut CliConfig) -> anyhow::Result<()> {
+pub async fn logout(config: &mut CliConfig) -> anyhow::Result<()> {
     if config.auth_token.is_none() {
         println!("Not logged in.");
         return Ok(());
+    }
+
+    if let Some(token) = config.auth_token.clone() {
+        let base = config.server_url.trim_end_matches('/');
+        // Best-effort: end sticky root session when logging out with auth_secret.
+        let _ = client::server_logout(base, &token).await;
     }
 
     config.auth_token = None;

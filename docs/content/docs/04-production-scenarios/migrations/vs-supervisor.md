@@ -64,14 +64,14 @@ Super adopts an **API-First** design. The CLI is just a wrapper around the HTTP 
 
 **Get Status:**
 ```bash
-curl http://localhost:9002/api/programs
+curl http://localhost:9002/api/v1/programs
 ```
 
 **Restart a Process** (API paths use program **UUID**, not name):
 
 ```bash
-ID=$(curl -s http://localhost:9002/api/programs | jq -r '.[] | select(.name=="my-app") | .id')
-curl -X POST "http://localhost:9002/api/programs/${ID}/restart"
+ID=$(curl -s http://localhost:9002/api/v1/programs | jq -r '.[] | select(.name=="my-app") | .id')
+curl -X POST "http://localhost:9002/api/v1/programs/${ID}/restart"
 ```
 
 **Real-time Logs:**
