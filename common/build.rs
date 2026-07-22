@@ -31,7 +31,10 @@ fn main() {
 
     for (kid, path) in &entries {
         if !kids_seen.insert(kid.clone()) {
-            panic!("duplicate verifying kid '{kid}' under {}", keys_dir.display());
+            panic!(
+                "duplicate verifying kid '{kid}' under {}",
+                keys_dir.display()
+            );
         }
         let meta = fs::metadata(path).unwrap_or_else(|e| {
             panic!("stat {}: {e}", path.display());
